@@ -25,21 +25,17 @@ static int uiNormalizeChanceValue(Ihandle *ih) {
 }
 
 static Ihandle* setupDropUI() {
-    puts("what the fuck man!");
-    IupVbox(IupVbox(NULL));
-    dropControlsBox = IupLabel(
-        //inboundCheckbox = IupToggle("Drop Incoming", NULL),
-        //outboundCheckbox = IupToggle("Drop Outgoing", NULL),
-        //IupLabel("Chance(%):"),
-        //chanceInput = IupText(NULL)
-        "What the fuck man!"
+    dropControlsBox = IupHbox(
+        inboundCheckbox = IupToggle("Drop Incoming", NULL),
+        outboundCheckbox = IupToggle("Drop Outgoing", NULL),
+        IupLabel("Chance(%):"),
+        chanceInput = IupText(NULL),
+        NULL
     );
 
-    /*
     IupSetAttribute(chanceInput, "VISIBLECOLUMNS", "2");
     IupSetAttribute(chanceInput, "VALUE", "50");
     IupSetCallback(chanceInput, "VALUECHANGED_CB", uiNormalizeChanceValue);
-    */
 
     return dropControlsBox;
 }

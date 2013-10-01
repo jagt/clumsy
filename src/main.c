@@ -25,8 +25,9 @@ void init(int argc, char* argv[]) {
 
     topFrame = IupFrame(
         topVbox = IupVbox(
-            filterText = IupText(NULL),
-            filterButton = IupButton("Start", NULL)
+            filterText = IupText("what the fuck"),
+            filterButton = IupButton("Start", NULL),
+            NULL
         )
     );
 
@@ -51,7 +52,8 @@ void init(int argc, char* argv[]) {
         dialogVBox = IupVbox(
             statusLabel,
             topFrame,
-            bottomFrame
+            bottomFrame,
+            NULL
         )
     );
 
