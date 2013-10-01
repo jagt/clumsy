@@ -13,11 +13,30 @@ void showStatus(const char *line) {
     IupStoreAttribute(statusLabel, "TITLE", line); 
 }
 
-static int start_cb(Ihandle *ih) {
-    cout << "start" << endl;
+static int uiStopCb(Ihandle *ih);
+static int uiStartCb(Ihandle *ih) {
+    char buf[MSG_BUFSIZE];
+    if (divertStart(IupGetAttribute(filterText, "VALUE"), buf) == false) {
+        showStatus(buf);
+        return IUP_DEFAULT;
+    }
+
+    // successfully started
     showStatus("Started filtering. Enable functionalities to take effect.");
+    IupSetAttribute(filterText, "ACTIVE", "NO");
+    IupSetAttribute(filterButton, "TITLE", "Stop");
+    IupSetCallback(filterButton, "ACTION", uiStopCb);
     return IUP_DEFAULT;
 }
+
+static int uiStopCb(Ihandle *ih) {
+    showStatus("Input filtering criteria and click start.");
+    IupSetAttribute(filterText, "ACTIVE", "YES");
+    IupSetAttribute(filterButton, "TITLE", "Start");
+    IupSetCallback(filterButton, "ACTION", uiStartCb);
+    return IUP_DEFAULT;
+}
+
 
 void init(int argc, char* argv[]) {
     IupOpen(&argc, &argv);
@@ -39,7 +58,7 @@ void init(int argc, char* argv[]) {
     IupSetAttribute(topFrame, "TITLE", "Filtering");
     IupSetAttribute(topFrame, "EXPAND", "HORIZONTAL");
     IupSetAttribute(filterText, "EXPAND", "HORIZONTAL");
-    IupSetCallback(filterButton, "ACTION", start_cb);
+    IupSetCallback(filterButton, "ACTION", uiStartCb);
 
 
     dialog = IupDialog(
@@ -61,8 +80,11 @@ void init(int argc, char* argv[]) {
 
     // kickoff event loops
     IupShowXY(dialog, IUP_CENTER, IUP_CENTER);
-    IupMainLoop();
 
+}
+
+void startup() {
+    IupMainLoop();
 }
 
 void cleanup() {
@@ -71,6 +93,7 @@ void cleanup() {
 
 int main(int argc, char* argv[]) {
     init(argc, argv);
+    startup();
     cleanup();
     return 0;
 }

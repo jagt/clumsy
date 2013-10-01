@@ -23,6 +23,9 @@ solution('clumpsy')
             defines({'_DEBUG'})
             kind("ConsoleApp")
 
+        configuration("vs*")
+            defines({"_CRT_SECURE_NO_WARNINGS"})
+
         configuration('x32')
             includedirs({'external/iup-3.8_Win32_vc11_lib/include'})
             libdirs({
