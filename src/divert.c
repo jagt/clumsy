@@ -1,12 +1,12 @@
-#include <cstdio>
-#include <cassert>
+#include <stdio.h>
+#include <assert.h>
 #include "divert.h"
 #include "common.h"
 #define CLUMPSY_DIVERT_PRIORITY 0
 
 static HANDLE divertHandle;
 
-bool divertStart(const char * filter, char buf[]) {
+int divertStart(const char * filter, char buf[]) {
     divertHandle = DivertOpen(filter, DIVERT_LAYER_NETWORK, CLUMPSY_DIVERT_PRIORITY, 0);
     if (divertHandle == INVALID_HANDLE_VALUE) {
         DWORD lastError = GetLastError();
@@ -15,9 +15,9 @@ bool divertStart(const char * filter, char buf[]) {
         } else {
             sprintf(buf, "Failed to start filtering : failed to open device %d", lastError);
         }
-        return false;
+        return 0;
     }
-    return true;
+    return 1;
 }
 
 void divertStop() {

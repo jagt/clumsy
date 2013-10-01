@@ -6,10 +6,10 @@
 #define NAME_SIZE 16
 
 // module
-struct Module {
+typedef struct {
     const char *name; // name of the module
     Ihandle* (*setupUIFunc)(); // return hbox as controls group
-};
+} Module;
 
 extern Module dropModule;
 
@@ -17,6 +17,6 @@ extern Module dropModule;
 void showStatus(const char* line);
 
 // WinDivert
-bool divertStart(const char * filter, char buf[]);
+int divertStart(const char * filter, char buf[]);
 void divertStop();
 

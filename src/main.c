@@ -1,8 +1,7 @@
-#include <iostream>
+#include <stdio.h>
 #include "iup.h"
 
 #include "common.h"
-using namespace std;
 
 // global iup handlers
 static Ihandle *dialog, *topFrame, *bottomFrame; 
@@ -12,13 +11,14 @@ static Ihandle *filterText, *filterButton;
 void showStatus(const char *line);
 static int uiStopCb(Ihandle *ih);
 static int uiStartCb(Ihandle *ih);
-static void uiSetupModule(const Module &module, Ihandle *parent);
+static void uiSetupModule(const Module *module, Ihandle *parent);
 
 void init(int argc, char* argv[]) {
+    // status and filter frame
+    Ihandle *topVbox, *bottomVbox, *dialogVBox;
+
     IupOpen(&argc, &argv);
 
-    // status and filter frame
-    Ihandle *topVbox;
     statusLabel = IupLabel("Input filtering criteria and click start.");
     IupSetAttribute(statusLabel, "EXPAND", "HORIZONTAL");
     IupSetAttribute(statusLabel, "ALIGNMENT", "ACENTER");
@@ -36,7 +36,6 @@ void init(int argc, char* argv[]) {
     IupSetCallback(filterButton, "ACTION", uiStartCb);
 
     // functionalities frame 
-    Ihandle *bottomVbox;
     bottomFrame = IupFrame(
         bottomVbox = IupVbox(
             NULL
@@ -45,10 +44,9 @@ void init(int argc, char* argv[]) {
     IupSetAttribute(bottomFrame, "TITLE", "Functions");
 
     // setup module uis
-    uiSetupModule(dropModule, bottomVbox);
+    uiSetupModule(&dropModule, bottomVbox);
 
     // dialog
-    Ihandle *dialogVBox;
     dialog = IupDialog(
         dialogVBox = IupVbox(
             statusLabel,
@@ -86,7 +84,7 @@ void showStatus(const char *line) {
 
 static int uiStartCb(Ihandle *ih) {
     char buf[MSG_BUFSIZE];
-    if (divertStart(IupGetAttribute(filterText, "VALUE"), buf) == false) {
+    if (divertStart(IupGetAttribute(filterText, "VALUE"), buf) == 0) {
         showStatus(buf);
         return IUP_DEFAULT;
     }
@@ -107,12 +105,12 @@ static int uiStopCb(Ihandle *ih) {
     return IUP_DEFAULT;
 }
 
-static void uiSetupModule(const Module &module, Ihandle *parent) {
+static void uiSetupModule(const Module *module, Ihandle *parent) {
     Ihandle *groupBox, *toggle, *controls;
     groupBox = IupHbox(
-        toggle = IupToggle(module.name, NULL),
+        toggle = IupToggle(module->name, NULL),
         IupFill(),
-        controls = module.setupUIFunc(),
+        controls = module->setupUIFunc(),
         NULL
     );
     IupSetAttribute(groupBox, "EXPAND", "HORIZONTAL");

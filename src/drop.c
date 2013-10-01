@@ -1,12 +1,12 @@
 // dropping packet module
 // implement functionalities using plain functions because fuck classes
-#include <cstdio>
+#include <stdio.h>
 #include "common.h"
 #include "iup.h"
 
 static Ihandle *dropControlsBox, *inboundCheckbox, *outboundCheckbox, *chanceInput;
 
-static bool dropInbound = true, dropOutbound = true;
+static int dropInbound = 1, dropOutbound = 1;
 static int chance = 50;
 
 static int uiNormalizeChanceValue(Ihandle *ih) {
