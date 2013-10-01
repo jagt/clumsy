@@ -1,2 +1,76 @@
-int main() {
+#include <iostream>
+#include "iup.h"
+
+#include "common.h"
+using namespace std;
+
+// global iup handlers
+Ihandle *dialog, *topFrame, *bottomFrame; 
+Ihandle *statusLabel;
+Ihandle *filterText, *filterButton;
+
+void showStatus(const char *line) {
+    IupStoreAttribute(statusLabel, "TITLE", line); 
+}
+
+static int start_cb(Ihandle *ih) {
+    cout << "start" << endl;
+    showStatus("Started filtering. Enable functionalities to take effect.");
+    return IUP_DEFAULT;
+}
+
+void init(int argc, char* argv[]) {
+    IupOpen(&argc, &argv);
+
+    // setup controls
+    Ihandle *topVbox, *dialogVBox;
+
+    statusLabel = IupLabel("Input filtering criteria and click start.");
+    IupSetAttribute(statusLabel, "EXPAND", "HORIZONTAL");
+    IupSetAttribute(statusLabel, "ALIGNMENT", "ACENTER");
+
+    topFrame = IupFrame(
+        topVbox = IupVbox(
+            filterText = IupText(NULL),
+            filterButton = IupButton("Start", NULL)
+        )
+    );
+
+    IupSetAttribute(topFrame, "TITLE", "Filtering");
+    IupSetAttribute(topFrame, "EXPAND", "HORIZONTAL");
+    IupSetAttribute(filterText, "EXPAND", "HORIZONTAL");
+    IupSetCallback(filterButton, "ACTION", start_cb);
+
+
+    dialog = IupDialog(
+        dialogVBox = IupVbox(
+            statusLabel,
+            topFrame
+        )
+    );
+
+    IupSetAttribute(dialog, "TITLE", "clumpsy " CLUMPSY_VERSION);
+    IupSetAttribute(dialog, "SIZE", "360x400");
+    IupSetAttribute(dialog, "RESIZE", "NO");
+
+    // global layout settings to affect childrens
+    IupSetAttribute(dialogVBox, "ALIGNMENT", "ACENTER");
+    IupSetAttribute(dialogVBox, "CMARGIN", "4x4");
+    IupSetAttribute(dialogVBox, "CGAP", "4x2");
+    IupSetAttribute(dialogVBox, "PADDING", "6x2");
+
+    // kickoff event loops
+    IupShowXY(dialog, IUP_CENTER, IUP_CENTER);
+    IupMainLoop();
+
+}
+
+void cleanup() {
+    IupClose();
+}
+
+int main(int argc, char* argv[]) {
+    init(argc, argv);
+    cleanup();
+    return 0;
 }
