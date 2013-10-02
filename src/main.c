@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include "iup.h"
-
 #include "common.h"
 
 // global iup handlers
@@ -107,6 +106,17 @@ static int uiStopCb(Ihandle *ih) {
     return IUP_DEFAULT;
 }
 
+static int uiToggleControls(Ihandle *ih, int state) {
+    Ihandle *controls = (Ihandle*)IupGetAttribute(ih, CONTROLS_HANDLE);
+    int controlsActive = IS_YES(IupGetAttribute(controls, "ACTIVE"));
+    if (controlsActive && !state) {
+        IupSetAttribute(controls, "ACTIVE", "NO");
+    } else if (!controlsActive && state) {
+        IupSetAttribute(controls, "ACTIVE", "YES");
+    }
+    return IUP_DEFAULT;
+}
+
 static void uiSetupModule(const Module *module, Ihandle *parent) {
     Ihandle *groupBox, *toggle, *controls;
     groupBox = IupHbox(
@@ -119,6 +129,11 @@ static void uiSetupModule(const Module *module, Ihandle *parent) {
     IupSetAttribute(groupBox, "ALIGNMENT", "ACENTER");
     IupSetAttribute(controls, "ALIGNMENT", "ACENTER");
     IupAppend(parent, groupBox);
+
+    // set controls as attribute to toggle and enable toggle callback
+    IupSetAttribute(toggle, CONTROLS_HANDLE, (char*)controls);
+    IupSetCallback(toggle, "ACTION", (Icallback)uiToggleControls);
+    IupSetAttribute(controls, "ACTIVE", "NO"); // startup as inactive
 }
 
 int main(int argc, char* argv[]) {

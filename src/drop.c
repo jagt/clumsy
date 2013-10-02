@@ -1,5 +1,4 @@
 // dropping packet module
-// implement functionalities using plain functions because fuck classes
 #include <stdio.h>
 #include "common.h"
 #include "iup.h"
@@ -21,6 +20,18 @@ static int uiNormalizeChanceValue(Ihandle *ih) {
     IupStoreAttribute(ih, "VALUE", valueBuf);
     // put caret at last to enable editting while normalizing
     IupStoreAttribute(ih, "CARET", "10");
+    // and sync chance value
+    chance = value;
+    return IUP_DEFAULT;
+}
+
+static int uiSyncDropInbound(Ihandle *ih) {
+    dropInbound = IS_YES(IupGetAttribute(ih, "VALUE"));
+    return IUP_DEFAULT;
+}
+
+static int uiSyncDropOutbound(Ihandle *ih) {
+    dropOutbound = IS_YES(IupGetAttribute(ih, "VALUE"));
     return IUP_DEFAULT;
 }
 
@@ -36,6 +47,8 @@ static Ihandle* setupDropUI() {
     IupSetAttribute(chanceInput, "VISIBLECOLUMNS", "2");
     IupSetAttribute(chanceInput, "VALUE", "50");
     IupSetCallback(chanceInput, "VALUECHANGED_CB", uiNormalizeChanceValue);
+    IupSetCallback(inboundCheckbox, "VALUECHANGED_CB", uiSyncDropInbound);
+    IupSetCallback(outboundCheckbox, "VALUECHANGED_CB", uiSyncDropOutbound);
 
     return dropControlsBox;
 }
