@@ -1,12 +1,14 @@
 // dropping packet module
 #include <stdio.h>
+#include <Windows.h>
 #include "common.h"
 #include "iup.h"
 
 static Ihandle *dropControlsBox, *inboundCheckbox, *outboundCheckbox, *chanceInput;
 
-static int dropInbound = 1, dropOutbound = 1;
-static int chance = 50;
+static volatile short dropEnabled = 0;
+static volatile short dropInbound = 1, dropOutbound = 1;
+static volatile short chance = 50;
 
 static int uiNormalizeChanceValue(Ihandle *ih) {
     char valueBuf[8];
@@ -21,17 +23,19 @@ static int uiNormalizeChanceValue(Ihandle *ih) {
     // put caret at last to enable editting while normalizing
     IupStoreAttribute(ih, "CARET", "10");
     // and sync chance value
-    chance = value;
+    InterlockedExchange16(&chance, value);
     return IUP_DEFAULT;
 }
 
 static int uiSyncDropInbound(Ihandle *ih) {
-    dropInbound = IS_YES(IupGetAttribute(ih, "VALUE"));
+    int ret = IS_YES(IupGetAttribute(ih, "VALUE"));
+    InterlockedExchange16(&dropInbound, ret);
     return IUP_DEFAULT;
 }
 
 static int uiSyncDropOutbound(Ihandle *ih) {
-    dropOutbound = IS_YES(IupGetAttribute(ih, "VALUE"));
+    int ret = IS_YES(IupGetAttribute(ih, "VALUE"));
+    InterlockedExchange16(&dropOutbound, ret);
     return IUP_DEFAULT;
 }
 
@@ -55,5 +59,6 @@ static Ihandle* setupDropUI() {
 
 Module dropModule = {
     "Drop",
+    (short*)&dropEnabled,
     setupDropUI
 };

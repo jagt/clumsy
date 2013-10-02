@@ -1,6 +1,11 @@
 #include <stdio.h>
+#include <Windows.h>
 #include "iup.h"
 #include "common.h"
+
+const Module* modules[MODULE_CNT] = {
+    &dropModule
+};
 
 // global iup handlers
 static Ihandle *dialog, *topFrame, *bottomFrame; 
@@ -13,9 +18,9 @@ static int uiStartCb(Ihandle *ih);
 static void uiSetupModule(const Module *module, Ihandle *parent);
 
 void init(int argc, char* argv[]) {
-    // status and filter frame
+    int ix;
     Ihandle *topVbox, *bottomVbox, *dialogVBox;
-
+    // iup inits
     IupOpen(&argc, &argv);
 
     statusLabel = IupLabel("Input filtering criteria and click start.");
@@ -44,7 +49,9 @@ void init(int argc, char* argv[]) {
     IupSetAttribute(bottomFrame, "TITLE", "Functions");
 
     // setup module uis
-    uiSetupModule(&dropModule, bottomVbox);
+    for (ix = 0; ix < MODULE_CNT; ++ix) {
+        uiSetupModule(*(modules+ix), bottomVbox);
+    }
 
     // dialog
     dialog = IupDialog(
@@ -108,12 +115,16 @@ static int uiStopCb(Ihandle *ih) {
 
 static int uiToggleControls(Ihandle *ih, int state) {
     Ihandle *controls = (Ihandle*)IupGetAttribute(ih, CONTROLS_HANDLE);
+    short *target = (short*)IupGetAttribute(ih, SYNCED_VALUE);
     int controlsActive = IS_YES(IupGetAttribute(controls, "ACTIVE"));
     if (controlsActive && !state) {
         IupSetAttribute(controls, "ACTIVE", "NO");
+        InterlockedExchange16(target, controlsActive);
     } else if (!controlsActive && state) {
         IupSetAttribute(controls, "ACTIVE", "YES");
+        InterlockedExchange16(target, controlsActive);
     }
+
     return IUP_DEFAULT;
 }
 
@@ -132,6 +143,7 @@ static void uiSetupModule(const Module *module, Ihandle *parent) {
 
     // set controls as attribute to toggle and enable toggle callback
     IupSetAttribute(toggle, CONTROLS_HANDLE, (char*)controls);
+    IupSetAttribute(toggle, SYNCED_VALUE, (char*)module->enabledFlag);
     IupSetCallback(toggle, "ACTION", (Icallback)uiToggleControls);
     IupSetAttribute(controls, "ACTIVE", "NO"); // startup as inactive
 }
