@@ -7,11 +7,10 @@
 #define MAX_PACKETSIZE 0xFFFF
 #define READ_TIME_PER_STEP 3
 
-PackageNode *head;
-static PackageNode headNode;
 static HANDLE divertHandle;
-static char packetBuf[MAX_PACKETSIZE];
-static DIVERT_ADDRESS addrBuf;
+
+static PackageNode headNode = {0}, tailNode = {0};
+static PackageNode * const head = &headNode, * const tail = &tailNode;
 
 PackageNode* createNode(char* buf, UINT len, DIVERT_ADDRESS *addr) {
     PackageNode *newNode = (PackageNode*)malloc(sizeof(PackageNode));
@@ -22,7 +21,21 @@ PackageNode* createNode(char* buf, UINT len, DIVERT_ADDRESS *addr) {
     return newNode;
 }
 
+void freeNode(PackageNode *node) {
+    assert((node != head) && (node != tail));
+    free(node->packet);
+    free(node);
+}
+
+PackageNode* popNode(PackageNode *node) {
+    assert((node != head) && (node != tail));
+    node->prev->next = node->next;
+    node->next->prev = node->prev;
+    return node;
+}
+
 int divertStart(const char * filter, char buf[]) {
+    int ix;
     divertHandle = DivertOpen(filter, DIVERT_LAYER_NETWORK, CLUMPSY_DIVERT_PRIORITY, 0);
     if (divertHandle == INVALID_HANDLE_VALUE) {
         DWORD lastError = GetLastError();
@@ -35,27 +48,33 @@ int divertStart(const char * filter, char buf[]) {
     }
 
     // init package link list
-    memset(&headNode, 0, sizeof(PackageNode));
-    head = &headNode;
+    head->next = tail;
+    tail->prev = head;
+
+    // reset module
+    for (ix = 0; ix < MODULE_CNT; ++ix) {
+        modules[ix]->lastEnabled = 0;
+    }
 
     return 1;
 }
 
-void divertRead() {
+void divertReadLoop() {
     int ix = 0;
+    char packetBuf[MAX_PACKETSIZE];
+    DIVERT_ADDRESS addrBuf;
     UINT readLen;
-    while (ix < READ_TIME_PER_STEP) {
+    while (1) {
         if (!DivertRecv(divertHandle, packetBuf, MAX_PACKETSIZE, &addrBuf, &readLen)) {
-            showStatus("Failed to recv a packet.");
+            puts("Failed to recv a packet.");
             continue;
         }
         if (readLen > MAX_PACKETSIZE) {
-            showStatus("Interal Error: DivertRecv truncated packate,"); // don't know how this can happen
+            puts("Interal Error: DivertRecv truncated packate,"); // don't know how this can happen
         }
 
+        // create node and put it into the list
 
-
-        ++ix;
     }
 }
 

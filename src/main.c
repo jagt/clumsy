@@ -3,7 +3,7 @@
 #include "iup.h"
 #include "common.h"
 
-const Module* modules[MODULE_CNT] = {
+Module* modules[MODULE_CNT] = {
     &dropModule
 };
 

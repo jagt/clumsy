@@ -1,4 +1,6 @@
 // dropping packet module
+#include <stdlib.h>
+#include <time.h>
 #include <stdio.h>
 #include <Windows.h>
 #include "common.h"
@@ -57,8 +59,32 @@ static Ihandle* setupDropUI() {
     return dropControlsBox;
 }
 
+static void dropStartUp() {
+    puts("drop enabled");
+    srand(time(NULL));
+}
+
+static void dropCloseDown() {
+    puts("drop disabled");
+}
+
+static void dropProcess(PackageNode *head, PackageNode* tail) {
+    short doDrop;
+    while (head->next != tail) {
+        doDrop = (chance == 100) || (rand() & 0x3FF > chance * 10);
+        if (doDrop) {
+            freeNode(popNode(head->next));
+        }
+        head = head->next;
+    }
+}
+
+
 Module dropModule = {
     "Drop",
     (short*)&dropEnabled,
-    setupDropUI
+    setupDropUI,
+    dropStartUp,
+    dropCloseDown,
+    dropProcess
 };

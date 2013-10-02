@@ -12,31 +12,6 @@
 #define SYNCED_VALUE "__SYNCED_VALUE"
 #define IS_YES(s) (!strcmp((s), "YES"));
 
-// module
-typedef struct {
-    /*
-     * Static module data
-     */
-    const char *name; // name of the module
-    short *enabledFlag; // volatile short flag to determine enabled or not
-    Ihandle* (*setupUIFunc)(); // return hbox as controls group
-    /*
-     * Flags used during program excution. Need to be re initialized on each run
-     */
-    short lastEnabled; // if it is enabled on last run
-} Module;
-
-extern Module dropModule;
-
-extern const Module* modules[MODULE_CNT]; // all modules in a list
-
-// Iup GUI
-void showStatus(const char* line);
-
-// WinDivert
-int divertStart(const char * filter, char buf[]);
-void divertStop();
-
 // package node
 typedef struct _NODE {
     char *packet;
@@ -45,5 +20,34 @@ typedef struct _NODE {
     struct _NODE *prev, *next;
 } PackageNode;
 
-// exposed link list head
-extern PackageNode *head;
+PackageNode* createNode(char* buf, UINT len, DIVERT_ADDRESS *addr);
+void freeNode(PackageNode *node);
+PackageNode* popNode(PackageNode *node);
+
+// module
+typedef struct {
+    /*
+     * Static module data
+     */
+    const char *name; // name of the module
+    short *enabledFlag; // volatile short flag to determine enabled or not
+    Ihandle* (*setupUIFunc)(); // return hbox as controls group
+    void (*startUp)(); // called when starting up the module
+    void (*closeDown)(); // called when starting up the module
+    void (*process)(PackageNode *head, PackageNode *tail);
+    /*
+     * Flags used during program excution. Need to be re initialized on each run
+     */
+    short lastEnabled; // if it is enabled on last run
+} Module;
+
+extern Module dropModule;
+extern Module* modules[MODULE_CNT]; // all modules in a list
+
+// Iup GUI
+void showStatus(const char* line);
+
+// WinDivert
+int divertStart(const char * filter, char buf[]);
+void divertStop();
+
