@@ -107,8 +107,15 @@ static int uiStartCb(Ihandle *ih) {
 
 static int uiStopCb(Ihandle *ih) {
     showStatus("Input filtering criteria and click start.");
+    
+    // try stopping
+    IupSetAttribute(filterButton, "ACTIVE", "NO");
+    IupFlush(); // flush to show disabled state
+    divertStop();
+
     IupSetAttribute(filterText, "ACTIVE", "YES");
     IupSetAttribute(filterButton, "TITLE", "Start");
+    IupSetAttribute(filterButton, "ACTIVE", "YES");
     IupSetCallback(filterButton, "ACTION", uiStartCb);
     return IUP_DEFAULT;
 }

@@ -18,11 +18,13 @@ typedef struct _NODE {
     UINT packetLen;
     DIVERT_ADDRESS addr;
     struct _NODE *prev, *next;
-} PackageNode;
+} PacketNode;
 
-PackageNode* createNode(char* buf, UINT len, DIVERT_ADDRESS *addr);
-void freeNode(PackageNode *node);
-PackageNode* popNode(PackageNode *node);
+PacketNode* createNode(char* buf, UINT len, DIVERT_ADDRESS *addr);
+void freeNode(PacketNode *node);
+PacketNode* popNode(PacketNode *node);
+PacketNode* insertAfter(PacketNode *node, PacketNode *target);
+PacketNode* appendNode(PacketNode *node);
 
 // module
 typedef struct {
@@ -34,7 +36,7 @@ typedef struct {
     Ihandle* (*setupUIFunc)(); // return hbox as controls group
     void (*startUp)(); // called when starting up the module
     void (*closeDown)(); // called when starting up the module
-    void (*process)(PackageNode *head, PackageNode *tail);
+    void (*process)(PacketNode *head, PacketNode *tail);
     /*
      * Flags used during program excution. Need to be re initialized on each run
      */

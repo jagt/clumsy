@@ -68,7 +68,7 @@ static void dropCloseDown() {
     puts("drop disabled");
 }
 
-static void dropProcess(PackageNode *head, PackageNode* tail) {
+static void dropProcess(PacketNode *head, PacketNode* tail) {
     short doDrop;
     while (head->next != tail) {
         doDrop = (chance == 100) || (rand() & 0x3FF > chance * 10);
