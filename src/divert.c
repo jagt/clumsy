@@ -7,11 +7,15 @@
 #define CLUMPSY_DIVERT_PRIORITY 0
 #define MAX_PACKETSIZE 0xFFFF
 #define READ_TIME_PER_STEP 3
+// FIXME does this need to be larger then the time to process the list?
+#define CLOCK_WAITMS 40
 
 static HANDLE divertHandle;
 static volatile short stopLooping;
+static HANDLE loopThread, clockThread, mutex;
+
 static DWORD divertReadLoop(LPVOID arg);
-static HANDLE loopThread;
+static DWORD divertClockLoop(LPVOID arg);
 
 #ifdef _DEBUG
 PDIVERT_IPHDR ip_header;
@@ -19,7 +23,6 @@ PDIVERT_IPV6HDR ipv6_header;
 PDIVERT_TCPHDR tcp_header;
 PDIVERT_UDPHDR udp_header;
 UINT payload_len;
-//char pacBuf[MSG_BUFSIZE];
 void dumpPacket(char *buf, int len, PDIVERT_ADDRESS paddr) {
     UINT16 srcPort = 0, dstPort = 0;
 
@@ -63,6 +66,7 @@ int divertStart(const char * filter, char buf[]) {
 
     // injecting icmp packets is quite likely to fail, as described in windivert documentation
     // so as a workaround we disable icmp in the filter, and filter out icmp packets
+    // FIXME "ip", "inbound", "outbound" still includes icmp so this is basically broken
     if (strstr(filter, "icmp")) { // includes "icmpv6"
         strcpy(buf, "'icmp'/'icmpv6' is not allowed in the filter. clumpsy ignores all icmp packets (refer to faqs for further info).");
         return FALSE;
@@ -91,26 +95,134 @@ int divertStart(const char * filter, char buf[]) {
     }
 
     // kick off the loop
-    LOG("Kicking off thread...");
-    stopLooping = 0;
+    LOG("Creating threads and mutex...");
+    stopLooping = FALSE;
+    mutex = CreateMutex(NULL, FALSE, NULL);
+    if (mutex == NULL) {
+        sprintf(buf, "Failed to create mutex (%d)", GetLastError());
+        return FALSE;
+    }
+
     loopThread = CreateThread(NULL, 1, (LPTHREAD_START_ROUTINE)divertReadLoop, NULL, 0, NULL);
-    LOG("Thread created: %d", loopThread);
+    if (loopThread == NULL) {
+        sprintf(buf, "Failed to create recv loop thread (%d)", GetLastError());
+        return FALSE;
+    }
+    clockThread = CreateThread(NULL, 1, (LPTHREAD_START_ROUTINE)divertClockLoop, NULL, 0, NULL);
+    if (clockThread == NULL) {
+        sprintf(buf, "Failed to create clock loop thread (%d)", GetLastError());
+        return FALSE;
+    }
+
+    LOG("Threads created: %d", loopThread);
 
     return TRUE;
 }
 
-static DWORD divertReadLoop(LPVOID arg) {
+// step function to let module process and consume all packets on the list
+static void divertConsumeStep() {
+#ifdef _DEBUG
+    DWORD startTick = GetTickCount(), dt;
+    int cnt = 0;
+#endif
+    PacketNode *pnode;
+    UINT sendLen;
     int ix;
+    // use lastEnabled to keep track of module starting up and closing down
+    for (ix = 0; ix < MODULE_CNT; ++ix) {
+        Module *module = modules[ix];
+        if (*(module->enabledFlag)) {
+            if (!module->lastEnabled) {
+                module->startUp();
+                module->lastEnabled = 1;
+            }
+            module->process(head, tail);
+        } else {
+            if (module->lastEnabled) {
+                module->closeDown();
+                module->lastEnabled = 0;
+            }
+        }
+    }
+
+    // send packet from tail to head and remove sent ones
+    while (!isListEmpty()) {
+        pnode = popNode(tail->prev);
+        if (!DivertSend(divertHandle, pnode->packet, pnode->packetLen, &(pnode->addr), &sendLen)) {
+            LOG("Failed to send a packet. (%d)", GetLastError());
+        }
+        if (sendLen < pnode->packetLen) {
+            // don't know how this can happen, or it needs to resent like good old UDP packet
+            LOG("Internal Error: DivertSend truncated send packet.");
+        }
+        freeNode(pnode);
+#ifdef _DEBUG
+        ++cnt;
+#endif
+    }
+#ifdef _DEBUG
+    dt =  GetTickCount() - startTick;
+    if (dt > CLOCK_WAITMS / 2) {
+        LOG("Costy consume step: %d ms, sent packets: %d", GetTickCount() - startTick, cnt);
+    }
+#endif
+}
+
+// periodically try to consume packets to keep the network responsive and not blocked by recv
+static DWORD divertClockLoop(LPVOID arg) {
+    DWORD lastTick = GetTickCount(), waitResult;
+    while(1) {
+        // use aquire as wait for yielding thread
+        waitResult = WaitForSingleObject(mutex, CLOCK_WAITMS);
+        switch(waitResult) {
+            case WAIT_OBJECT_0:
+                divertConsumeStep();
+                if (!ReleaseMutex(mutex)) {
+                    InterlockedIncrement16(&stopLooping);
+                    LOG("Failed to release mutex (%d)", GetLastError());
+                }
+                break;
+            case WAIT_TIMEOUT:
+                // read loop is processing, so we can skip this run
+                LOG("!!! Skipping one run");
+                Sleep(CLOCK_WAITMS);
+                break;
+            case WAIT_ABANDONED:
+                LOG("Aquired abandoned mutex");
+                InterlockedIncrement16(&stopLooping);
+                break;
+            case WAIT_FAILED:
+                LOG("Aquire failed (%d)", GetLastError());
+                InterlockedIncrement16(&stopLooping);
+                break;
+        }
+
+        if (stopLooping) {
+            LOG("Read stopLooping, stopping...");
+            // terminate recv loop by closing handler. handle related error in recv loop to quit
+            assert(DivertClose(divertHandle));
+            return 0;
+        }
+    }
+}
+
+static DWORD divertReadLoop(LPVOID arg) {
     char packetBuf[MAX_PACKETSIZE];
     DIVERT_ADDRESS addrBuf;
-    UINT readLen, sendLen;
+    UINT readLen;
     PacketNode *pnode;
+    DWORD waitResult;
+    int ix;
 
     PDIVERT_IPHDR ipheader;
-    LOG("Loop thread started...");
     while (1) {
         if (!DivertRecv(divertHandle, packetBuf, MAX_PACKETSIZE, &addrBuf, &readLen)) {
-            LOG("Failed to recv a packet.");
+            DWORD lastError = GetLastError();
+            if (lastError == ERROR_INVALID_HANDLE || lastError == ERROR_OPERATION_ABORTED) {
+                // treat closing handle as quit
+                return 0;
+            }
+            LOG("Failed to recv a packet. (%d)", GetLastError());
             continue;
         }
         if (readLen > MAX_PACKETSIZE) {
@@ -118,56 +230,50 @@ static DWORD divertReadLoop(LPVOID arg) {
             LOG("Interal Error: DivertRecv truncated recv packet."); 
         }
 
-        dumpPacket(packetBuf, readLen, &addrBuf);  
-        // create node and put it into the list
-        pnode = createNode(packetBuf, readLen, &addrBuf);
-        appendNode(pnode);
+        //dumpPacket(packetBuf, readLen, &addrBuf);  
 
-        // use lastEnabled to keep track of module starting up and closing down
-        for (ix = 0; ix < MODULE_CNT; ++ix) {
-            Module *module = modules[ix];
-            if (*(module->enabledFlag)) {
-                if (!module->lastEnabled) {
-                    module->startUp();
-                    module->lastEnabled = 1;
+        waitResult = WaitForSingleObject(mutex, INFINITE);
+        switch(waitResult) {
+            case WAIT_OBJECT_0:
+                // create node and put it into the list
+                pnode = createNode(packetBuf, readLen, &addrBuf);
+                appendNode(pnode);
+                divertConsumeStep();
+                if (!ReleaseMutex(mutex)) {
+                    LOG("Failed to release mutex (%d)", GetLastError());
+                    return 0;
                 }
-                module->process(head, tail);
-            } else {
-                if (module->lastEnabled) {
-                    module->closeDown();
-                    module->lastEnabled = 0;
-                }
-            }
-        }
+                break;
+            case WAIT_TIMEOUT:
+                LOG("Aquire timeout, dropping one read packet");
+                continue;
+                break;
+            case WAIT_ABANDONED:
+                LOG("Aquire abandoned.");
+                return 0;
+            case WAIT_FAILED:
+                LOG("Aquire failed.");
+                return 0;
 
-        // send packet from tail to head and remove sent ones
-        while (!isListEmpty()) {
-            pnode = popNode(tail->prev);
-            if (!DivertSend(divertHandle, pnode->packet, pnode->packetLen, &(pnode->addr), &sendLen)) {
-                LOG("Failed to send a packet. (%d)", GetLastError());
+            if (stopLooping) {
+                // still allow exit gracefully
+                LOG("Stop read loop.");
+                return 0;
             }
-            if (sendLen < pnode->packetLen) {
-                // don't know how this can happen, or it needs to resent like good old UDP packet
-                LOG("Internal Error: DivertSend truncated send packet.");
-            }
-            freeNode(pnode);
-        }
-
-        if (stopLooping) {
-            LOG("Read stopLooping, stopping...");
-            break;
         }
     }
 
-    // FIXME clean ups
-
-    return 0;
+    return;
 }
 
 void divertStop() {
+    HANDLE threads[2];
+    threads[0] = loopThread;
+    threads[1] = clockThread;
+
+    LOG("Stopping...");
     InterlockedIncrement16(&stopLooping);
-    WaitForSingleObject(loopThread, INFINITE);
-    LOG("Successfully waited thread %d exit.", loopThread);
-    // FIXME not sure how DivertClose is failing
-    assert(DivertClose(divertHandle));
+    WaitForMultipleObjects(2, threads, TRUE, INFINITE);
+
+    LOG("Successfully waited threads and stopped.");
 }
