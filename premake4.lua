@@ -6,12 +6,12 @@ if _ACTION == 'clean' then
     os.rmdir('./bin')
 end
 
-solution('clumpsy')
+solution('clumsy')
     location("./build")
     configurations({'Debug'})
     platforms({'x32', 'x64'})
 
-    project('clumpsy')
+    project('clumsy')
         language("C") -- not really a C++ project, just visual studio c subset sucks too hard
         includedirs({'external/WinDivert-1.0.5-MSVC/include'})
         files({'src/**.c', 'src/**.h'})

@@ -31,7 +31,7 @@ void init(int argc, char* argv[]) {
 
     topFrame = IupFrame(
         topVbox = IupVbox(
-            filterText = IupText("clumpsy"),
+            filterText = IupText("clumsy"),
             filterButton = IupButton("Start", NULL),
             NULL
         )
@@ -65,7 +65,7 @@ void init(int argc, char* argv[]) {
         )
     );
 
-    IupSetAttribute(dialog, "TITLE", "clumpsy " CLUMPSY_VERSION);
+    IupSetAttribute(dialog, "TITLE", "clumsy " CLUMSY_VERSION);
     IupSetAttribute(dialog, "SIZE", "366x400"); // add padding manually to width
     IupSetAttribute(dialog, "RESIZE", "NO");
 

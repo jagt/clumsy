@@ -3,7 +3,7 @@
 #include "iup.h"
 #include "divert.h"
 
-#define CLUMPSY_VERSION "0.0"
+#define CLUMSY_VERSION "0.0"
 #define MSG_BUFSIZE 512
 #define NAME_SIZE 16
 #define MODULE_CNT 1

@@ -4,7 +4,7 @@
 #include <winsock2.h>
 #include "divert.h"
 #include "common.h"
-#define CLUMPSY_DIVERT_PRIORITY 0
+#define DIVERT_PRIORITY 0
 #define MAX_PACKETSIZE 0xFFFF
 #define READ_TIME_PER_STEP 3
 // FIXME does this need to be larger then the time to process the list?
@@ -70,13 +70,13 @@ int divertStart(const char * filter, char buf[]) {
     // so as a workaround we disable icmp in the filter, and filter out icmp packets
     // FIXME "ip", "inbound", "outbound" still includes icmp so this is basically broken
     if (strstr(filter, "icmp")) { // includes "icmpv6"
-        strcpy(buf, "'icmp'/'icmpv6' is not allowed in the filter. clumpsy ignores all icmp packets (refer to faqs for further info).");
+        strcpy(buf, "'icmp'/'icmpv6' is not allowed in the filter. clumsy ignores all icmp packets (refer to faqs for further info).");
         return FALSE;
     }
     sprintf(fixedFilter, "%s and not icmp and not icmpv6", filter);
 
     LOG("Fixed Filter: %s", fixedFilter);
-    divertHandle = DivertOpen(fixedFilter, DIVERT_LAYER_NETWORK, CLUMPSY_DIVERT_PRIORITY, 0);
+    divertHandle = DivertOpen(fixedFilter, DIVERT_LAYER_NETWORK, DIVERT_PRIORITY, 0);
     if (divertHandle == INVALID_HANDLE_VALUE) {
         DWORD lastError = GetLastError();
         if (lastError == ERROR_INVALID_PARAMETER) {
