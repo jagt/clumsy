@@ -79,7 +79,8 @@ static void dropProcess(PacketNode *head, PacketNode* tail) {
             ((dropInbound && (pac->addr.Direction == DIVERT_DIRECTION_INBOUND)) 
              || (dropOutbound && (pac->addr.Direction == DIVERT_DIRECTION_OUTBOUND))
             )) {
-            LOG("droped with chance %d, direction %d", chance, pac->addr.Direction);
+            LOG("droped with chance %d, direction %s",
+                chance, pac->addr.Direction == DIVERT_DIRECTION_INBOUND ? "IN" : "OUT");
             freeNode(popNode(pac));
         } else {
             head = head->next;

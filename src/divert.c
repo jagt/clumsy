@@ -9,6 +9,8 @@
 #define READ_TIME_PER_STEP 3
 // FIXME does this need to be larger then the time to process the list?
 #define CLOCK_WAITMS 40
+#define QUEUE_LEN 2 << 10
+#define QUEUE_TIME 2 << 9 
 
 static HANDLE divertHandle;
 static volatile short stopLooping;
@@ -85,6 +87,10 @@ int divertStart(const char * filter, char buf[]) {
         return FALSE;
     }
     LOG("Divert opened handle: %d", divertHandle);
+
+    DivertSetParam(divertHandle, DIVERT_PARAM_QUEUE_LEN, QUEUE_LEN);
+    DivertSetParam(divertHandle, DIVERT_PARAM_QUEUE_TIME, QUEUE_TIME);
+    LOG("WinDivert internal queue Len: %d, queue time: %d", QUEUE_LEN, QUEUE_TIME);
 
     // init package link list
     initPacketNodeList();

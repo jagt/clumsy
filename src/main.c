@@ -31,7 +31,7 @@ void init(int argc, char* argv[]) {
 
     topFrame = IupFrame(
         topVbox = IupVbox(
-            filterText = IupText("what the fuck"),
+            filterText = IupText("clumpsy"),
             filterButton = IupButton("Start", NULL),
             NULL
         )
@@ -108,7 +108,7 @@ static int uiStartCb(Ihandle *ih) {
 }
 
 static int uiStopCb(Ihandle *ih) {
-    showStatus("Input filtering criteria and click start.");
+    showStatus("Successfully stoped. Edit criteria and click Start to begin again.");
     
     // try stopping
     IupSetAttribute(filterButton, "ACTIVE", "NO");
