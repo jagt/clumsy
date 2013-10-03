@@ -1,4 +1,6 @@
+#include <stdlib.h>
 #include <stdio.h>
+#include <direct.h>
 #include <Windows.h>
 #include "iup.h"
 #include "common.h"
@@ -156,6 +158,8 @@ static void uiSetupModule(const Module *module, Ihandle *parent) {
 }
 
 int main(int argc, char* argv[]) {
+    char cwd[MSG_BUFSIZE];
+    LOG("Working directory: %s", _getcwd(cwd, MSG_BUFSIZE));
     init(argc, argv);
     startup();
     cleanup();

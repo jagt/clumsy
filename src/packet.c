@@ -15,6 +15,8 @@ void initPacketNodeList() {
     }
 }
 
+// TODO  using malloc in the loop is not good for performance
+//       just not sure I can write a better memory allocator
 PacketNode* createNode(char* buf, UINT len, DIVERT_ADDRESS *addr) {
     PacketNode *newNode = (PacketNode*)malloc(sizeof(PacketNode));
     newNode->packet = (char*)malloc(len);

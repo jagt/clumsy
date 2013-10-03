@@ -15,7 +15,18 @@ static HANDLE loopThread;
 
 int divertStart(const char * filter, char buf[]) {
     int ix;
-    divertHandle = DivertOpen(filter, DIVERT_LAYER_NETWORK, CLUMPSY_DIVERT_PRIORITY, 0);
+    char fixedFilter[MSG_BUFSIZE];
+
+    // injecting icmp packets is quite likely to fail, as described in windivert documentation
+    // so as a workaround we disable icmp in the filter, and filter out icmp packets
+    if (strstr(filter, "icmp")) { // includes "icmpv6"
+        strcpy(buf, "'icmp'/'icmpv6' is not allowed in the filter. clumpsy ignores all icmp packets (refer to faqs for further info).");
+        return FALSE;
+    }
+    sprintf(fixedFilter, "%s and not icmp and not icmpv6", filter);
+
+    LOG("Fixed Filter: %s", fixedFilter);
+    divertHandle = DivertOpen(fixedFilter, DIVERT_LAYER_NETWORK, CLUMPSY_DIVERT_PRIORITY, 0);
     if (divertHandle == INVALID_HANDLE_VALUE) {
         DWORD lastError = GetLastError();
         if (lastError == ERROR_INVALID_PARAMETER) {
@@ -23,8 +34,9 @@ int divertStart(const char * filter, char buf[]) {
         } else {
             sprintf(buf, "Failed to start filtering : failed to open device %d", lastError);
         }
-        return 0;
+        return FALSE;
     }
+    LOG("Divert opened handle: %d", divertHandle);
 
     // init package link list
     initPacketNodeList();
@@ -35,10 +47,12 @@ int divertStart(const char * filter, char buf[]) {
     }
 
     // kick off the loop
+    LOG("Kicking off thread...");
     stopLooping = 0;
     loopThread = CreateThread(NULL, 1, (LPTHREAD_START_ROUTINE)divertReadLoop, NULL, 0, NULL);
+    LOG("Thread created: %d", loopThread);
 
-    return 1;
+    return TRUE;
 }
 
 static DWORD divertReadLoop(LPVOID arg) {
@@ -49,6 +63,7 @@ static DWORD divertReadLoop(LPVOID arg) {
     PacketNode *pnode;
 
     PDIVERT_IPHDR ipheader;
+    LOG("Loop thread started...");
     while (1) {
         if (!DivertRecv(divertHandle, packetBuf, MAX_PACKETSIZE, &addrBuf, &readLen)) {
             LOG("Failed to recv a packet.");
@@ -80,13 +95,13 @@ static DWORD divertReadLoop(LPVOID arg) {
             }
         }
 
-
         // send packet from tail to head and remove sent ones
         while (!isListEmpty()) {
             pnode = popNode(tail->prev);
             if (!DivertSend(divertHandle, pnode->packet, pnode->packetLen, &(pnode->addr), &sendLen)) {
                 LOG("Failed to send a packet. (%d)", GetLastError());
             }
+            LOG("SENT 1");
             if (sendLen < pnode->packetLen) {
                 // don't know how this can happen, or it needs to resent like good old UDP packet
                 LOG("Internal Error: DivertSend truncated send packet.");
@@ -95,6 +110,7 @@ static DWORD divertReadLoop(LPVOID arg) {
         }
 
         if (stopLooping) {
+            LOG("Read stopLooping, stopping...");
             break;
         }
     }
@@ -107,6 +123,7 @@ static DWORD divertReadLoop(LPVOID arg) {
 void divertStop() {
     InterlockedIncrement16(&stopLooping);
     WaitForSingleObject(loopThread, INFINITE);
+    LOG("Successfully waited thread %d exit.", loopThread);
     // FIXME not sure how DivertClose is failing
     assert(DivertClose(divertHandle));
 }
