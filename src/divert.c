@@ -101,7 +101,6 @@ static DWORD divertReadLoop(LPVOID arg) {
             if (!DivertSend(divertHandle, pnode->packet, pnode->packetLen, &(pnode->addr), &sendLen)) {
                 LOG("Failed to send a packet. (%d)", GetLastError());
             }
-            LOG("SENT 1");
             if (sendLen < pnode->packetLen) {
                 // don't know how this can happen, or it needs to resent like good old UDP packet
                 LOG("Internal Error: DivertSend truncated send packet.");

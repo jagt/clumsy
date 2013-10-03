@@ -15,7 +15,8 @@ solution('clumpsy')
         language("C") -- not really a C++ project, just visual studio c subset sucks too hard
         includedirs({'external/WinDivert-1.0.5-MSVC/include'})
         files({'src/**.c', 'src/**.h'})
-        flags({'ExtraWarnings', 'StaticRuntime', 'Symbols'})
+        -- flags({'ExtraWarnings', 'StaticRuntime', 'Symbols'})
+        flags({'ExtraWarnings', 'Symbols'})
         links({'WinDivert', 'iup', 'comctl32', 'ws2_32'}) 
         --links({'gdi32', 'comdlg32', 'uuid', 'ole32'}) -- covered by default in vs already
 
@@ -27,17 +28,17 @@ solution('clumpsy')
             defines({"_CRT_SECURE_NO_WARNINGS"})
 
         configuration('x32')
-            includedirs({'external/iup-3.8_Win32_vc11_lib/include'})
+            includedirs({'external/iup-3.8_Win32_dll11_lib/include'})
             libdirs({
                 'external/WinDivert-1.0.5-MSVC/x86',
-                'external/iup-3.8_Win32_vc11_lib'
+                'external/iup-3.8_Win32_dll11_lib'
                 })
 
         configuration('x64')
-            includedirs({'external/iup-3.8_Win64_vc11_lib/include'})
+            includedirs({'external/iup-3.8_Win64_dll11_lib/include'})
             libdirs({
                 'external/WinDivert-1.0.5-MSVC/amd64',
-                'external/iup-3.8_Win64_vc11_lib'
+                'external/iup-3.8_Win64_dll11_lib'
                 })
 
         configuration({"Debug", "x32"})
@@ -48,7 +49,7 @@ solution('clumpsy')
 
             postbuildcommands({
                 "robocopy ../external/WinDivert-1.0.5-MSVC/x86/ ../"   .. x32_debug_bin .. '  *.dll *.sys *.inf > robolog.txt',
-                --"copy ../external/iup-3.8_Win32_dll11_lib/iup.dll ../"   .. x32_debug_bin,
+                "robocopy ../external/iup-3.8_Win32_dll11_lib ../"   .. x32_debug_bin .. ' iup.dll >> robolog.txt',
                 "exit /B 0"
             })
 
@@ -58,6 +59,6 @@ solution('clumpsy')
             debugdir(x64_debug_bin)
             postbuildcommands({
                 "robocopy ../external/WinDivert-1.0.5-MSVC/amd64/ ../"   .. x64_debug_bin .. '  *.dll *.sys *.inf > robolog.txt',
-                --"copy ../external/iup-3.8_Win64_dll11_lib/iup.dll ../"   .. x64_debug_bin,
+                "robocopy ../external/iup-3.8_Win64_dll11_lib ../"   .. x64_debug_bin ..  ' iup.dll >> robolog.txt',
                 "exit /B 0"
             })
