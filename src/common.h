@@ -25,11 +25,16 @@ typedef struct _NODE {
     struct _NODE *prev, *next;
 } PacketNode;
 
+void initPacketNodeList();
 PacketNode* createNode(char* buf, UINT len, DIVERT_ADDRESS *addr);
 void freeNode(PacketNode *node);
 PacketNode* popNode(PacketNode *node);
 PacketNode* insertAfter(PacketNode *node, PacketNode *target);
 PacketNode* appendNode(PacketNode *node);
+short isListEmpty();
+
+extern PacketNode * const head;
+extern PacketNode * const tail;
 
 // module
 typedef struct {

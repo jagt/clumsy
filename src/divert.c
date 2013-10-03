@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include <assert.h>
 #include <memory.h>
+#include <assert.h>
 #include "divert.h"
 #include "common.h"
 #define CLUMPSY_DIVERT_PRIORITY 0
@@ -8,60 +8,10 @@
 #define READ_TIME_PER_STEP 3
 
 static HANDLE divertHandle;
-
-static PacketNode headNode = {0}, tailNode = {0};
-static PacketNode * const head = &headNode, * const tail = &tailNode;
-
 static volatile short stopLooping;
 static DWORD divertReadLoop(LPVOID arg);
 static HANDLE loopThread;
 
-PacketNode* createNode(char* buf, UINT len, DIVERT_ADDRESS *addr) {
-    PacketNode *newNode = (PacketNode*)malloc(sizeof(PacketNode));
-    newNode->packet = (char*)malloc(len);
-    memcpy(newNode->packet, buf, len);
-    newNode->packetLen = len;
-    memcpy(&(newNode->addr), addr, sizeof(DIVERT_ADDRESS));
-    newNode->next = newNode->prev = NULL;
-    return newNode;
-}
-
-void freeNode(PacketNode *node) {
-    assert((node != head) && (node != tail));
-    free(node->packet);
-    free(node);
-}
-
-PacketNode* popNode(PacketNode *node) {
-    assert((node != head) && (node != tail));
-    node->prev->next = node->next;
-    node->next->prev = node->prev;
-    return node;
-}
-
-PacketNode* insertAfter(PacketNode *node, PacketNode *target) {
-    node->prev = target;
-    node->next = target->next;
-    target->next->prev = node;
-    target->next = node;
-    return node;
-}
-
-PacketNode* insertBefore(PacketNode *node, PacketNode *target) {
-    node->next = target;
-    node->prev = target->prev;
-    target->prev->next = node;
-    target->prev = node;
-    return node;
-}
-
-PacketNode* appendNode(PacketNode *node) {
-    return insertBefore(node, tail);
-}
-
-short isListEmpty() {
-    return head->next == tail;
-}
 
 int divertStart(const char * filter, char buf[]) {
     int ix;
@@ -77,8 +27,7 @@ int divertStart(const char * filter, char buf[]) {
     }
 
     // init package link list
-    head->next = tail;
-    tail->prev = head;
+    initPacketNodeList();
 
     // reset module
     for (ix = 0; ix < MODULE_CNT; ++ix) {
