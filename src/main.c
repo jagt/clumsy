@@ -123,13 +123,13 @@ static int uiStopCb(Ihandle *ih) {
 static int uiToggleControls(Ihandle *ih, int state) {
     Ihandle *controls = (Ihandle*)IupGetAttribute(ih, CONTROLS_HANDLE);
     short *target = (short*)IupGetAttribute(ih, SYNCED_VALUE);
-    int controlsActive = IS_YES(IupGetAttribute(controls, "ACTIVE"));
+    int controlsActive = IupGetInt(controls, "ACTIVE");
     if (controlsActive && !state) {
         IupSetAttribute(controls, "ACTIVE", "NO");
-        InterlockedExchange16(target, controlsActive);
+        InterlockedExchange16(target, state);
     } else if (!controlsActive && state) {
         IupSetAttribute(controls, "ACTIVE", "YES");
-        InterlockedExchange16(target, controlsActive);
+        InterlockedExchange16(target, state);
     }
 
     return IUP_DEFAULT;

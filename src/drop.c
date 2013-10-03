@@ -1,7 +1,6 @@
 // dropping packet module
 #include <stdlib.h>
 #include <time.h>
-#include <stdio.h>
 #include <Windows.h>
 #include "common.h"
 #include "iup.h"
@@ -9,7 +8,7 @@
 static Ihandle *dropControlsBox, *inboundCheckbox, *outboundCheckbox, *chanceInput;
 
 static volatile short dropEnabled = 0;
-static volatile short dropInbound = 1, dropOutbound = 1;
+static volatile short dropInbound = 0, dropOutbound = 0;
 static volatile short chance = 50;
 
 static int uiNormalizeChanceValue(Ihandle *ih) {
@@ -30,13 +29,14 @@ static int uiNormalizeChanceValue(Ihandle *ih) {
 }
 
 static int uiSyncDropInbound(Ihandle *ih) {
-    int ret = IS_YES(IupGetAttribute(ih, "VALUE"));
+    int ret = IupGetInt(ih, "VALUE"); // IupGetInt handles YES/NO, ON/OFF
+    LOG("dropInbound:%d", ret);
     InterlockedExchange16(&dropInbound, ret);
     return IUP_DEFAULT;
 }
 
 static int uiSyncDropOutbound(Ihandle *ih) {
-    int ret = IS_YES(IupGetAttribute(ih, "VALUE"));
+    int ret = IupGetInt(ih, "VALUE");
     InterlockedExchange16(&dropOutbound, ret);
     return IUP_DEFAULT;
 }
@@ -60,22 +60,30 @@ static Ihandle* setupDropUI() {
 }
 
 static void dropStartUp() {
-    puts("drop enabled");
+    LOG("drop enabled");
     srand(time(NULL));
 }
 
 static void dropCloseDown() {
-    puts("drop disabled");
+    LOG("drop disabled");
 }
 
 static void dropProcess(PacketNode *head, PacketNode* tail) {
     short doDrop;
     while (head->next != tail) {
-        doDrop = (chance == 100) || (rand() & 0x3FF > chance * 10);
-        if (doDrop) {
-            freeNode(popNode(head->next));
+        PacketNode *pac = head->next;
+        // due to the threading issue the chance here may change between the first
+        // and the second read. I think I'm aware of this but it's fine here i suppose.
+        doDrop = (chance == 100) || ((rand() & 0x3FF) < chance * 10);
+        if (doDrop &&
+            ((dropInbound && (pac->addr.Direction == DIVERT_DIRECTION_INBOUND)) 
+             || (dropOutbound && (pac->addr.Direction == DIVERT_DIRECTION_OUTBOUND))
+            )) {
+            LOG("droped with chance %d, direction %d", chance, pac->addr.Direction);
+            freeNode(popNode(pac));
+        } else {
+            head = head->next;
         }
-        head = head->next;
     }
 }
 

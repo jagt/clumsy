@@ -1,5 +1,5 @@
 #pragma once
-#include <string.h>
+#include <stdio.h>
 #include "iup.h"
 #include "divert.h"
 
@@ -10,7 +10,12 @@
 
 #define CONTROLS_HANDLE "__CONTROLS_HANDLE"
 #define SYNCED_VALUE "__SYNCED_VALUE"
-#define IS_YES(s) (!strcmp((s), "YES"));
+
+#ifdef _DEBUG
+#define LOG(fmt, ...) (printf(__FUNCTION__ ": " fmt "\n", ##__VA_ARGS__))
+#else
+#define LOG(fmt, ...)
+#endif
 
 // package node
 typedef struct _NODE {
