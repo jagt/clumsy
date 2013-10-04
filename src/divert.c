@@ -176,12 +176,13 @@ static void divertConsumeStep() {
 
 // periodically try to consume packets to keep the network responsive and not blocked by recv
 static DWORD divertClockLoop(LPVOID arg) {
-    DWORD waitResult;
+    DWORD startTick, stepTick, waitResult;
 
     UNREFERENCED_PARAMETER(arg);
 
     while(1) {
         // use aquire as wait for yielding thread
+        startTick = GetTickCount();
         waitResult = WaitForSingleObject(mutex, CLOCK_WAITMS);
         switch(waitResult) {
             case WAIT_OBJECT_0:
@@ -189,6 +190,11 @@ static DWORD divertClockLoop(LPVOID arg) {
                 if (!ReleaseMutex(mutex)) {
                     InterlockedIncrement16(&stopLooping);
                     LOG("Failed to release mutex (%d)", GetLastError());
+                }
+                // if didn't spent enough time, we sleep on it
+                stepTick = GetTickCount() - startTick;
+                if (stepTick < CLOCK_WAITMS) {
+                    Sleep(CLOCK_WAITMS - stepTick);
                 }
                 break;
             case WAIT_TIMEOUT:
@@ -225,6 +231,8 @@ static DWORD divertReadLoop(LPVOID arg) {
     UNREFERENCED_PARAMETER(arg);
 
     while (1) {
+        // each step must fully consume the list
+        assert(isListEmpty());
         if (!DivertRecv(divertHandle, packetBuf, MAX_PACKETSIZE, &addrBuf, &readLen)) {
             DWORD lastError = GetLastError();
             if (lastError == ERROR_INVALID_HANDLE || lastError == ERROR_OPERATION_ABORTED) {

@@ -3,7 +3,7 @@
 #include "common.h"
 // keep a picked packet at most for KEEP_TURNS_MAX steps, or if there's no following
 // one it would just to be sended
-#define KEEP_TURNS_MAX 10
+#define KEEP_TURNS_MAX 10 
 
 static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput;
 
@@ -49,13 +49,12 @@ static void oodCloseDown(PacketNode *head, PacketNode *tail) {
 static void oodProcess(PacketNode *head, PacketNode *tail) {
     if (oodPacket != NULL) {
         if (!isListEmpty() || --giveUpCnt == 0) {
+            LOG("Ooo sent direction %s, is giveup %s", BOUND_TEXT(oodPacket->addr.Direction), giveUpCnt ? "NO" : "YES");
             insertAfter(oodPacket, head);
             oodPacket = NULL;
             giveUpCnt = KEEP_TURNS_MAX;
-        }
-    }
-
-    if (!isListEmpty()) {
+        } // skip picking packets when having oodPacket already
+    } else if (!isListEmpty()) {
         PacketNode *pac = head->next;
         if (pac->next == tail) {
             // only contains a single packet, then pick it out and insert later
@@ -63,6 +62,7 @@ static void oodProcess(PacketNode *head, PacketNode *tail) {
                 || oodOutbound && IS_OUTBOUND(pac->addr.Direction)
                 ) && calcChance(chance)) {
                 oodPacket = popNode(head->next);
+                LOG("Ooo picked packet w/ chance %.1f% , direction %s", chance/10.0, BOUND_TEXT(pac->addr.Direction));
             }
         } else {
             // pass
