@@ -6,7 +6,7 @@
 #define CLUMSY_VERSION "0.0"
 #define MSG_BUFSIZE 512
 #define NAME_SIZE 16
-#define MODULE_CNT 1
+#define MODULE_CNT 2
 
 #define CONTROLS_HANDLE "__CONTROLS_HANDLE"
 #define SYNCED_VALUE "__SYNCED_VALUE"
@@ -49,7 +49,7 @@ typedef struct {
     short *enabledFlag; // volatile short flag to determine enabled or not
     Ihandle* (*setupUIFunc)(); // return hbox as controls group
     void (*startUp)(); // called when starting up the module
-    void (*closeDown)(); // called when starting up the module
+    void (*closeDown)(PacketNode *head, PacketNode *tail); // called when starting up the module
     void (*process)(PacketNode *head, PacketNode *tail);
     /*
      * Flags used during program excution. Need to be re initialized on each run
@@ -58,6 +58,7 @@ typedef struct {
 } Module;
 
 extern Module dropModule;
+extern Module oodModule;
 extern Module* modules[MODULE_CNT]; // all modules in a list
 
 // Iup GUI
@@ -67,3 +68,8 @@ void showStatus(const char* line);
 int divertStart(const char * filter, char buf[]);
 void divertStop();
 
+// utils
+#define BOUND_TEXT(b) ((b) == DIVERT_DIRECTION_INBOUND ? "IN" : "OUT")
+#define IS_INBOUND(b) ((b) == DIVERT_DIRECTION_INBOUND)
+#define IS_OUTBOUND(b) ((b) == DIVERT_DIRECTION_OUTBOUND)
+short calcChance(short chance);

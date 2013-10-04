@@ -1,21 +1,20 @@
 // dropping packet module
 #include <stdlib.h>
-#include <time.h>
 #include <Windows.h>
 #include "iup.h"
 #include "common.h"
 
 static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput;
 
-static volatile short dropEnabled = 0;
-static volatile short dropInbound = 0, dropOutbound = 0;
-static volatile short chance = 100; // [0-1000]
+static volatile short dropEnabled = 0,
+    dropInbound = 0, dropOutbound = 0,
+    chance = 100; // [0-1000]
 
 
-static Ihandle* setupDropUI() {
+static Ihandle* dropSetupUI() {
     Ihandle *dropControlsBox = IupHbox(
-        inboundCheckbox = IupToggle("Drop Incoming", NULL),
-        outboundCheckbox = IupToggle("Drop Outgoing", NULL),
+        inboundCheckbox = IupToggle("Drop Inbound", NULL),
+        outboundCheckbox = IupToggle("Drop Outbound", NULL),
         IupLabel("Chance(%):"),
         chanceInput = IupText(NULL),
         NULL
@@ -35,27 +34,25 @@ static Ihandle* setupDropUI() {
 
 static void dropStartUp() {
     LOG("drop enabled");
-    srand((unsigned int)time(NULL));
 }
 
-static void dropCloseDown() {
+static void dropCloseDown(PacketNode *head, PacketNode *tail) {
+    UNREFERENCED_PARAMETER(head);
+    UNREFERENCED_PARAMETER(tail);
     LOG("drop disabled");
 }
 
 static void dropProcess(PacketNode *head, PacketNode* tail) {
-    short doDrop;
     while (head->next != tail) {
         PacketNode *pac = head->next;
         // due to the threading issue the chance here may change between the first
         // and the second read. I think I'm aware of this but it's fine here i suppose.
         // chance in range of [0, 1000]
-        doDrop = (chance == 1000) || ((rand() & 0x3FF) < chance);
-        if (doDrop &&
-            ((dropInbound && (pac->addr.Direction == DIVERT_DIRECTION_INBOUND)) 
-             || (dropOutbound && (pac->addr.Direction == DIVERT_DIRECTION_OUTBOUND))
-            )) {
+        if (((dropInbound && IS_INBOUND(pac->addr.Direction)) 
+             || (dropOutbound && IS_OUTBOUND(pac->addr.Direction))
+            ) && calcChance(chance)) {
             LOG("droped with chance %.1f% , direction %s",
-                chance/10.0, pac->addr.Direction == DIVERT_DIRECTION_INBOUND ? "IN" : "OUT");
+                chance/10.0, BOUND_TEXT(pac->addr.Direction));
             freeNode(popNode(pac));
         } else {
             head = head->next;
@@ -67,7 +64,7 @@ static void dropProcess(PacketNode *head, PacketNode* tail) {
 Module dropModule = {
     "Drop",
     (short*)&dropEnabled,
-    setupDropUI,
+    dropSetupUI,
     dropStartUp,
     dropCloseDown,
     dropProcess

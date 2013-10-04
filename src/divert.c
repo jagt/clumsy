@@ -145,7 +145,7 @@ static void divertConsumeStep() {
             module->process(head, tail);
         } else {
             if (module->lastEnabled) {
-                module->closeDown();
+                module->closeDown(head, tail);
                 module->lastEnabled = 0;
             }
         }

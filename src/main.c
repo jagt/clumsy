@@ -1,12 +1,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <direct.h>
+#include <time.h>
 #include <Windows.h>
 #include "iup.h"
 #include "common.h"
 
+// ! the order decides which module get processed first
 Module* modules[MODULE_CNT] = {
-    &dropModule
+    &dropModule,
+    &oodModule
 };
 
 // global iup handlers
@@ -27,7 +30,7 @@ void init(int argc, char* argv[]) {
 
     statusLabel = IupLabel("Input filtering criteria and click start.");
     IupSetAttribute(statusLabel, "EXPAND", "HORIZONTAL");
-    IupSetAttribute(statusLabel, "ALIGNMENT", "ACENTER");
+    IupSetAttribute(statusLabel, "PADDING", "8x8");
 
     topFrame = IupFrame(
         topVbox = IupVbox(
@@ -41,6 +44,8 @@ void init(int argc, char* argv[]) {
     IupSetAttribute(topFrame, "EXPAND", "HORIZONTAL");
     IupSetAttribute(filterText, "EXPAND", "HORIZONTAL");
     IupSetCallback(filterButton, "ACTION", uiStartCb);
+    IupSetAttribute(topVbox, "NCMARGIN", "4x4");
+    IupSetAttribute(topVbox, "NCGAP", "4x2");
 
     // functionalities frame 
     bottomFrame = IupFrame(
@@ -49,6 +54,8 @@ void init(int argc, char* argv[]) {
         )
     );
     IupSetAttribute(bottomFrame, "TITLE", "Functions");
+    IupSetAttribute(bottomVbox, "NCMARGIN", "4x4");
+    IupSetAttribute(bottomVbox, "NCGAP", "4x2");
 
     // setup module uis
     for (ix = 0; ix < MODULE_CNT; ++ix) {
@@ -58,34 +65,35 @@ void init(int argc, char* argv[]) {
     // dialog
     dialog = IupDialog(
         dialogVBox = IupVbox(
-            statusLabel,
             topFrame,
             bottomFrame,
+            statusLabel,
             NULL
         )
     );
 
     IupSetAttribute(dialog, "TITLE", "clumsy " CLUMSY_VERSION);
-    IupSetAttribute(dialog, "SIZE", "366x400"); // add padding manually to width
+    IupSetAttribute(dialog, "SIZE", "400x"); // add padding manually to width
     IupSetAttribute(dialog, "RESIZE", "NO");
 
 
     // global layout settings to affect childrens
     IupSetAttribute(dialogVBox, "ALIGNMENT", "ACENTER");
-    IupSetAttribute(dialogVBox, "CMARGIN", "4x4");
-    IupSetAttribute(dialogVBox, "CGAP", "4x2");
-    IupSetAttribute(dialogVBox, "PADDING", "6x2");
+    IupSetAttribute(dialogVBox, "NCMARGIN", "4x4");
+    IupSetAttribute(dialogVBox, "NCGAP", "4x2");
 
 }
 
 void startup() {
     // set simple loopback default filter
     IupStoreAttribute(filterText, "VALUE", "outbound and ip.DstAddr >= 127.0.0.1 and ip.DstAddr <= 127.255.255.255");
+    // initialize seed
+    srand((unsigned int)time(NULL));
 
     // kickoff event loops
     IupShowXY(dialog, IUP_CENTER, IUP_CENTER);
     IupMainLoop();
-
+    // ! main loop won't return until program exit
 }
 
 void cleanup() {
@@ -184,9 +192,9 @@ static void uiSetupModule(const Module *module, Ihandle *parent) {
     IupAppend(parent, groupBox);
 
     // set controls as attribute to toggle and enable toggle callback
+    IupSetCallback(toggle, "ACTION", (Icallback)uiToggleControls);
     IupSetAttribute(toggle, CONTROLS_HANDLE, (char*)controls);
     IupSetAttribute(toggle, SYNCED_VALUE, (char*)module->enabledFlag);
-    IupSetCallback(toggle, "ACTION", (Icallback)uiToggleControls);
     IupSetAttribute(controls, "ACTIVE", "NO"); // startup as inactive
 }
 
