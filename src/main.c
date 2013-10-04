@@ -142,6 +142,32 @@ static int uiToggleControls(Ihandle *ih, int state) {
     return IUP_DEFAULT;
 }
 
+ int uiSyncChance(Ihandle *ih) {
+    char valueBuf[8];
+    float value = IupGetFloat(ih, "VALUE");
+    short *chancePtr = (short*)IupGetAttribute(ih, SYNCED_VALUE);
+    if (value > 100.0f) {
+        value = 100.0f;
+        sprintf(valueBuf, "%.1f", value);
+        IupStoreAttribute(ih, "VALUE", valueBuf);
+    } else if (value < 0) {
+        value = 0.0f;
+        sprintf(valueBuf, "%.1f", value);
+        IupStoreAttribute(ih, "VALUE", valueBuf);
+    }
+    // put caret at last to enable editting while normalizing
+    IupStoreAttribute(ih, "CARET", "10");
+    // and sync chance value
+    InterlockedExchange16(chancePtr, value * 10);
+    return IUP_DEFAULT;
+}
+
+ int uiSyncToggle(Ihandle *ih, int state) {
+     short *togglePtr = (short*)IupGetAttribute(ih, SYNCED_VALUE);
+     InterlockedExchange16(togglePtr, state);
+     return IUP_DEFAULT;
+ }
+
 static void uiSetupModule(const Module *module, Ihandle *parent) {
     Ihandle *groupBox, *toggle, *controls;
     groupBox = IupHbox(

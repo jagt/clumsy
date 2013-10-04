@@ -36,6 +36,10 @@ short isListEmpty();
 extern PacketNode * const head;
 extern PacketNode * const tail;
 
+// reusable ui handlers
+int uiSyncChance(Ihandle *ih);
+int uiSyncToggle(Ihandle *ih, int state);
+
 // module
 typedef struct {
     /*

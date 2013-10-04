@@ -11,37 +11,6 @@ static volatile short dropEnabled = 0;
 static volatile short dropInbound = 0, dropOutbound = 0;
 static volatile short chance = 100; // [0-1000]
 
-static int uiNormalizeChanceValue(Ihandle *ih) {
-    char valueBuf[8];
-    float value = IupGetFloat(ih, "VALUE");
-    if (value > 100.0f) {
-        value = 100.0f;
-        sprintf(valueBuf, "%.1f", value);
-        IupStoreAttribute(ih, "VALUE", valueBuf);
-    } else if (value < 0) {
-        value = 0.0f;
-        sprintf(valueBuf, "%.1f", value);
-        IupStoreAttribute(ih, "VALUE", valueBuf);
-    }
-    // put caret at last to enable editting while normalizing
-    IupStoreAttribute(ih, "CARET", "10");
-    // and sync chance value
-    InterlockedExchange16(&chance, value * 10);
-    return IUP_DEFAULT;
-}
-
-static int uiSyncDropInbound(Ihandle *ih) {
-    int ret = IupGetInt(ih, "VALUE"); // IupGetInt handles YES/NO, ON/OFF
-    LOG("dropInbound:%d", ret);
-    InterlockedExchange16(&dropInbound, ret);
-    return IUP_DEFAULT;
-}
-
-static int uiSyncDropOutbound(Ihandle *ih) {
-    int ret = IupGetInt(ih, "VALUE");
-    InterlockedExchange16(&dropOutbound, ret);
-    return IUP_DEFAULT;
-}
 
 static Ihandle* setupDropUI() {
     Ihandle *dropControlsBox = IupHbox(
@@ -54,9 +23,12 @@ static Ihandle* setupDropUI() {
 
     IupSetAttribute(chanceInput, "VISIBLECOLUMNS", "4");
     IupSetAttribute(chanceInput, "VALUE", "10.0");
-    IupSetCallback(chanceInput, "VALUECHANGED_CB", uiNormalizeChanceValue);
-    IupSetCallback(inboundCheckbox, "VALUECHANGED_CB", uiSyncDropInbound);
-    IupSetCallback(outboundCheckbox, "VALUECHANGED_CB", uiSyncDropOutbound);
+    IupSetCallback(chanceInput, "VALUECHANGED_CB", uiSyncChance);
+    IupSetAttribute(chanceInput, SYNCED_VALUE, (char*)&chance);
+    IupSetCallback(inboundCheckbox, "ACTION", (Icallback)uiSyncToggle);
+    IupSetAttribute(inboundCheckbox, SYNCED_VALUE, (char*)&dropInbound);
+    IupSetCallback(outboundCheckbox, "ACTION", (Icallback)uiSyncToggle);
+    IupSetAttribute(outboundCheckbox, SYNCED_VALUE, (char*)&dropOutbound);
 
     return dropControlsBox;
 }
