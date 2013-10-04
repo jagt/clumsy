@@ -26,6 +26,7 @@ solution('clumsy')
 
         configuration("vs*")
             defines({"_CRT_SECURE_NO_WARNINGS"})
+            buildoptions({'/wd"4214"'})
 
         configuration('x32')
             includedirs({'external/iup-3.8_Win32_dll11_lib/include'})

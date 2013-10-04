@@ -99,6 +99,7 @@ void showStatus(const char *line) {
 
 static int uiStartCb(Ihandle *ih) {
     char buf[MSG_BUFSIZE];
+    UNREFERENCED_PARAMETER(ih);
     if (divertStart(IupGetAttribute(filterText, "VALUE"), buf) == 0) {
         showStatus(buf);
         return IUP_DEFAULT;
@@ -113,6 +114,7 @@ static int uiStartCb(Ihandle *ih) {
 }
 
 static int uiStopCb(Ihandle *ih) {
+    UNREFERENCED_PARAMETER(ih);
     showStatus("Successfully stoped. Edit criteria and click Start to begin again.");
     
     // try stopping
@@ -133,10 +135,10 @@ static int uiToggleControls(Ihandle *ih, int state) {
     int controlsActive = IupGetInt(controls, "ACTIVE");
     if (controlsActive && !state) {
         IupSetAttribute(controls, "ACTIVE", "NO");
-        InterlockedExchange16(target, state);
+        InterlockedExchange16(target, (short)state);
     } else if (!controlsActive && state) {
         IupSetAttribute(controls, "ACTIVE", "YES");
-        InterlockedExchange16(target, state);
+        InterlockedExchange16(target, (short)state);
     }
 
     return IUP_DEFAULT;
@@ -158,13 +160,13 @@ static int uiToggleControls(Ihandle *ih, int state) {
     // put caret at last to enable editting while normalizing
     IupStoreAttribute(ih, "CARET", "10");
     // and sync chance value
-    InterlockedExchange16(chancePtr, value * 10);
+    InterlockedExchange16(chancePtr, (short)(value * 10));
     return IUP_DEFAULT;
 }
 
  int uiSyncToggle(Ihandle *ih, int state) {
      short *togglePtr = (short*)IupGetAttribute(ih, SYNCED_VALUE);
-     InterlockedExchange16(togglePtr, state);
+     InterlockedExchange16(togglePtr, (short)state);
      return IUP_DEFAULT;
  }
 

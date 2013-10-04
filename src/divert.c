@@ -176,7 +176,10 @@ static void divertConsumeStep() {
 
 // periodically try to consume packets to keep the network responsive and not blocked by recv
 static DWORD divertClockLoop(LPVOID arg) {
-    DWORD lastTick = GetTickCount(), waitResult;
+    DWORD waitResult;
+
+    UNREFERENCED_PARAMETER(arg);
+
     while(1) {
         // use aquire as wait for yielding thread
         waitResult = WaitForSingleObject(mutex, CLOCK_WAITMS);
@@ -218,9 +221,9 @@ static DWORD divertReadLoop(LPVOID arg) {
     UINT readLen;
     PacketNode *pnode;
     DWORD waitResult;
-    int ix;
 
-    PDIVERT_IPHDR ipheader;
+    UNREFERENCED_PARAMETER(arg);
+
     while (1) {
         if (!DivertRecv(divertHandle, packetBuf, MAX_PACKETSIZE, &addrBuf, &readLen)) {
             DWORD lastError = GetLastError();
@@ -260,16 +263,15 @@ static DWORD divertReadLoop(LPVOID arg) {
             case WAIT_FAILED:
                 LOG("Aquire failed.");
                 return 0;
-
-            if (stopLooping) {
-                // still allow exit gracefully
-                LOG("Stop read loop.");
-                return 0;
-            }
+        }
+        if (stopLooping) {
+            // still allow exit gracefully
+            LOG("Stop read loop.");
+            return 0;
         }
     }
 
-    return;
+    return 0;
 }
 
 void divertStop() {

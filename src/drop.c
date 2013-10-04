@@ -35,7 +35,7 @@ static Ihandle* setupDropUI() {
 
 static void dropStartUp() {
     LOG("drop enabled");
-    srand(time(NULL));
+    srand((unsigned int)time(NULL));
 }
 
 static void dropCloseDown() {
