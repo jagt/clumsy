@@ -31,7 +31,7 @@ void init(int argc, char* argv[]) {
 
     topFrame = IupFrame(
         topVbox = IupVbox(
-            filterText = IupText("clumsy"),
+            filterText = IupText(NULL),
             filterButton = IupButton("Start", NULL),
             NULL
         )
@@ -69,6 +69,7 @@ void init(int argc, char* argv[]) {
     IupSetAttribute(dialog, "SIZE", "366x400"); // add padding manually to width
     IupSetAttribute(dialog, "RESIZE", "NO");
 
+
     // global layout settings to affect childrens
     IupSetAttribute(dialogVBox, "ALIGNMENT", "ACENTER");
     IupSetAttribute(dialogVBox, "CMARGIN", "4x4");
@@ -78,9 +79,13 @@ void init(int argc, char* argv[]) {
 }
 
 void startup() {
+    // set simple loopback default filter
+    IupStoreAttribute(filterText, "VALUE", "outbound and ip.DstAddr >= 127.0.0.1 and ip.DstAddr <= 127.255.255.255");
+
     // kickoff event loops
     IupShowXY(dialog, IUP_CENTER, IUP_CENTER);
     IupMainLoop();
+
 }
 
 void cleanup() {

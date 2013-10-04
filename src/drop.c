@@ -2,29 +2,31 @@
 #include <stdlib.h>
 #include <time.h>
 #include <Windows.h>
-#include "common.h"
 #include "iup.h"
+#include "common.h"
 
-static Ihandle *dropControlsBox, *inboundCheckbox, *outboundCheckbox, *chanceInput;
+static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput;
 
 static volatile short dropEnabled = 0;
 static volatile short dropInbound = 0, dropOutbound = 0;
-static volatile short chance = 50;
+static volatile short chance = 100; // [0-1000]
 
 static int uiNormalizeChanceValue(Ihandle *ih) {
     char valueBuf[8];
-    int value = IupGetInt(ih, "VALUE");
-    if (value > 100) {
-        value = 100;
+    float value = IupGetFloat(ih, "VALUE");
+    if (value > 100.0f) {
+        value = 100.0f;
+        sprintf(valueBuf, "%.1f", value);
+        IupStoreAttribute(ih, "VALUE", valueBuf);
     } else if (value < 0) {
-        value = 0;
+        value = 0.0f;
+        sprintf(valueBuf, "%.1f", value);
+        IupStoreAttribute(ih, "VALUE", valueBuf);
     }
-    sprintf(valueBuf, "%d", value);
-    IupStoreAttribute(ih, "VALUE", valueBuf);
     // put caret at last to enable editting while normalizing
     IupStoreAttribute(ih, "CARET", "10");
     // and sync chance value
-    InterlockedExchange16(&chance, value);
+    InterlockedExchange16(&chance, value * 10);
     return IUP_DEFAULT;
 }
 
@@ -42,7 +44,7 @@ static int uiSyncDropOutbound(Ihandle *ih) {
 }
 
 static Ihandle* setupDropUI() {
-    dropControlsBox = IupHbox(
+    Ihandle *dropControlsBox = IupHbox(
         inboundCheckbox = IupToggle("Drop Incoming", NULL),
         outboundCheckbox = IupToggle("Drop Outgoing", NULL),
         IupLabel("Chance(%):"),
@@ -50,8 +52,8 @@ static Ihandle* setupDropUI() {
         NULL
     );
 
-    IupSetAttribute(chanceInput, "VISIBLECOLUMNS", "2");
-    IupSetAttribute(chanceInput, "VALUE", "50");
+    IupSetAttribute(chanceInput, "VISIBLECOLUMNS", "4");
+    IupSetAttribute(chanceInput, "VALUE", "10.0");
     IupSetCallback(chanceInput, "VALUECHANGED_CB", uiNormalizeChanceValue);
     IupSetCallback(inboundCheckbox, "VALUECHANGED_CB", uiSyncDropInbound);
     IupSetCallback(outboundCheckbox, "VALUECHANGED_CB", uiSyncDropOutbound);
@@ -74,13 +76,14 @@ static void dropProcess(PacketNode *head, PacketNode* tail) {
         PacketNode *pac = head->next;
         // due to the threading issue the chance here may change between the first
         // and the second read. I think I'm aware of this but it's fine here i suppose.
-        doDrop = (chance == 100) || ((rand() & 0x3FF) < chance * 10);
+        // chance in range of [0, 1000]
+        doDrop = (chance == 1000) || ((rand() & 0x3FF) < chance);
         if (doDrop &&
             ((dropInbound && (pac->addr.Direction == DIVERT_DIRECTION_INBOUND)) 
              || (dropOutbound && (pac->addr.Direction == DIVERT_DIRECTION_OUTBOUND))
             )) {
-            LOG("droped with chance %d, direction %s",
-                chance, pac->addr.Direction == DIVERT_DIRECTION_INBOUND ? "IN" : "OUT");
+            LOG("droped with chance %.1f% , direction %s",
+                chance/10.0, pac->addr.Direction == DIVERT_DIRECTION_INBOUND ? "IN" : "OUT");
             freeNode(popNode(pac));
         } else {
             head = head->next;
