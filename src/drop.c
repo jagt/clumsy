@@ -7,14 +7,14 @@
 static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput;
 
 static volatile short dropEnabled = 0,
-    dropInbound = 0, dropOutbound = 0,
+    dropInbound = 1, dropOutbound = 1,
     chance = 100; // [0-1000]
 
 
 static Ihandle* dropSetupUI() {
     Ihandle *dropControlsBox = IupHbox(
-        inboundCheckbox = IupToggle("Drop Inbound", NULL),
-        outboundCheckbox = IupToggle("Drop Outbound", NULL),
+        inboundCheckbox = IupToggle("Inbound", NULL),
+        outboundCheckbox = IupToggle("Outbound", NULL),
         IupLabel("Chance(%):"),
         chanceInput = IupText(NULL),
         NULL
@@ -28,6 +28,10 @@ static Ihandle* dropSetupUI() {
     IupSetAttribute(inboundCheckbox, SYNCED_VALUE, (char*)&dropInbound);
     IupSetCallback(outboundCheckbox, "ACTION", (Icallback)uiSyncToggle);
     IupSetAttribute(outboundCheckbox, SYNCED_VALUE, (char*)&dropOutbound);
+
+    // enable by default to avoid confusing
+    IupSetAttribute(inboundCheckbox, "VALUE", "ON");
+    IupSetAttribute(outboundCheckbox, "VALUE", "ON");
 
     return dropControlsBox;
 }
@@ -45,8 +49,6 @@ static void dropCloseDown(PacketNode *head, PacketNode *tail) {
 static void dropProcess(PacketNode *head, PacketNode* tail) {
     while (head->next != tail) {
         PacketNode *pac = head->next;
-        // due to the threading issue the chance here may change between the first
-        // and the second read. I think I'm aware of this but it's fine here i suppose.
         // chance in range of [0, 1000]
         if (((dropInbound && IS_INBOUND(pac->addr.Direction)) 
              || (dropOutbound && IS_OUTBOUND(pac->addr.Direction))

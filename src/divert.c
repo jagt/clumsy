@@ -19,6 +19,10 @@ static HANDLE loopThread, clockThread, mutex;
 static DWORD divertReadLoop(LPVOID arg);
 static DWORD divertClockLoop(LPVOID arg);
 
+// not to put these in common.h since modules shouldn't see these
+extern PacketNode * const head;
+extern PacketNode * const tail;
+
 #ifdef _DEBUG
 PDIVERT_IPHDR ip_header;
 PDIVERT_IPV6HDR ipv6_header;
@@ -182,7 +186,7 @@ static DWORD divertClockLoop(LPVOID arg) {
 
     UNREFERENCED_PARAMETER(arg);
 
-    while(1) {
+    for(;;) {
         // use aquire as wait for yielding thread
         startTick = GetTickCount();
         waitResult = WaitForSingleObject(mutex, CLOCK_WAITMS);
@@ -241,7 +245,7 @@ static DWORD divertReadLoop(LPVOID arg) {
 
     UNREFERENCED_PARAMETER(arg);
 
-    while (1) {
+    for(;;) {
         // each step must fully consume the list
         assert(isListEmpty());
         if (!DivertRecv(divertHandle, packetBuf, MAX_PACKETSIZE, &addrBuf, &readLen)) {
@@ -286,7 +290,7 @@ static DWORD divertReadLoop(LPVOID arg) {
         if (stopLooping) {
             // still allow exit gracefully
             LOG("Stop read loop.");
-            return 0;
+            break;
         }
     }
 

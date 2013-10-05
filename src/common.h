@@ -6,10 +6,12 @@
 #define CLUMSY_VERSION "0.0"
 #define MSG_BUFSIZE 512
 #define NAME_SIZE 16
-#define MODULE_CNT 2
+#define MODULE_CNT 3
 
 #define CONTROLS_HANDLE "__CONTROLS_HANDLE"
 #define SYNCED_VALUE "__SYNCED_VALUE"
+#define INTEGER_MAX "__INTEGER_MAX"
+#define INTEGER_MIN "__INTEGER_MIN"
 
 #ifdef _DEBUG
 #define LOG(fmt, ...) (printf(__FUNCTION__ ": " fmt "\n", ##__VA_ARGS__))
@@ -33,12 +35,10 @@ PacketNode* insertAfter(PacketNode *node, PacketNode *target);
 PacketNode* appendNode(PacketNode *node);
 short isListEmpty();
 
-extern PacketNode * const head;
-extern PacketNode * const tail;
-
-// reusable ui handlers
+// shared ui handlers
 int uiSyncChance(Ihandle *ih);
 int uiSyncToggle(Ihandle *ih, int state);
+int uiSyncInteger(Ihandle *ih);
 
 // module
 typedef struct {
@@ -58,6 +58,7 @@ typedef struct {
 } Module;
 
 extern Module dropModule;
+extern Module throttleModule;
 extern Module oodModule;
 extern Module* modules[MODULE_CNT]; // all modules in a list
 

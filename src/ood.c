@@ -9,15 +9,15 @@
 static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput;
 
 static volatile short oodEnabled = 0,
-    oodInbound = 0, oodOutbound = 0,
+    oodInbound = 1, oodOutbound = 1,
     chance = 100; // [0-1000]
 static PacketNode *oodPacket = NULL;
 static int giveUpCnt;
 
 static Ihandle *oodSetupUI() {
     Ihandle *oodControlsBox = IupHbox(
-        inboundCheckbox = IupToggle("Ooo Inbound", NULL),
-        outboundCheckbox = IupToggle("Ooo Outbound", NULL),
+        inboundCheckbox = IupToggle("Inbound", NULL),
+        outboundCheckbox = IupToggle("Outbound", NULL),
         IupLabel("Chance(%):"),
         chanceInput = IupText(NULL),
         NULL
@@ -32,6 +32,10 @@ static Ihandle *oodSetupUI() {
     IupSetCallback(outboundCheckbox, "ACTION", (Icallback)uiSyncToggle);
     IupSetAttribute(outboundCheckbox, SYNCED_VALUE, (char*)&oodOutbound);
 
+    // enable by default to avoid confusing
+    IupSetAttribute(inboundCheckbox, "VALUE", "ON");
+    IupSetAttribute(outboundCheckbox, "VALUE", "ON");
+
     return oodControlsBox;
 }
 
@@ -43,6 +47,7 @@ static void oodStartUp() {
 }
 
 static void oodCloseDown(PacketNode *head, PacketNode *tail) {
+    UNREFERENCED_PARAMETER(tail);
     LOG("ood disabled");
     if (oodPacket != NULL) {
         insertAfter(oodPacket, head);
