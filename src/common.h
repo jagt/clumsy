@@ -1,5 +1,6 @@
 #pragma once
 #include <stdio.h>
+#include <assert.h>
 #include "iup.h"
 #include "divert.h"
 
@@ -15,8 +16,11 @@
 
 #ifdef _DEBUG
 #define LOG(fmt, ...) (printf(__FUNCTION__ ": " fmt "\n", ##__VA_ARGS__))
+// some how vs can't trigger debugger on assert, which is really stupid
+//#define assert(x) do {if (!(x)) {DebugBreak();} } while(0)
 #else
 #define LOG(fmt, ...)
+//#define assert(x)
 #endif
 
 // package node

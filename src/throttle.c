@@ -1,7 +1,7 @@
 // throttling packets
 #include "iup.h"
 #include "common.h"
-#define MIN_PACKETS "2"
+#define MIN_PACKETS "1"
 #define MAX_PACKETS "100"
 
 static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput, *numInput;
@@ -13,6 +13,13 @@ static volatile short throttleEnabled = 0,
 
 static PacketNode throttleHeadNode = {0}, throttleTailNode = {0};
 static PacketNode *bufHead = &throttleHeadNode, *bufTail = &throttleTailNode;
+static int bufSize = 0;
+
+static short isBufEmpty() {
+    short ret = bufHead->next == bufTail;
+    if (ret) assert(bufSize == 0);
+    return ret;
+}
 
 static Ihandle *throttleSetupUI() {
     Ihandle *throttleControlsBox = IupHbox(
@@ -49,17 +56,56 @@ static Ihandle *throttleSetupUI() {
 }
 
 static void throttleStartUp() {
+    if (bufHead->next == NULL && bufTail->next == NULL) {
+        bufHead->next = bufTail;
+        bufTail->prev = bufHead;
+        bufSize = 0;
+    } else {
+        assert(isBufEmpty());
+    }
 }
 
+static void clearBufPackets(PacketNode *tail) {
+    PacketNode *oldLast = tail->prev;
+    LOG("Throttled enough, send all.");
+    while (!isBufEmpty()) {
+        insertAfter(popNode(bufTail->prev), oldLast);
+        --bufSize;
+    }
+}
 
 static void throttleCloseDown(PacketNode *head, PacketNode *tail) {
-    UNREFERENCED_PARAMETER(head);
     UNREFERENCED_PARAMETER(tail);
+    UNREFERENCED_PARAMETER(head);
+    clearBufPackets(tail);
 }
 
 static void throttleProcess(PacketNode *head, PacketNode *tail) {
     UNREFERENCED_PARAMETER(head);
-    UNREFERENCED_PARAMETER(tail);
+    if (isBufEmpty()) {
+        // only calculate chance when having a packet
+        if (!isListEmpty() && calcChance(chance)) {
+            LOG("Start new throttling w/ chance %.1f, aim at %d packets", chance/10.0, throttleNumber);
+            goto THROTTLE_START;
+        }
+    } else {
+THROTTLE_START:
+        // start a block for declaring limit
+        {
+            // make a copy of volatile number, just to be safe
+            short limit = throttleNumber;
+            // already throttling, keep filling up
+            while (bufSize < limit && !isListEmpty()) {
+                insertAfter(popNode(tail->prev), bufHead);
+                ++bufSize;
+            }
+
+            // send all when throttled enough, including in current step
+            if (bufSize >= limit) {
+                clearBufPackets(tail);
+            }
+        }
+    }
 }
 
 Module throttleModule = {

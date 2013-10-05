@@ -1,4 +1,3 @@
-#include <assert.h>
 #include "common.h"
 
 static PacketNode headNode = {0}, tailNode = {0};

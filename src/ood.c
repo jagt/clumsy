@@ -1,5 +1,4 @@
 // out of order arrange packets module
-#include <assert.h>
 #include "iup.h"
 #include "common.h"
 // keep a picked packet at most for KEEP_TURNS_MAX steps, or if there's no following
@@ -74,9 +73,9 @@ static void oodProcess(PacketNode *head, PacketNode *tail) {
                 LOG("Ooo picked packet w/ chance %.1f% , direction %s", chance/10.0, BOUND_TEXT(pac->addr.Direction));
             }
         } else {
-            // TODO implement throttle to test this
             // since there's already multiple packets in the queue, do a reorder will be enough
             PacketNode *first = pac, *second = pac->next;
+            LOG("Multiple packets OOD happens");
             while (first != tail && second != tail) {
                 // swap
                 first->prev->next = second;

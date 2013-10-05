@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <memory.h>
-#include <assert.h>
 #include <winsock2.h>
 #include "divert.h"
 #include "common.h"
@@ -129,15 +128,34 @@ int divertStart(const char * filter, char buf[]) {
     return TRUE;
 }
 
+static int sendAllListPackets() {
+    // send packet from tail to head and remove sent ones
+    int sendCount = 0;
+    UINT sendLen;
+    PacketNode *pnode;
+    while (!isListEmpty()) {
+        pnode = popNode(tail->prev);
+        assert(pnode != head);
+        if (!DivertSend(divertHandle, pnode->packet, pnode->packetLen, &(pnode->addr), &sendLen)) {
+            LOG("Failed to send a packet. (%d)", GetLastError());
+        }
+        if (sendLen < pnode->packetLen) {
+            // don't know how this can happen, or it needs to resent like good old UDP packet
+            LOG("Internal Error: DivertSend truncated send packet.");
+        }
+        freeNode(pnode);
+        ++sendCount;
+    }
+
+    return sendCount;
+}
+
 // step function to let module process and consume all packets on the list
 static void divertConsumeStep() {
 #ifdef _DEBUG
     DWORD startTick = GetTickCount(), dt;
-    int cnt = 0;
 #endif
-    PacketNode *pnode;
-    UINT sendLen;
-    int ix;
+    int ix, cnt;
     // use lastEnabled to keep track of module starting up and closing down
     for (ix = 0; ix < MODULE_CNT; ++ix) {
         Module *module = modules[ix];
@@ -154,27 +172,11 @@ static void divertConsumeStep() {
             }
         }
     }
-
-    // send packet from tail to head and remove sent ones
-    while (!isListEmpty()) {
-        pnode = popNode(tail->prev);
-        assert(pnode != head);
-        if (!DivertSend(divertHandle, pnode->packet, pnode->packetLen, &(pnode->addr), &sendLen)) {
-            LOG("Failed to send a packet. (%d)", GetLastError());
-        }
-        if (sendLen < pnode->packetLen) {
-            // don't know how this can happen, or it needs to resent like good old UDP packet
-            LOG("Internal Error: DivertSend truncated send packet.");
-        }
-        freeNode(pnode);
-#ifdef _DEBUG
-        ++cnt;
-#endif
-    }
+    cnt = sendAllListPackets();
 #ifdef _DEBUG
     dt =  GetTickCount() - startTick;
     if (dt > CLOCK_WAITMS / 2) {
-        LOG("Costy consume step: %d ms, sent packets: %d", GetTickCount() - startTick, cnt);
+        LOG("Costy consume step: %d ms, sent %d packets", GetTickCount() - startTick, cnt);
     }
 #endif
 }
@@ -219,6 +221,7 @@ static DWORD divertClockLoop(LPVOID arg) {
         }
 
         if (stopLooping) {
+            int lastSendCount = 0;
             LOG("Read stopLooping, stopping...");
             // clean up by closing all modules
             for (ix = 0; ix < MODULE_CNT; ++ix) {
@@ -227,7 +230,9 @@ static DWORD divertClockLoop(LPVOID arg) {
                     module->closeDown(head, tail);
                 } 
             }
-            LOG("Cleaning up modules.");
+            LOG("Send all packets upon closing");
+            lastSendCount = sendAllListPackets();
+            LOG("Lastly sent %d packets. Closing...", lastSendCount);
 
             // terminate recv loop by closing handler. handle related error in recv loop to quit
             assert(DivertClose(divertHandle));

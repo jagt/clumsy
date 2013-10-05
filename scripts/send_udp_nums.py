@@ -17,7 +17,7 @@ if __name__ == '__main__':
     cnt = 0
     ncat = subprocess.Popen(['ncat', '-u', '-C', host, port], stdin=subprocess.PIPE)
     while True: # send till die
-        ncat.stdin.write('%d\r\n' % (cnt % 10))
+        ncat.stdin.write('%d\r\n' % (cnt % 100))
         cnt += 1
         print cnt
         sleep(period/1000.0)
