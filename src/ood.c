@@ -69,9 +69,22 @@ static void oodProcess(PacketNode *head, PacketNode *tail) {
                 LOG("Ooo picked packet w/ chance %.1f% , direction %s", chance/10.0, BOUND_TEXT(pac->addr.Direction));
             }
         } else {
-            // pass
-            // since ood is the second module after drop, it'll see at most one packet
-            // TODO if there's more packets, do the ood without picking out packets
+            // TODO implement throttle to test this
+            // since there's already multiple packets in the queue, do a reorder will be enough
+            PacketNode *first = pac, *second = pac->next;
+            while (first != tail && second != tail) {
+                // swap
+                first->prev->next = second;
+                second->next->prev = first;
+                first->next = second->next;
+                second->prev = first->prev;
+                first->prev = second;
+                second->next = first;
+                // move forward. first is now the later one
+                second = first->next->next;
+                first = first->next;
+                assert(first->next == second);
+            }
         }
     }
 }
