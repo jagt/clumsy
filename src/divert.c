@@ -27,33 +27,44 @@ PDIVERT_IPHDR ip_header;
 PDIVERT_IPV6HDR ipv6_header;
 PDIVERT_TCPHDR tcp_header;
 PDIVERT_UDPHDR udp_header;
+PDIVERT_ICMPHDR icmp_header;
+PDIVERT_ICMPV6HDR icmpv6_header;
 UINT payload_len;
 void dumpPacket(char *buf, int len, PDIVERT_ADDRESS paddr) {
+    char *protocol;
     UINT16 srcPort = 0, dstPort = 0;
 
     DivertHelperParsePacket(buf, len, &ip_header, &ipv6_header,
-        NULL, NULL, &tcp_header, &udp_header,
+        &icmp_header, &icmpv6_header, &tcp_header, &udp_header,
         NULL, &payload_len);
     // need to cast byte order on port numbers
     if (tcp_header != NULL) {
+        protocol = "TCP ";
         srcPort = ntohs(tcp_header->SrcPort);
         dstPort = ntohs(tcp_header->DstPort);
     } else if (udp_header != NULL) {
+        protocol = "UDP ";
         srcPort = ntohs(udp_header->SrcPort);
         dstPort = ntohs(udp_header->DstPort);
+    } else if (icmp_header || icmpv6_header) {
+        protocol = "ICMP";
+        srcPort = 0;
+        dstPort = 0;
     }
 
     if (ip_header != NULL) {
         UINT8 *src_addr = (UINT8*)&ip_header->SrcAddr;
         UINT8 *dst_addr = (UINT8*)&ip_header->DstAddr;
-        LOG("%s: %u.%u.%u.%u:%d->%u.%u.%u.%u:%d",
+        LOG("%s.%s: %u.%u.%u.%u:%d->%u.%u.%u.%u:%d",
+            protocol,
             paddr->Direction == DIVERT_DIRECTION_OUTBOUND ? "OUT " : "IN  ",
             src_addr[0], src_addr[1], src_addr[2], src_addr[3], srcPort,
             dst_addr[0], dst_addr[1], dst_addr[2], dst_addr[3], dstPort);
     } else if (ipv6_header != NULL) {
         UINT16 *src_addr6 = (UINT16*)&ipv6_header->SrcAddr;
         UINT16 *dst_addr6 = (UINT16*)&ipv6_header->DstAddr;
-        LOG("%s: %x:%x:%x:%x:%x:%x:%x:%x:%d->%x:%x:%x:%x:%x:%x:%x:%x:%d",
+        LOG("%s.%s: %x:%x:%x:%x:%x:%x:%x:%x:%d->%x:%x:%x:%x:%x:%x:%x:%x:%d",
+            protocol,
             paddr->Direction == DIVERT_DIRECTION_OUTBOUND ? "OUT " : "IN  ",
             src_addr6[0], src_addr6[1], src_addr6[2], src_addr6[3],
             src_addr6[4], src_addr6[5], src_addr6[6], src_addr6[7], srcPort,
@@ -65,21 +76,9 @@ void dumpPacket(char *buf, int len, PDIVERT_ADDRESS paddr) {
 #define dumpPacket(x, y, z)
 #endif
 
-int divertStart(const char * filter, char buf[]) {
+int divertStart(const char *filter, char buf[]) {
     int ix;
-    char fixedFilter[MSG_BUFSIZE];
-
-    // injecting icmp packets is quite likely to fail, as described in windivert documentation
-    // so as a workaround we disable icmp in the filter, and filter out icmp packets
-    // FIXME "ip", "inbound", "outbound" still includes icmp so this is basically broken
-    if (strstr(filter, "icmp")) { // includes "icmpv6"
-        strcpy(buf, "'icmp'/'icmpv6' is not allowed in the filter. clumsy ignores all icmp packets (refer to faqs for further info).");
-        return FALSE;
-    }
-    sprintf(fixedFilter, "%s and not icmp and not icmpv6", filter);
-
-    LOG("Fixed Filter: %s", fixedFilter);
-    divertHandle = DivertOpen(fixedFilter, DIVERT_LAYER_NETWORK, DIVERT_PRIORITY, 0);
+    divertHandle = DivertOpen(filter, DIVERT_LAYER_NETWORK, DIVERT_PRIORITY, 0);
     if (divertHandle == INVALID_HANDLE_VALUE) {
         DWORD lastError = GetLastError();
         if (lastError == ERROR_INVALID_PARAMETER) {
@@ -123,7 +122,7 @@ int divertStart(const char * filter, char buf[]) {
         return FALSE;
     }
 
-    LOG("Threads created: %d", loopThread);
+    LOG("Threads created. read: %d, clock: %d", loopThread, clockThread);
 
     return TRUE;
 }
@@ -137,7 +136,21 @@ static int sendAllListPackets() {
         pnode = popNode(tail->prev);
         assert(pnode != head);
         if (!DivertSend(divertHandle, pnode->packet, pnode->packetLen, &(pnode->addr), &sendLen)) {
+            PDIVERT_ICMPHDR icmp_header;
+            PDIVERT_ICMPV6HDR icmpv6_header;
             LOG("Failed to send a packet. (%d)", GetLastError());
+            // as noted in windivert help, reinject inbound icmp packets some times would fail
+            // workaround this by resend them as outbound
+            // TODO not sure is this even working as can't find a way to test
+            //      need to document about this
+            DivertHelperParsePacket(pnode->packet, pnode->packetLen, NULL, NULL,
+                &icmp_header, &icmpv6_header, NULL, NULL, NULL, NULL);
+            if ((icmp_header || icmpv6_header) && IS_INBOUND(pnode->addr.Direction)) {
+                short resent;
+                pnode->addr.Direction = DIVERT_DIRECTION_OUTBOUND;
+                resent = DivertSend(divertHandle, pnode->packet, pnode->packetLen, &(pnode->addr), &sendLen);
+                LOG("Resend failed inbound ICMP packets as outbound", resent ? "SUCCESS" : "FAIL");
+            }
         }
         if (sendLen < pnode->packetLen) {
             // don't know how this can happen, or it needs to resent like good old UDP packet
@@ -267,7 +280,7 @@ static DWORD divertReadLoop(LPVOID arg) {
             LOG("Interal Error: DivertRecv truncated recv packet."); 
         }
 
-        //dumpPacket(packetBuf, readLen, &addrBuf);  
+        dumpPacket(packetBuf, readLen, &addrBuf);  
 
         waitResult = WaitForSingleObject(mutex, INFINITE);
         switch(waitResult) {

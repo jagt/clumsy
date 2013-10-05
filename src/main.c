@@ -29,7 +29,9 @@ void init(int argc, char* argv[]) {
     // iup inits
     IupOpen(&argc, &argv);
 
-    statusLabel = IupLabel("Input filtering criteria and click start.");
+    // this is so easy to get wrong so it's pretty worth noting in the program
+    statusLabel = IupLabel("NOTICE: When capturing localhost (loopback) packets, you CAN'T include inbound criteria.\n"
+        "Filters like 'udp' need to be 'udp and outbound' to work. See readme for more info.");
     IupSetAttribute(statusLabel, "EXPAND", "HORIZONTAL");
     IupSetAttribute(statusLabel, "PADDING", "8x8");
 
