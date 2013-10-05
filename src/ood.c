@@ -54,6 +54,50 @@ static void oodCloseDown(PacketNode *head, PacketNode *tail) {
     }
 }
 
+static short oodCheckDirection(UINT8 dir) {
+    return (oodInbound && IS_INBOUND(dir)
+                || oodOutbound && IS_OUTBOUND(dir));
+}
+
+// find the next packet fits the direction check or null
+static PacketNode* nextCorrectDirectionNode(PacketNode *p) {
+    if (p == NULL) {
+        return NULL;
+    }
+
+    do {
+        p = p->next;
+    } while (p->next != NULL && !oodCheckDirection(p->addr.Direction));
+
+    return p->next == NULL ? NULL : p;
+}
+
+// not really perfect swap since it assumes a is before b
+static void swapNode(PacketNode *a, PacketNode *b) {
+    assert(a->prev && a->next && b->prev && b->next); // not accidentally swapping head/tail
+    assert(a != b); // treat swap self as error here since we shouldn't really be doing it
+    if (a->next == b) {
+        // adjacent nodes need special care
+        a->prev->next = b;
+        b->next->prev = a;
+        a->next = b->next;
+        b->prev = a->prev;
+        a->prev = b;
+        b->next = a;
+    } else {
+        PacketNode *pa = a->prev,
+                   *na = a->next,
+                   *pb = b->prev,
+                   *nb = b->next;
+        pa->next = na->prev = b;
+        b->prev = pa;
+        b->next = na;
+        pb->next = nb->prev = a;
+        a->prev = pb;
+        a->next = nb;
+    }
+}
+
 static void oodProcess(PacketNode *head, PacketNode *tail) {
     if (oodPacket != NULL) {
         if (!isListEmpty() || --giveUpCnt == 0) {
@@ -66,33 +110,25 @@ static void oodProcess(PacketNode *head, PacketNode *tail) {
         PacketNode *pac = head->next;
         if (pac->next == tail) {
             // only contains a single packet, then pick it out and insert later
-            if ((oodInbound && IS_INBOUND(pac->addr.Direction)
-                || oodOutbound && IS_OUTBOUND(pac->addr.Direction)
-                ) && calcChance(chance)) {
+            if (oodCheckDirection(pac->addr.Direction) && calcChance(chance)) {
                 oodPacket = popNode(pac);
                 LOG("Ooo picked packet w/ chance %.1f% , direction %s", chance/10.0, BOUND_TEXT(pac->addr.Direction));
             }
         } else {
-            // can't always do ood when throttling happens
-            // FIXME isn't quite right with the possibility calculation
-            if (calcChance(chance)) {
-                // since there's already multiple packets in the queue, do a reorder will be enough
-                PacketNode *first = pac, *second = pac->next;
-                LOG("Multiple packets OOD happens");
-                while (first != tail && second != tail) {
-                    // swap
-                    first->prev->next = second;
-                    second->next->prev = first;
-                    first->next = second->next;
-                    second->prev = first->prev;
-                    first->prev = second;
-                    second->next = first;
-                    // move forward. first is now the later one
-                    second = first->next->next;
-                    first = first->next;
-                    assert(first->next == second);
+            // since there's already multiple packets in the queue, do a reorder will be enough
+            PacketNode *first = head, *second;
+            LOG("Multiple packets OOD happens");
+            do {
+                first = nextCorrectDirectionNode(first);
+                second = nextCorrectDirectionNode(first);
+                // calculate chance per swap
+                if (first && second && calcChance(chance)) {
+                    swapNode(first, second);
+                } else {
+                    // move forward first to progress
+                    first = second;
                 }
-            }
+            } while (first && second);
         }
     }
 }

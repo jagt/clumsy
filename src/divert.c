@@ -48,8 +48,8 @@ void dumpPacket(char *buf, int len, PDIVERT_ADDRESS paddr) {
         dstPort = ntohs(udp_header->DstPort);
     } else if (icmp_header || icmpv6_header) {
         protocol = "ICMP";
-        srcPort = 0;
-        dstPort = 0;
+    } else {
+        protocol = "???";
     }
 
     if (ip_header != NULL) {
@@ -132,6 +132,16 @@ static int sendAllListPackets() {
     int sendCount = 0;
     UINT sendLen;
     PacketNode *pnode;
+#ifdef _DEBUG
+    // check the list is good
+    // might go into dead loop but it's better for debugging
+    PacketNode *p = head;
+    do {
+        p = p->next;
+    } while (p->next);
+    assert(p == tail);
+#endif
+
     while (!isListEmpty()) {
         pnode = popNode(tail->prev);
         assert(pnode != head);
@@ -146,7 +156,7 @@ static int sendAllListPackets() {
             DivertHelperParsePacket(pnode->packet, pnode->packetLen, NULL, NULL,
                 &icmp_header, &icmpv6_header, NULL, NULL, NULL, NULL);
             if ((icmp_header || icmpv6_header) && IS_INBOUND(pnode->addr.Direction)) {
-                short resent;
+                BOOL resent;
                 pnode->addr.Direction = DIVERT_DIRECTION_OUTBOUND;
                 resent = DivertSend(divertHandle, pnode->packet, pnode->packetLen, &(pnode->addr), &sendLen);
                 LOG("Resend failed inbound ICMP packets as outbound", resent ? "SUCCESS" : "FAIL");
@@ -280,7 +290,7 @@ static DWORD divertReadLoop(LPVOID arg) {
             LOG("Interal Error: DivertRecv truncated recv packet."); 
         }
 
-        dumpPacket(packetBuf, readLen, &addrBuf);  
+        //dumpPacket(packetBuf, readLen, &addrBuf);  
 
         waitResult = WaitForSingleObject(mutex, INFINITE);
         switch(waitResult) {
