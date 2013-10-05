@@ -154,6 +154,7 @@ static void divertConsumeStep() {
     // send packet from tail to head and remove sent ones
     while (!isListEmpty()) {
         pnode = popNode(tail->prev);
+        assert(pnode != head);
         if (!DivertSend(divertHandle, pnode->packet, pnode->packetLen, &(pnode->addr), &sendLen)) {
             LOG("Failed to send a packet. (%d)", GetLastError());
         }
@@ -177,6 +178,7 @@ static void divertConsumeStep() {
 // periodically try to consume packets to keep the network responsive and not blocked by recv
 static DWORD divertClockLoop(LPVOID arg) {
     DWORD startTick, stepTick, waitResult;
+    int ix;
 
     UNREFERENCED_PARAMETER(arg);
 
@@ -214,6 +216,15 @@ static DWORD divertClockLoop(LPVOID arg) {
 
         if (stopLooping) {
             LOG("Read stopLooping, stopping...");
+            // clean up by closing all modules
+            for (ix = 0; ix < MODULE_CNT; ++ix) {
+                Module *module = modules[ix];
+                if (*(module->enabledFlag)) {
+                    module->closeDown(head, tail);
+                } 
+            }
+            LOG("Cleaning up modules.");
+
             // terminate recv loop by closing handler. handle related error in recv loop to quit
             assert(DivertClose(divertHandle));
             return 0;

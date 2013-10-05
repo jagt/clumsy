@@ -5,7 +5,7 @@ static PacketNode headNode = {0}, tailNode = {0};
 PacketNode * const head = &headNode, * const tail = &tailNode;
 
 void initPacketNodeList() {
-    if (head->next == NULL && tail->next == NULL) {
+    if (head->next == NULL && tail->prev == NULL) {
         // first time initializing
         head->next = tail;
         tail->prev = head;
@@ -41,6 +41,7 @@ PacketNode* popNode(PacketNode *node) {
 }
 
 PacketNode* insertAfter(PacketNode *node, PacketNode *target) {
+    assert(node && node != head && node != tail && target != tail);
     node->prev = target;
     node->next = target->next;
     target->next->prev = node;
@@ -49,6 +50,7 @@ PacketNode* insertAfter(PacketNode *node, PacketNode *target) {
 }
 
 PacketNode* insertBefore(PacketNode *node, PacketNode *target) {
+    assert(node && node != head && node != tail && target != head);
     node->next = target;
     node->prev = target->prev;
     target->prev->next = node;

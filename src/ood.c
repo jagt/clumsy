@@ -1,4 +1,5 @@
 // out of order arrange packets module
+#include <assert.h>
 #include "iup.h"
 #include "common.h"
 // keep a picked packet at most for KEEP_TURNS_MAX steps, or if there's no following
@@ -37,12 +38,15 @@ static Ihandle *oodSetupUI() {
 static void oodStartUp() {
     LOG("ood enabled");
     giveUpCnt = KEEP_TURNS_MAX;
+    // assert on the issue that repeatly enable/disable abort the program
+    assert(oodPacket == NULL);
 }
 
 static void oodCloseDown(PacketNode *head, PacketNode *tail) {
     LOG("ood disabled");
     if (oodPacket != NULL) {
         insertAfter(oodPacket, head);
+        oodPacket = NULL; // ! need to empty the ood packet
     }
 }
 
@@ -61,7 +65,7 @@ static void oodProcess(PacketNode *head, PacketNode *tail) {
             if ((oodInbound && IS_INBOUND(pac->addr.Direction)
                 || oodOutbound && IS_OUTBOUND(pac->addr.Direction)
                 ) && calcChance(chance)) {
-                oodPacket = popNode(head->next);
+                oodPacket = popNode(pac);
                 LOG("Ooo picked packet w/ chance %.1f% , direction %s", chance/10.0, BOUND_TEXT(pac->addr.Direction));
             }
         } else {
