@@ -8,6 +8,24 @@ short calcChance(short chance) {
     return (chance == 1000) || ((rand() & 0x3FF) < chance);
 }
 
+static short resolutionSet = 0;
+
+void startTimePeriod() {
+    if (!resolutionSet) {
+        // begin only fails when period out of range
+        timeBeginPeriod(TIMER_RESOLUTION);
+        resolutionSet = 1;
+    }
+}
+
+void endTimePeriod() {
+    if (resolutionSet) {
+        timeEndPeriod(TIMER_RESOLUTION);
+        resolutionSet = 0;
+    }
+}
+
+
 // shared callbacks
 int uiSyncChance(Ihandle *ih) {
     char valueBuf[8];

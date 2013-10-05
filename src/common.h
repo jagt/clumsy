@@ -74,7 +74,16 @@ int divertStart(const char * filter, char buf[]);
 void divertStop();
 
 // utils
+// STR to convert int macro to string
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
+
 #define BOUND_TEXT(b) ((b) == DIVERT_DIRECTION_INBOUND ? "IN" : "OUT")
 #define IS_INBOUND(b) ((b) == DIVERT_DIRECTION_INBOUND)
 #define IS_OUTBOUND(b) ((b) == DIVERT_DIRECTION_OUTBOUND)
 short calcChance(short chance);
+
+// wraped timeBegin/EndPeriod to keep calling safe and end when exit
+#define TIMER_RESOLUTION 4
+void startTimePeriod();
+void endTimePeriod();

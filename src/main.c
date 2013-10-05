@@ -101,6 +101,7 @@ void startup() {
 
 void cleanup() {
     IupClose();
+    endTimePeriod(); // try close if not closing
 }
 
 // ui logics

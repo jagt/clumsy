@@ -17,7 +17,7 @@ solution('clumsy')
         files({'src/**.c', 'src/**.h'})
         -- flags({'ExtraWarnings', 'StaticRuntime', 'Symbols'})
         flags({'ExtraWarnings', 'Symbols'})
-        links({'WinDivert', 'iup', 'comctl32', 'ws2_32'}) 
+        links({'WinDivert', 'iup', 'comctl32', 'Winmm', 'ws2_32'}) 
         --links({'gdi32', 'comdlg32', 'uuid', 'ole32'}) -- covered by default in vs already
 
         configuration('Debug')

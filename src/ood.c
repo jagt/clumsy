@@ -117,13 +117,13 @@ static void oodProcess(PacketNode *head, PacketNode *tail) {
         } else {
             // since there's already multiple packets in the queue, do a reorder will be enough
             PacketNode *first = head, *second;
-            LOG("Multiple packets OOD happens");
             do {
                 first = nextCorrectDirectionNode(first);
                 second = nextCorrectDirectionNode(first);
                 // calculate chance per swap
                 if (first && second && calcChance(chance)) {
                     swapNode(first, second);
+                    LOG("Multiple packets OOD swapping");
                 } else {
                     // move forward first to progress
                     first = second;
