@@ -180,6 +180,8 @@ static void uiSetupModule(const Module *module, Ihandle *parent) {
 int main(int argc, char* argv[]) {
     char cwd[MSG_BUFSIZE];
     LOG("Working directory: %s", _getcwd(cwd, MSG_BUFSIZE));
+    LOG("Is User An Admin: %d", );
+    LOG("Is elevated: %d", IsElevated());
     init(argc, argv);
     startup();
     cleanup();

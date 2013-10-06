@@ -87,3 +87,5 @@ short calcChance(short chance);
 #define TIMER_RESOLUTION 4
 void startTimePeriod();
 void endTimePeriod();
+
+BOOL IsElevated();
