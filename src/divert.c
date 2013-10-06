@@ -84,7 +84,8 @@ int divertStart(const char *filter, char buf[]) {
         if (lastError == ERROR_INVALID_PARAMETER) {
             strcpy(buf, "Failed to start filtering : filter syntax error.");
         } else {
-            sprintf(buf, "Failed to start filtering : failed to open device %d", lastError);
+            sprintf(buf, "Failed to start filtering : failed to open device (code:%d).\n"
+                "Make sure to you have run clumsy as Administrator.", lastError);
         }
         return FALSE;
     }

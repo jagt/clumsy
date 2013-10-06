@@ -47,7 +47,7 @@ static Ihandle *throttleSetupUI() {
     IupSetCallback(outboundCheckbox, "ACTION", (Icallback)uiSyncToggle);
     IupSetAttribute(outboundCheckbox, SYNCED_VALUE, (char*)&throttleOutbound);
     // sync throttle packet number
-    IupSetAttribute(frameInput, "VISIBLECOLUMNS", "4");
+    IupSetAttribute(frameInput, "VISIBLECOLUMNS", "3");
     IupSetAttribute(frameInput, "VALUE", STR(TIME_DEFAULT));
     IupSetCallback(frameInput, "VALUECHANGED_CB", (Icallback)uiSyncInteger);
     IupSetAttribute(frameInput, SYNCED_VALUE, (char*)&throttleFrame);

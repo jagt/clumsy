@@ -8,6 +8,7 @@
 
 // ! the order decides which module get processed first
 Module* modules[MODULE_CNT] = {
+    &lagModule,
     &dropModule,
     &throttleModule,
     &oodModule

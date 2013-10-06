@@ -7,7 +7,7 @@
 #define CLUMSY_VERSION "0.0"
 #define MSG_BUFSIZE 512
 #define NAME_SIZE 16
-#define MODULE_CNT 3
+#define MODULE_CNT 4
 
 #define CONTROLS_HANDLE "__CONTROLS_HANDLE"
 #define SYNCED_VALUE "__SYNCED_VALUE"
@@ -28,6 +28,7 @@ typedef struct _NODE {
     char *packet;
     UINT packetLen;
     DIVERT_ADDRESS addr;
+    DWORD userData; // in fact only used to store timestamp
     struct _NODE *prev, *next;
 } PacketNode;
 
@@ -61,6 +62,7 @@ typedef struct {
     short lastEnabled; // if it is enabled on last run
 } Module;
 
+extern Module lagModule;
 extern Module dropModule;
 extern Module throttleModule;
 extern Module oodModule;
