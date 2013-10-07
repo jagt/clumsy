@@ -8,7 +8,7 @@ end
 
 solution('clumsy')
     location("./build")
-    configurations({'Debug'})
+    configurations({'Debug', 'Release'})
     platforms({'x32', 'x64'})
 
     project('clumsy')
@@ -16,13 +16,20 @@ solution('clumsy')
         includedirs({'external/WinDivert-1.0.5-MSVC/include'})
         files({'src/**.c', 'src/**.h'})
         -- flags({'ExtraWarnings', 'StaticRuntime', 'Symbols'})
-        flags({'ExtraWarnings', 'Symbols'})
         links({'WinDivert', 'iup', 'comctl32', 'Winmm', 'ws2_32'}) 
         --links({'gdi32', 'comdlg32', 'uuid', 'ole32'}) -- covered by default in vs already
+        resincludedirs({'./etc'})
+        files({'./etc/clumsy.rc'})
 
         configuration('Debug')
+            flags({'ExtraWarnings', 'Symbols'})
             defines({'_DEBUG'})
             kind("ConsoleApp")
+
+        configuration('Release')
+            flags({'Optimize'})
+            defines({'NDEBUG'})
+            kind("WindowedApp")
 
         configuration("vs*")
             defines({"_CRT_SECURE_NO_WARNINGS"})
@@ -34,6 +41,7 @@ solution('clumsy')
                 'external/WinDivert-1.0.5-MSVC/x86',
                 'external/iup-3.8_Win32_dll11_lib'
                 })
+            resdefines('INCLUDE_MANIFEST32') -- can't really set manifest for 64 for whatever reason
 
         configuration('x64')
             includedirs({'external/iup-3.8_Win64_dll11_lib/include'})
@@ -43,23 +51,43 @@ solution('clumsy')
                 })
 
         configuration({"Debug", "x32"})
-            local x32_debug_bin = 'bin/debug/x32'
-            targetdir(x32_debug_bin)
-            debugdir(x32_debug_bin)
+            local subdir = 'bin/debug/x32'
+            targetdir(subdir)
+            debugdir(subdir)
             -- cwd is ./build
 
             postbuildcommands({
-                "robocopy ../external/WinDivert-1.0.5-MSVC/x86/ ../"   .. x32_debug_bin .. '  *.dll *.sys *.inf > robolog.txt',
-                "robocopy ../external/iup-3.8_Win32_dll11_lib ../"   .. x32_debug_bin .. ' iup.dll >> robolog.txt',
+                "robocopy ../external/WinDivert-1.0.5-MSVC/x86/ ../"   .. subdir .. '  *.dll *.sys *.inf > robolog.txt',
+                "robocopy ../external/iup-3.8_Win32_dll11_lib ../"   .. subdir .. ' iup.dll >> robolog.txt',
                 "exit /B 0"
             })
 
         configuration({"Debug", "x64"})
-            local x64_debug_bin = 'bin/debug/x64'
-            targetdir(x64_debug_bin)
-            debugdir(x64_debug_bin)
+            local subdir = 'bin/debug/x64'
+            targetdir(subdir)
+            debugdir(subdir)
             postbuildcommands({
-                "robocopy ../external/WinDivert-1.0.5-MSVC/amd64/ ../"   .. x64_debug_bin .. '  *.dll *.sys *.inf > robolog.txt',
-                "robocopy ../external/iup-3.8_Win64_dll11_lib ../"   .. x64_debug_bin ..  ' iup.dll >> robolog.txt',
+                "robocopy ../external/WinDivert-1.0.5-MSVC/amd64/ ../"   .. subdir .. '  *.dll *.sys *.inf > robolog.txt',
+                "robocopy ../external/iup-3.8_Win64_dll11_lib ../"   .. subdir ..  ' iup.dll >> robolog.txt',
+                "exit /B 0"
+            })
+
+        configuration({"Release", "x32"})
+            local subdir = 'bin/release/x32'
+            targetdir(subdir)
+            debugdir(subdir)
+            postbuildcommands({
+                "robocopy ../external/WinDivert-1.0.5-MSVC/x86/ ../"   .. subdir .. '  *.dll *.sys *.inf > robolog.txt',
+                "robocopy ../external/iup-3.8_Win32_dll11_lib ../"   .. subdir .. ' iup.dll >> robolog.txt',
+                "exit /B 0"
+            })
+
+        configuration({"Release", "x64"})
+            local subdir = 'bin/release/x64'
+            targetdir(subdir)
+            debugdir(subdir)
+            postbuildcommands({
+                "robocopy ../external/WinDivert-1.0.5-MSVC/amd64/ ../"   .. subdir .. '  *.dll *.sys *.inf > robolog.txt',
+                "robocopy ../external/iup-3.8_Win64_dll11_lib ../"   .. subdir ..  ' iup.dll >> robolog.txt',
                 "exit /B 0"
             })
