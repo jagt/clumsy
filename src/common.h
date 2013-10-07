@@ -28,7 +28,7 @@ typedef struct _NODE {
     char *packet;
     UINT packetLen;
     DIVERT_ADDRESS addr;
-    DWORD userData; // in fact only used to store timestamp
+    DWORD timestamp; // ! timestamp isn't filled when creating node since it's only needed for lag
     struct _NODE *prev, *next;
 } PacketNode;
 

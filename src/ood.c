@@ -54,7 +54,7 @@ static void oodCloseDown(PacketNode *head, PacketNode *tail) {
     }
 }
 
-static short oodCheckDirection(UINT8 dir) {
+static __inline short oodCheckDirection(UINT8 dir) {
     return (oodInbound && IS_INBOUND(dir)
                 || oodOutbound && IS_OUTBOUND(dir));
 }

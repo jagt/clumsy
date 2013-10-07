@@ -21,7 +21,7 @@ static PacketNode *bufHead = &throttleHeadNode, *bufTail = &throttleTailNode;
 static int bufSize = 0;
 static DWORD throttleStartTick = 0;
 
-static short isBufEmpty() {
+static __inline short isBufEmpty() {
     short ret = bufHead->next == bufTail;
     if (ret) assert(bufSize == 0);
     return ret;
@@ -103,10 +103,17 @@ THROTTLE_START:
         // start a block for declaring local variables
         {
             // already throttling, keep filling up
+            PacketNode *pac = tail->prev;
             DWORD currentTick = timeGetTime();
-            while (bufSize < KEEP_AT_MOST && !isListEmpty()) {
-                insertAfter(popNode(tail->prev), bufHead);
-                ++bufSize;
+            while (bufSize < KEEP_AT_MOST && pac != head) {
+                if ((throttleInbound && IS_INBOUND(pac->addr.Direction)) ||
+                        (throttleOutbound && IS_OUTBOUND(pac->addr.Direction))) {
+                    insertAfter(popNode(pac), bufHead);
+                    ++bufSize;
+                    pac = tail->prev;
+                } else {
+                    pac = pac->prev;
+                }
             }
 
             // send all when throttled enough, including in current step

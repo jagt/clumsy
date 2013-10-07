@@ -18,7 +18,7 @@ static PacketNode lagHeadNode = {0}, lagTailNode = {0};
 static PacketNode *bufHead = &lagHeadNode, *bufTail = &lagTailNode;
 static int bufSize = 0;
 
-static short isBufEmpty() {
+static __inline short isBufEmpty() {
     short ret = bufHead->next == bufTail;
     if (ret) assert(bufSize == 0);
     return ret;
@@ -44,6 +44,10 @@ static Ihandle *lagSetupUI() {
     IupSetCallback(outboundCheckbox, "ACTION", (Icallback)uiSyncToggle);
     IupSetAttribute(outboundCheckbox, SYNCED_VALUE, (char*)&lagOutbound);
 
+    // enable by default to avoid confusing
+    IupSetAttribute(inboundCheckbox, "VALUE", "ON");
+    IupSetAttribute(outboundCheckbox, "VALUE", "ON");
+
     return lagControlsBox;
 }
 
@@ -59,14 +63,35 @@ static void lagStartUp() {
 }
 
 static void lagCloseDown(PacketNode *head, PacketNode *tail) {
+    PacketNode *oldLast = tail->prev;
     UNREFERENCED_PARAMETER(head);
-    UNREFERENCED_PARAMETER(tail);
+    // flush all buffered packets
+    while(!isBufEmpty()) {
+        insertAfter(popNode(bufTail->prev), oldLast);
+        --bufSize;
+    }
     endTimePeriod();
 }
 
 static void lagProcess(PacketNode *head, PacketNode *tail) {
-    UNREFERENCED_PARAMETER(head);
-    UNREFERENCED_PARAMETER(tail);
+    DWORD currentTime = timeGetTime();
+    // pick up all packets and fill in the current time
+    while (!isListEmpty()) {
+        insertAfter(popNode(tail->prev), bufHead)->timestamp = timeGetTime();
+        ++bufSize;
+    }
+    // try sending overdue packets from buffer tail
+    while (!isBufEmpty()) {
+        PacketNode *pac = bufTail->prev;
+        if (currentTime + lagTime > pac->timestamp) {
+            insertAfter(popNode(bufTail->prev), head); // sending queue is already empty by now
+            --bufSize;
+            LOG("Send lagged packets.");
+        } else {
+            LOG("Sent some lagged packets, still have %d in buf", bufSize);
+            break;
+        }
+    }
 }
 
 Module lagModule = {

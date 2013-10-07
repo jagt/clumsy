@@ -102,7 +102,7 @@ BOOL IsElevated( ) {
 BOOL tryElevate(HWND hWnd) {
     // Check the current process's "run as administrator" status.
     BOOL fIsRunAsAdmin;
-    OSVERSIONINFO osver = {0};
+    OSVERSIONINFO osver = {sizeof(osver)}; // MUST initialize with the size or GetVersionEx fails
     if (!GetVersionEx(&osver)) {
         MessageBox(hWnd, (LPCSTR)"Failed to get os version. clumsy only supports Windows Vista or above.",
             (LPCSTR)"Aborting", MB_OK);
