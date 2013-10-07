@@ -90,4 +90,7 @@ short calcChance(short chance);
 void startTimePeriod();
 void endTimePeriod();
 
+// elevate
 BOOL IsElevated();
+BOOL IsRunAsAdmin();
+BOOL tryElevate(HWND hWnd);

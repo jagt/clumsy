@@ -20,6 +20,7 @@ static Ihandle *statusLabel;
 static Ihandle *filterText, *filterButton;
 
 void showStatus(const char *line);
+static int uiOnDialogShow(Ihandle *ih, int state);
 static int uiStopCb(Ihandle *ih);
 static int uiStartCb(Ihandle *ih);
 static void uiSetupModule(const Module *module, Ihandle *parent);
@@ -79,6 +80,7 @@ void init(int argc, char* argv[]) {
     IupSetAttribute(dialog, "TITLE", "clumsy " CLUMSY_VERSION);
     IupSetAttribute(dialog, "SIZE", "400x"); // add padding manually to width
     IupSetAttribute(dialog, "RESIZE", "NO");
+    IupSetCallback(dialog, "SHOW_CB", (Icallback)uiOnDialogShow);
 
 
     // global layout settings to affect childrens
@@ -108,6 +110,16 @@ void cleanup() {
 // ui logics
 void showStatus(const char *line) {
     IupStoreAttribute(statusLabel, "TITLE", line); 
+}
+
+static int uiOnDialogShow(Ihandle *ih, int state) {
+    // only need to process on show
+    HWND hWnd;
+    BOOL exit;
+    if (state != IUP_SHOW) return IUP_DEFAULT;
+    hWnd = (HWND)IupGetAttribute(ih, "HWND");
+    exit = tryElevate(hWnd);
+    return exit ? IUP_CLOSE : IUP_DEFAULT;
 }
 
 static int uiStartCb(Ihandle *ih) {
@@ -181,8 +193,8 @@ static void uiSetupModule(const Module *module, Ihandle *parent) {
 int main(int argc, char* argv[]) {
     char cwd[MSG_BUFSIZE];
     LOG("Working directory: %s", _getcwd(cwd, MSG_BUFSIZE));
-    LOG("Is User An Admin: %d", );
-    LOG("Is elevated: %d", IsElevated());
+    LOG("Is Run As Admin: %d", IsRunAsAdmin());
+    LOG("Is Elevated: %d", IsElevated());
     init(argc, argv);
     startup();
     cleanup();
