@@ -3,7 +3,9 @@
 #include "common.h"
 #define LAG_MIN "0"
 #define LAG_MAX "1000"
-#define KEEP_AT_MOST 300
+#define KEEP_AT_MOST 400
+// send FLUSH_WHEN_FULL packets when buffer is full
+#define FLUSH_WHEN_FULL 150
 #define LAG_DEFAULT 50
 
 // don't need a chance
@@ -66,6 +68,7 @@ static void lagCloseDown(PacketNode *head, PacketNode *tail) {
     PacketNode *oldLast = tail->prev;
     UNREFERENCED_PARAMETER(head);
     // flush all buffered packets
+    LOG("Closing down lag, flushing %d packets", bufSize);
     while(!isBufEmpty()) {
         insertAfter(popNode(bufTail->prev), oldLast);
         --bufSize;
@@ -75,21 +78,38 @@ static void lagCloseDown(PacketNode *head, PacketNode *tail) {
 
 static void lagProcess(PacketNode *head, PacketNode *tail) {
     DWORD currentTime = timeGetTime();
+    PacketNode *pac = tail->prev;
     // pick up all packets and fill in the current time
-    while (!isListEmpty()) {
-        insertAfter(popNode(tail->prev), bufHead)->timestamp = timeGetTime();
-        ++bufSize;
+    while (bufSize < KEEP_AT_MOST && pac != head) {
+        if ((lagInbound && IS_INBOUND(pac->addr.Direction) ||
+                (lagOutbound && IS_OUTBOUND(pac->addr.Direction)))) {
+            insertAfter(popNode(pac), bufHead)->timestamp = timeGetTime();
+            ++bufSize;
+            pac = tail->prev;
+        } else {
+            pac = pac->prev;
+        }
     }
+
     // try sending overdue packets from buffer tail
     while (!isBufEmpty()) {
         PacketNode *pac = bufTail->prev;
-        if (currentTime + lagTime > pac->timestamp) {
+        if (currentTime > pac->timestamp + lagTime) {
             insertAfter(popNode(bufTail->prev), head); // sending queue is already empty by now
             --bufSize;
             LOG("Send lagged packets.");
         } else {
             LOG("Sent some lagged packets, still have %d in buf", bufSize);
             break;
+        }
+    }
+
+    // if buffer is full just flush things out
+    if (bufSize >= KEEP_AT_MOST) {
+        int flushCnt = FLUSH_WHEN_FULL;
+        while (flushCnt-- > 0) {
+            insertAfter(popNode(bufTail->prev), head);
+            --bufSize;
         }
     }
 }
