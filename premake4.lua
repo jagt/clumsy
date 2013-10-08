@@ -18,7 +18,6 @@ solution('clumsy')
         -- flags({'ExtraWarnings', 'StaticRuntime', 'Symbols'})
         links({'WinDivert', 'iup', 'comctl32', 'Winmm', 'ws2_32'}) 
         --links({'gdi32', 'comdlg32', 'uuid', 'ole32'}) -- covered by default in vs already
-        resincludedirs({'./etc'})
         files({'./etc/clumsy.rc'})
 
         configuration('Debug')
@@ -33,17 +32,19 @@ solution('clumsy')
 
         configuration("vs*")
             defines({"_CRT_SECURE_NO_WARNINGS"})
+            flags({'NoManifest'})
             buildoptions({'/wd"4214"'})
 
         configuration('x32')
+            defines({'X32'}) -- defines would be passed to resource compiler for whatever reason
             includedirs({'external/iup-3.8_Win32_dll11_lib/include'})
             libdirs({
                 'external/WinDivert-1.0.5-MSVC/x86',
                 'external/iup-3.8_Win32_dll11_lib'
                 })
-            resdefines('INCLUDE_MANIFEST32') -- can't really set manifest for 64 for whatever reason
 
         configuration('x64')
+            defines({'X64'})
             includedirs({'external/iup-3.8_Win64_dll11_lib/include'})
             libdirs({
                 'external/WinDivert-1.0.5-MSVC/amd64',

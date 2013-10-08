@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
-<!-- this is actually not used since VS will error out when providing this to win64 targets -->
+<!-- the funky thing is that the version MUST be x.x.x.x, see msdn for info -->
 <assemblyIdentity
-    version="0.1"
+    version="0.1.0.0"
     processorArchitecture="amd64"
     name="clumsy"
     type="win32"
