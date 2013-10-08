@@ -12,12 +12,10 @@ solution('clumsy')
     platforms({'x32', 'x64'})
 
     project('clumsy')
-        language("C") -- not really a C++ project, just visual studio c subset sucks too hard
+        language("C")
         includedirs({'external/WinDivert-1.0.5-MSVC/include'})
         files({'src/**.c', 'src/**.h'})
-        -- flags({'ExtraWarnings', 'StaticRuntime', 'Symbols'})
         links({'WinDivert', 'iup', 'comctl32', 'Winmm', 'ws2_32'}) 
-        --links({'gdi32', 'comdlg32', 'uuid', 'ole32'}) -- covered by default in vs already
         files({'./etc/clumsy.rc'})
 
         configuration('Debug')
@@ -30,12 +28,16 @@ solution('clumsy')
             defines({'NDEBUG'})
             kind("WindowedApp")
 
+        configuration("gmake")
+            links({'gdi32', 'comdlg32', 'uuid', 'ole32'}) -- additional libs
+            -- notice that tdm-gcc use static runtime by default
+
         configuration("vs*")
             defines({"_CRT_SECURE_NO_WARNINGS"})
             flags({'NoManifest'})
             buildoptions({'/wd"4214"'})
 
-        configuration('x32')
+        configuration({'x32', 'vs*'})
             defines({'X32'}) -- defines would be passed to resource compiler for whatever reason
             includedirs({'external/iup-3.8_Win32_dll11_lib/include'})
             libdirs({
@@ -43,7 +45,7 @@ solution('clumsy')
                 'external/iup-3.8_Win32_dll11_lib'
                 })
 
-        configuration('x64')
+        configuration({'x64', 'vs*'})
             defines({'X64'})
             includedirs({'external/iup-3.8_Win64_dll11_lib/include'})
             libdirs({
@@ -51,44 +53,36 @@ solution('clumsy')
                 'external/iup-3.8_Win64_dll11_lib'
                 })
 
-        configuration({"Debug", "x32"})
-            local subdir = 'bin/debug/x32'
-            targetdir(subdir)
-            debugdir(subdir)
-            -- cwd is ./build
+        local function set_bin(platform, config, arch)
+            local platform_str
+            if platform == 'vs*' then
+                platform_str = 'vs'
+            end
+            local subdir = 'bin/' .. platform_str .. '/' .. config .. '/' .. arch
+            local divert_lib, iup_lib
+            if platform == 'vs*' then 
+                if arch == 'x64' then
+                    divert_lib = '../external/WinDivert-1.0.5-MSVC/amd64/'
+                    iup_lib = '../external/iup-3.8_Win64_dll11_lib'
+                else
+                    divert_lib = '../external/WinDivert-1.0.5-MSVC/x86/'
+                    iup_lib = '../external/iup-3.8_Win32_dll11_lib'
+                end
+            end
+            configuration({platform, config, arch})
+                targetdir(subdir)
+                debugdir(subdir)
+                if platform == 'vs*' then
+                    postbuildcommands({
+                        "robocopy " .. divert_lib .." ../"   .. subdir .. '  *.dll *.sys *.inf > robolog.txt',
+                        "robocopy " .. iup_lib .. " ../"   .. subdir .. ' iup.dll >> robolog.txt',
+                        "exit /B 0"
+                    })
+                end
+        end
 
-            postbuildcommands({
-                "robocopy ../external/WinDivert-1.0.5-MSVC/x86/ ../"   .. subdir .. '  *.dll *.sys *.inf > robolog.txt',
-                "robocopy ../external/iup-3.8_Win32_dll11_lib ../"   .. subdir .. ' iup.dll >> robolog.txt',
-                "exit /B 0"
-            })
+        set_bin('vs*', 'Debug', "x32")
+        set_bin('vs*', 'Debug', "x64")
+        set_bin('vs*', 'Release', "x32")
+        set_bin('vs*', 'Release', "x64")
 
-        configuration({"Debug", "x64"})
-            local subdir = 'bin/debug/x64'
-            targetdir(subdir)
-            debugdir(subdir)
-            postbuildcommands({
-                "robocopy ../external/WinDivert-1.0.5-MSVC/amd64/ ../"   .. subdir .. '  *.dll *.sys *.inf > robolog.txt',
-                "robocopy ../external/iup-3.8_Win64_dll11_lib ../"   .. subdir ..  ' iup.dll >> robolog.txt',
-                "exit /B 0"
-            })
-
-        configuration({"Release", "x32"})
-            local subdir = 'bin/release/x32'
-            targetdir(subdir)
-            debugdir(subdir)
-            postbuildcommands({
-                "robocopy ../external/WinDivert-1.0.5-MSVC/x86/ ../"   .. subdir .. '  *.dll *.sys *.inf > robolog.txt',
-                "robocopy ../external/iup-3.8_Win32_dll11_lib ../"   .. subdir .. ' iup.dll >> robolog.txt',
-                "exit /B 0"
-            })
-
-        configuration({"Release", "x64"})
-            local subdir = 'bin/release/x64'
-            targetdir(subdir)
-            debugdir(subdir)
-            postbuildcommands({
-                "robocopy ../external/WinDivert-1.0.5-MSVC/amd64/ ../"   .. subdir .. '  *.dll *.sys *.inf > robolog.txt',
-                "robocopy ../external/iup-3.8_Win64_dll11_lib ../"   .. subdir ..  ' iup.dll >> robolog.txt',
-                "exit /B 0"
-            })
