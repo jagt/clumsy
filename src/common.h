@@ -14,8 +14,23 @@
 #define INTEGER_MAX "__INTEGER_MAX"
 #define INTEGER_MIN "__INTEGER_MIN"
 
+// seems mingw has no InterlockedExchange16, use builtin __atomic instead
+// TODO but seems 64bit have this, need to figure out why
+#ifdef __MINGW32__
+#ifndef InterlockedExchange16
+#define InterlockedExchange16(p, val) (__atomic_exchange_n((short*)(p), (val), __ATOMIC_SEQ_CST))
+#endif
+#ifndef InterlockedIncrement16
+#define InterlockedIncrement16(p) (__atomic_add_fetch((short*)(p), 1, __ATOMIC_SEQ_CST))
+#endif
+#endif
+
 #ifdef _DEBUG
+#ifdef __MINGW32__
+#define LOG(fmt, ...) (printf("%s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__))
+#else
 #define LOG(fmt, ...) (printf(__FUNCTION__ ": " fmt "\n", ##__VA_ARGS__))
+#endif
 // some how vs can't trigger debugger on assert, which is really stupid
 //#define assert(x) do {if (!(x)) {DebugBreak();} } while(0)
 #else
