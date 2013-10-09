@@ -53,7 +53,7 @@ static void dropProcess(PacketNode *head, PacketNode* tail) {
         if (((dropInbound && IS_INBOUND(pac->addr.Direction)) 
              || (dropOutbound && IS_OUTBOUND(pac->addr.Direction))
             ) && calcChance(chance)) {
-            LOG("droped with chance %.1f% , direction %s",
+            LOG("droped with chance %.1f%%, direction %s",
                 chance/10.0, BOUND_TEXT(pac->addr.Direction));
             freeNode(popNode(pac));
         } else {

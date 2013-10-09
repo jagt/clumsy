@@ -84,12 +84,12 @@ int divertStart(const char *filter, char buf[]) {
         if (lastError == ERROR_INVALID_PARAMETER) {
             strcpy(buf, "Failed to start filtering : filter syntax error.");
         } else {
-            sprintf(buf, "Failed to start filtering : failed to open device (code:%d).\n"
+            sprintf(buf, "Failed to start filtering : failed to open device (code:%lu).\n"
                 "Make sure to you have run clumsy as Administrator.", lastError);
         }
         return FALSE;
     }
-    LOG("Divert opened handle: %d", divertHandle);
+    LOG("Divert opened handle.");
 
     DivertSetParam(divertHandle, DIVERT_PARAM_QUEUE_LEN, QUEUE_LEN);
     DivertSetParam(divertHandle, DIVERT_PARAM_QUEUE_TIME, QUEUE_TIME);
@@ -108,22 +108,22 @@ int divertStart(const char *filter, char buf[]) {
     stopLooping = FALSE;
     mutex = CreateMutex(NULL, FALSE, NULL);
     if (mutex == NULL) {
-        sprintf(buf, "Failed to create mutex (%d)", GetLastError());
+        sprintf(buf, "Failed to create mutex (%lu)", GetLastError());
         return FALSE;
     }
 
     loopThread = CreateThread(NULL, 1, (LPTHREAD_START_ROUTINE)divertReadLoop, NULL, 0, NULL);
     if (loopThread == NULL) {
-        sprintf(buf, "Failed to create recv loop thread (%d)", GetLastError());
+        sprintf(buf, "Failed to create recv loop thread (%lu)", GetLastError());
         return FALSE;
     }
     clockThread = CreateThread(NULL, 1, (LPTHREAD_START_ROUTINE)divertClockLoop, NULL, 0, NULL);
     if (clockThread == NULL) {
-        sprintf(buf, "Failed to create clock loop thread (%d)", GetLastError());
+        sprintf(buf, "Failed to create clock loop thread (%lu)", GetLastError());
         return FALSE;
     }
 
-    LOG("Threads created. read: %d, clock: %d", loopThread, clockThread);
+    LOG("Threads created");
 
     return TRUE;
 }
@@ -149,7 +149,7 @@ static int sendAllListPackets() {
         if (!DivertSend(divertHandle, pnode->packet, pnode->packetLen, &(pnode->addr), &sendLen)) {
             PDIVERT_ICMPHDR icmp_header;
             PDIVERT_ICMPV6HDR icmpv6_header;
-            LOG("Failed to send a packet. (%d)", GetLastError());
+            LOG("Failed to send a packet. (%lu)", GetLastError());
             // as noted in windivert help, reinject inbound icmp packets some times would fail
             // workaround this by resend them as outbound
             // TODO not sure is this even working as can't find a way to test
@@ -160,7 +160,7 @@ static int sendAllListPackets() {
                 BOOL resent;
                 pnode->addr.Direction = DIVERT_DIRECTION_OUTBOUND;
                 resent = DivertSend(divertHandle, pnode->packet, pnode->packetLen, &(pnode->addr), &sendLen);
-                LOG("Resend failed inbound ICMP packets as outbound", resent ? "SUCCESS" : "FAIL");
+                LOG("Resend failed inbound ICMP packets as outbound: %s", resent ? "SUCCESS" : "FAIL");
             }
         }
         if (sendLen < pnode->packetLen) {
@@ -200,7 +200,7 @@ static void divertConsumeStep() {
 #ifdef _DEBUG
     dt =  GetTickCount() - startTick;
     if (dt > CLOCK_WAITMS / 2) {
-        LOG("Costy consume step: %d ms, sent %d packets", GetTickCount() - startTick, cnt);
+        LOG("Costy consume step: %lu ms, sent %d packets", GetTickCount() - startTick, cnt);
     }
 #endif
 }
@@ -221,7 +221,7 @@ static DWORD divertClockLoop(LPVOID arg) {
                 divertConsumeStep();
                 if (!ReleaseMutex(mutex)) {
                     InterlockedIncrement16(&stopLooping);
-                    LOG("Failed to release mutex (%d)", GetLastError());
+                    LOG("Failed to release mutex (%lu)", GetLastError());
                 }
                 // if didn't spent enough time, we sleep on it
                 stepTick = GetTickCount() - startTick;
@@ -239,7 +239,7 @@ static DWORD divertClockLoop(LPVOID arg) {
                 InterlockedIncrement16(&stopLooping);
                 break;
             case WAIT_FAILED:
-                LOG("Aquire failed (%d)", GetLastError());
+                LOG("Aquire failed (%lu)", GetLastError());
                 InterlockedIncrement16(&stopLooping);
                 break;
         }
@@ -283,7 +283,7 @@ static DWORD divertReadLoop(LPVOID arg) {
                 // treat closing handle as quit
                 return 0;
             }
-            LOG("Failed to recv a packet. (%d)", GetLastError());
+            LOG("Failed to recv a packet. (%lu)", GetLastError());
             continue;
         }
         if (readLen > MAX_PACKETSIZE) {
@@ -301,7 +301,7 @@ static DWORD divertReadLoop(LPVOID arg) {
                 appendNode(pnode);
                 divertConsumeStep();
                 if (!ReleaseMutex(mutex)) {
-                    LOG("Failed to release mutex (%d)", GetLastError());
+                    LOG("Failed to release mutex (%lu)", GetLastError());
                     return 0;
                 }
                 break;

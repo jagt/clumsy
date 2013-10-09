@@ -17,6 +17,8 @@ solution('clumsy')
         links({'WinDivert', 'iup', 'comctl32', 'Winmm', 'ws2_32'}) 
         if _ACTION == 'vs2010' then -- only vs can include rc file in solution
             files({'./etc/clumsy.rc'})
+        elseif _ACTION == 'gmake' then
+            files({'./etc/clumsy.rc'})
         end
 
         configuration('Debug')
@@ -31,15 +33,17 @@ solution('clumsy')
 
         configuration("gmake")
             links({'kernel32', 'gdi32', 'comdlg32', 'uuid', 'ole32'}) -- additional libs
-            --buildoptions({'--std=c90'})
+            buildoptions({'-Wno-missing-braces'}) -- suppress a bug in gcc warns about {0} initialization
             --linkoptions({'--std=c90'})
             -- notice that tdm-gcc use static runtime by default
+            objdir('obj_vs')
 
         configuration("vs*")
             defines({"_CRT_SECURE_NO_WARNINGS"})
             flags({'NoManifest'})
             buildoptions({'/wd"4214"'})
             includedirs({'external/WinDivert-1.0.5-MSVC/include'})
+            objdir('obj_gmake')
 
         configuration({'x32', 'vs*'})
             -- defines would be passed to resource compiler for whatever reason
@@ -67,6 +71,7 @@ solution('clumsy')
                 'external/WinDivert-1.0.5-MINGW/x86',
                 'external/iup-3.8_Win32_mingw4_lib'
                 })
+            resoptions({'-O coff', '-F pe-i386'}) -- mingw64 defaults to x64
 
         configuration({'x64', 'gmake'})
             defines({'X64'})

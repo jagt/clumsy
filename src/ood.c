@@ -55,8 +55,8 @@ static void oodCloseDown(PacketNode *head, PacketNode *tail) {
 }
 
 static __inline short oodCheckDirection(UINT8 dir) {
-    return (oodInbound && IS_INBOUND(dir)
-                || oodOutbound && IS_OUTBOUND(dir));
+    return (oodInbound && IS_INBOUND(dir))
+                || (oodOutbound && IS_OUTBOUND(dir));
 }
 
 // find the next packet fits the direction check or null
@@ -112,7 +112,7 @@ static void oodProcess(PacketNode *head, PacketNode *tail) {
             // only contains a single packet, then pick it out and insert later
             if (oodCheckDirection(pac->addr.Direction) && calcChance(chance)) {
                 oodPacket = popNode(pac);
-                LOG("Ooo picked packet w/ chance %.1f% , direction %s", chance/10.0, BOUND_TEXT(pac->addr.Direction));
+                LOG("Ooo picked packet w/ chance %.1f%%, direction %s", chance/10.0, BOUND_TEXT(pac->addr.Direction));
             }
         } else {
             // since there's already multiple packets in the queue, do a reorder will be enough

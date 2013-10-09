@@ -81,8 +81,8 @@ static void lagProcess(PacketNode *head, PacketNode *tail) {
     PacketNode *pac = tail->prev;
     // pick up all packets and fill in the current time
     while (bufSize < KEEP_AT_MOST && pac != head) {
-        if ((lagInbound && IS_INBOUND(pac->addr.Direction) ||
-                (lagOutbound && IS_OUTBOUND(pac->addr.Direction)))) {
+        if ((lagInbound && IS_INBOUND(pac->addr.Direction)) ||
+                (lagOutbound && IS_OUTBOUND(pac->addr.Direction))) {
             insertAfter(popNode(pac), bufHead)->timestamp = timeGetTime();
             ++bufSize;
             pac = tail->prev;
