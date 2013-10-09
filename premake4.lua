@@ -4,6 +4,8 @@
 if _ACTION == 'clean' then
     os.rmdir('./build')
     os.rmdir('./bin')
+    os.rmdir('./obj_vs')
+    os.rmdir('./obj_gmake')
 end
 
 solution('clumsy')

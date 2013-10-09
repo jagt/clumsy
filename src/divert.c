@@ -246,6 +246,7 @@ static DWORD divertClockLoop(LPVOID arg) {
 
         if (stopLooping) {
             int lastSendCount = 0;
+            BOOL closed;
             LOG("Read stopLooping, stopping...");
             // clean up by closing all modules
             for (ix = 0; ix < MODULE_CNT; ++ix) {
@@ -259,7 +260,8 @@ static DWORD divertClockLoop(LPVOID arg) {
             LOG("Lastly sent %d packets. Closing...", lastSendCount);
 
             // terminate recv loop by closing handler. handle related error in recv loop to quit
-            assert(DivertClose(divertHandle));
+            closed = DivertClose(divertHandle);
+            assert(closed);
             return 0;
         }
     }
@@ -281,6 +283,7 @@ static DWORD divertReadLoop(LPVOID arg) {
             DWORD lastError = GetLastError();
             if (lastError == ERROR_INVALID_HANDLE || lastError == ERROR_OPERATION_ABORTED) {
                 // treat closing handle as quit
+                LOG("Handle died or operation aborted. Exit loop.");
                 return 0;
             }
             LOG("Failed to recv a packet. (%lu)", GetLastError());

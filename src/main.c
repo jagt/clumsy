@@ -140,7 +140,6 @@ static int uiStartCb(Ihandle *ih) {
 
 static int uiStopCb(Ihandle *ih) {
     UNREFERENCED_PARAMETER(ih);
-    showStatus("Successfully stoped. Edit criteria and click Start to begin again.");
     
     // try stopping
     IupSetAttribute(filterButton, "ACTIVE", "NO");
@@ -151,6 +150,7 @@ static int uiStopCb(Ihandle *ih) {
     IupSetAttribute(filterButton, "TITLE", "Start");
     IupSetAttribute(filterButton, "ACTIVE", "YES");
     IupSetCallback(filterButton, "ACTION", uiStartCb);
+    showStatus("Successfully stoped. Edit criteria and click Start to begin again.");
     return IUP_DEFAULT;
 }
 
