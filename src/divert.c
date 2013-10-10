@@ -188,7 +188,9 @@ static void divertConsumeStep() {
                 module->startUp();
                 module->lastEnabled = 1;
             }
-            module->process(head, tail);
+            if (module->process(head, tail)) {
+                InterlockedIncrement16(&(module->processTriggered));
+            }
         } else {
             if (module->lastEnabled) {
                 module->closeDown(head, tail);

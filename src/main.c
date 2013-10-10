@@ -18,18 +18,20 @@ Module* modules[MODULE_CNT] = {
 static Ihandle *dialog, *topFrame, *bottomFrame; 
 static Ihandle *statusLabel;
 static Ihandle *filterText, *filterButton;
+// timer to update icons
+static Ihandle *timer;
 
 void showStatus(const char *line);
 static int uiOnDialogShow(Ihandle *ih, int state);
 static int uiStopCb(Ihandle *ih);
 static int uiStartCb(Ihandle *ih);
-static void uiSetupModule(const Module *module, Ihandle *parent);
+static int uiTimerCb(Ihandle *ih);
+static void uiSetupModule(Module *module, Ihandle *parent);
 
 void init(int argc, char* argv[]) {
     int ix;
     Ihandle *topVbox, *bottomVbox, *dialogVBox;
     Ihandle *noneIcon, *doingIcon;
-    char* dlgbg = IupGetGlobal("DLGBGCOLOR");
     // iup inits
     IupOpen(&argc, &argv);
 
@@ -100,6 +102,10 @@ void init(int argc, char* argv[]) {
     IupSetAttribute(dialogVBox, "NCMARGIN", "4x4");
     IupSetAttribute(dialogVBox, "NCGAP", "4x2");
 
+    // setup timer
+    timer = IupTimer();
+    IupSetAttribute(timer, "TIME", STR(ICON_UPDATE_MS));
+    IupSetCallback(timer, "ACTION_CB", uiTimerCb);
 }
 
 void startup() {
@@ -115,6 +121,7 @@ void startup() {
 }
 
 void cleanup() {
+    IupDestroy(timer);
     IupClose();
     endTimePeriod(); // try close if not closing
 }
@@ -147,10 +154,13 @@ static int uiStartCb(Ihandle *ih) {
     IupSetAttribute(filterText, "ACTIVE", "NO");
     IupSetAttribute(filterButton, "TITLE", "Stop");
     IupSetCallback(filterButton, "ACTION", uiStopCb);
+    IupSetAttribute(timer, "RUN", "YES");
+
     return IUP_DEFAULT;
 }
 
 static int uiStopCb(Ihandle *ih) {
+    int ix;
     UNREFERENCED_PARAMETER(ih);
     
     // try stopping
@@ -162,6 +172,13 @@ static int uiStopCb(Ihandle *ih) {
     IupSetAttribute(filterButton, "TITLE", "Start");
     IupSetAttribute(filterButton, "ACTIVE", "YES");
     IupSetCallback(filterButton, "ACTION", uiStartCb);
+
+    // stop timer and clean up icons
+    IupSetAttribute(timer, "RUN", "NO");
+    for (ix = 0; ix < MODULE_CNT; ++ix) {
+        IupSetAttribute(modules[ix]->iconHandle, "IMAGE", "none_icon");
+    }
+
     showStatus("Successfully stoped. Edit criteria and click Start to begin again.");
     return IUP_DEFAULT;
 }
@@ -181,10 +198,25 @@ static int uiToggleControls(Ihandle *ih, int state) {
     return IUP_DEFAULT;
 }
 
-static void uiSetupModule(const Module *module, Ihandle *parent) {
+static int uiTimerCb(Ihandle *ih) {
+    int ix;
+    UNREFERENCED_PARAMETER(ih);
+    for (ix = 0; ix < MODULE_CNT; ++ix) {
+        if (modules[ix]->processTriggered) {
+            IupSetAttribute(modules[ix]->iconHandle, "IMAGE", "doing_icon");
+            modules[ix]->processTriggered = 0; 
+        } else {
+            IupSetAttribute(modules[ix]->iconHandle, "IMAGE", "none_icon");
+        }
+    }
+
+    return IUP_DEFAULT;
+}
+
+static void uiSetupModule(Module *module, Ihandle *parent) {
     Ihandle *groupBox, *toggle, *controls, *icon;
     groupBox = IupHbox(
-        icon = IupLabel(" fuck"),
+        icon = IupLabel(NULL),
         toggle = IupToggle(module->name, NULL),
         IupFill(),
         controls = module->setupUIFunc(),
@@ -205,6 +237,7 @@ static void uiSetupModule(const Module *module, Ihandle *parent) {
     // set default icon
     IupSetAttribute(icon, "IMAGE", "none_icon");
     IupSetAttribute(icon, "PADDING", "4x");
+    module->iconHandle = icon;
 }
 
 int main(int argc, char* argv[]) {

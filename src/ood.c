@@ -98,7 +98,7 @@ static void swapNode(PacketNode *a, PacketNode *b) {
     }
 }
 
-static void oodProcess(PacketNode *head, PacketNode *tail) {
+static short oodProcess(PacketNode *head, PacketNode *tail) {
     if (oodPacket != NULL) {
         if (!isListEmpty() || --giveUpCnt == 0) {
             LOG("Ooo sent direction %s, is giveup %s", BOUND_TEXT(oodPacket->addr.Direction), giveUpCnt ? "NO" : "YES");
@@ -113,8 +113,9 @@ static void oodProcess(PacketNode *head, PacketNode *tail) {
             if (oodCheckDirection(pac->addr.Direction) && calcChance(chance)) {
                 oodPacket = popNode(pac);
                 LOG("Ooo picked packet w/ chance %.1f%%, direction %s", chance/10.0, BOUND_TEXT(pac->addr.Direction));
+                return TRUE;
             }
-        } else {
+        } else if (calcChance(chance)) {
             // since there's already multiple packets in the queue, do a reorder will be enough
             PacketNode *first = head, *second;
             do {
@@ -129,8 +130,11 @@ static void oodProcess(PacketNode *head, PacketNode *tail) {
                     first = second;
                 }
             } while (first && second);
+            return TRUE;
         }
     }
+
+    return FALSE;
 }
 
 Module oodModule = {

@@ -8,6 +8,7 @@
 #define MSG_BUFSIZE 512
 #define NAME_SIZE 16
 #define MODULE_CNT 4
+#define ICON_UPDATE_MS 200
 
 #define CONTROLS_HANDLE "__CONTROLS_HANDLE"
 #define SYNCED_VALUE "__SYNCED_VALUE"
@@ -70,11 +71,13 @@ typedef struct {
     Ihandle* (*setupUIFunc)(); // return hbox as controls group
     void (*startUp)(); // called when starting up the module
     void (*closeDown)(PacketNode *head, PacketNode *tail); // called when starting up the module
-    void (*process)(PacketNode *head, PacketNode *tail);
+    short (*process)(PacketNode *head, PacketNode *tail);
     /*
      * Flags used during program excution. Need to be re initialized on each run
      */
     short lastEnabled; // if it is enabled on last run
+    short processTriggered; // whether this module has been triggered in last step 
+    Ihandle *iconHandle; // store the icon to be updated
 } Module;
 
 extern Module lagModule;

@@ -76,7 +76,7 @@ static void lagCloseDown(PacketNode *head, PacketNode *tail) {
     endTimePeriod();
 }
 
-static void lagProcess(PacketNode *head, PacketNode *tail) {
+static short lagProcess(PacketNode *head, PacketNode *tail) {
     DWORD currentTime = timeGetTime();
     PacketNode *pac = tail->prev;
     // pick up all packets and fill in the current time
@@ -112,6 +112,8 @@ static void lagProcess(PacketNode *head, PacketNode *tail) {
             --bufSize;
         }
     }
+
+    return bufSize > 0;
 }
 
 Module lagModule = {

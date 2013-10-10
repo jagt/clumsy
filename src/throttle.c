@@ -90,12 +90,14 @@ static void throttleCloseDown(PacketNode *head, PacketNode *tail) {
     endTimePeriod();
 }
 
-static void throttleProcess(PacketNode *head, PacketNode *tail) {
+static short throttleProcess(PacketNode *head, PacketNode *tail) {
+    short throttled = FALSE;
     UNREFERENCED_PARAMETER(head);
     if (!throttleStartTick) {
         if (!isListEmpty() && calcChance(chance)) {
             LOG("Start new throttling w/ chance %.1f, time frame: %d", chance/10.0, throttleFrame);
             throttleStartTick = timeGetTime();
+            throttled = TRUE;
             goto THROTTLE_START; // need this goto since maybe we'll start and stop at this single call
         }
     } else {
@@ -122,6 +124,8 @@ THROTTLE_START:
             }
         }
     }
+
+    return throttled;
 }
 
 Module throttleModule = {

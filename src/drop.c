@@ -46,7 +46,8 @@ static void dropCloseDown(PacketNode *head, PacketNode *tail) {
     LOG("drop disabled");
 }
 
-static void dropProcess(PacketNode *head, PacketNode* tail) {
+static short dropProcess(PacketNode *head, PacketNode* tail) {
+    int dropped = 0;
     while (head->next != tail) {
         PacketNode *pac = head->next;
         // chance in range of [0, 1000]
@@ -56,10 +57,13 @@ static void dropProcess(PacketNode *head, PacketNode* tail) {
             LOG("droped with chance %.1f%%, direction %s",
                 chance/10.0, BOUND_TEXT(pac->addr.Direction));
             freeNode(popNode(pac));
+            ++dropped;
         } else {
             head = head->next;
         }
     }
+
+    return dropped > 0;
 }
 
 
