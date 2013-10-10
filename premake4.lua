@@ -30,6 +30,7 @@ solution('clumsy')
 
         configuration('Release')
             flags({'Optimize'})
+            flags({'Symbols'}) -- keep the debug symbols for development
             defines({'NDEBUG'})
             kind("WindowedApp")
 

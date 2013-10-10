@@ -77,5 +77,14 @@ int uiSyncInteger(Ihandle *ih) {
     return IUP_DEFAULT;
 }
 
-
-
+// indicator icon, generated from scripts/im2carr.py
+const unsigned char icon8x8[8*8] = {
+    0, 0, 1, 1, 1, 1, 0, 0,
+    0, 1, 1, 1, 1, 1, 1, 0,
+    1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1,
+    0, 1, 1, 1, 1, 1, 1, 0,
+    0, 0, 1, 1, 1, 1, 0, 0,
+};

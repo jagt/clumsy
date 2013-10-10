@@ -2,10 +2,10 @@
 #include "iup.h"
 #include "common.h"
 #define LAG_MIN "0"
-#define LAG_MAX "1000"
-#define KEEP_AT_MOST 400
+#define LAG_MAX "3000"
+#define KEEP_AT_MOST 2000
 // send FLUSH_WHEN_FULL packets when buffer is full
-#define FLUSH_WHEN_FULL 150
+#define FLUSH_WHEN_FULL 800
 #define LAG_DEFAULT 50
 
 // don't need a chance

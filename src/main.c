@@ -28,6 +28,8 @@ static void uiSetupModule(const Module *module, Ihandle *parent);
 void init(int argc, char* argv[]) {
     int ix;
     Ihandle *topVbox, *bottomVbox, *dialogVBox;
+    Ihandle *noneIcon, *doingIcon;
+    char* dlgbg = IupGetGlobal("DLGBGCOLOR");
     // iup inits
     IupOpen(&argc, &argv);
 
@@ -61,6 +63,16 @@ void init(int argc, char* argv[]) {
     IupSetAttribute(bottomFrame, "TITLE", "Functions");
     IupSetAttribute(bottomVbox, "NCMARGIN", "4x4");
     IupSetAttribute(bottomVbox, "NCGAP", "4x2");
+
+    // create icons
+    noneIcon = IupImage(8, 8, icon8x8);
+    doingIcon = IupImage(8, 8, icon8x8);
+    IupSetAttribute(noneIcon, "0", "BGCOLOR");
+    IupSetAttribute(noneIcon, "1", "224 224 224");
+    IupSetAttribute(doingIcon, "0", "BGCOLOR");
+    IupSetAttribute(doingIcon, "1", "109 170 44");
+    IupSetHandle("none_icon", noneIcon);
+    IupSetHandle("doing_icon", doingIcon);
 
     // setup module uis
     for (ix = 0; ix < MODULE_CNT; ++ix) {
@@ -170,8 +182,9 @@ static int uiToggleControls(Ihandle *ih, int state) {
 }
 
 static void uiSetupModule(const Module *module, Ihandle *parent) {
-    Ihandle *groupBox, *toggle, *controls;
+    Ihandle *groupBox, *toggle, *controls, *icon;
     groupBox = IupHbox(
+        icon = IupLabel(" fuck"),
         toggle = IupToggle(module->name, NULL),
         IupFill(),
         controls = module->setupUIFunc(),
@@ -188,6 +201,10 @@ static void uiSetupModule(const Module *module, Ihandle *parent) {
     IupSetAttribute(toggle, SYNCED_VALUE, (char*)module->enabledFlag);
     IupSetAttribute(controls, "ACTIVE", "NO"); // startup as inactive
     IupSetAttribute(controls, "NCGAP", "4"); // startup as inactive
+
+    // set default icon
+    IupSetAttribute(icon, "IMAGE", "none_icon");
+    IupSetAttribute(icon, "PADDING", "4x");
 }
 
 int main(int argc, char* argv[]) {

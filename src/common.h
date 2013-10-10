@@ -109,3 +109,6 @@ void endTimePeriod();
 BOOL IsElevated();
 BOOL IsRunAsAdmin();
 BOOL tryElevate(HWND hWnd);
+
+// icons
+extern const unsigned char icon8x8[8*8];
