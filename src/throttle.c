@@ -5,7 +5,7 @@
 #define TIME_MAX "1000"
 #define TIME_DEFAULT 30
 // threshold for how many packet to throttle at most
-#define KEEP_AT_MOST 400
+#define KEEP_AT_MOST 1000
 
 static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput, *frameInput;
 

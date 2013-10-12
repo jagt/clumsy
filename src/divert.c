@@ -170,6 +170,7 @@ static int sendAllListPackets() {
         freeNode(pnode);
         ++sendCount;
     }
+    assert(isListEmpty()); // all packets should be sent by now
 
     return sendCount;
 }
@@ -220,10 +221,13 @@ static DWORD divertClockLoop(LPVOID arg) {
         waitResult = WaitForSingleObject(mutex, CLOCK_WAITMS);
         switch(waitResult) {
             case WAIT_OBJECT_0:
+                /***************** enter critical region ************************/
                 divertConsumeStep();
+                /***************** leave critical region ************************/
                 if (!ReleaseMutex(mutex)) {
                     InterlockedIncrement16(&stopLooping);
-                    LOG("Failed to release mutex (%lu)", GetLastError());
+                    LOG("Fatal: Failed to release mutex (%lu)", GetLastError());
+                    ABORT();
                 }
                 // if didn't spent enough time, we sleep on it
                 stepTick = GetTickCount() - startTick;
@@ -246,25 +250,44 @@ static DWORD divertClockLoop(LPVOID arg) {
                 break;
         }
 
+        // need to get the lock here
         if (stopLooping) {
             int lastSendCount = 0;
             BOOL closed;
-            LOG("Read stopLooping, stopping...");
-            // clean up by closing all modules
-            for (ix = 0; ix < MODULE_CNT; ++ix) {
-                Module *module = modules[ix];
-                if (*(module->enabledFlag)) {
-                    module->closeDown(head, tail);
-                } 
-            }
-            LOG("Send all packets upon closing");
-            lastSendCount = sendAllListPackets();
-            LOG("Lastly sent %d packets. Closing...", lastSendCount);
 
-            // terminate recv loop by closing handler. handle related error in recv loop to quit
-            closed = DivertClose(divertHandle);
-            assert(closed);
-            return 0;
+            waitResult = WaitForSingleObject(mutex, INFINITE);
+            switch (waitResult)
+            {
+            case WAIT_ABANDONED:
+            case WAIT_FAILED:
+                LOG("Aquire failed/abandoned mutex (%lu), will still try closing and return", GetLastError());
+            case WAIT_OBJECT_0:
+                /***************** enter critical region ************************/
+                LOG("Read stopLooping, stopping...");
+                // clean up by closing all modules
+                for (ix = 0; ix < MODULE_CNT; ++ix) {
+                    Module *module = modules[ix];
+                    if (*(module->enabledFlag)) {
+                        module->closeDown(head, tail);
+                    } 
+                }
+                LOG("Send all packets upon closing");
+                lastSendCount = sendAllListPackets();
+                LOG("Lastly sent %d packets. Closing...", lastSendCount);
+
+                // terminate recv loop by closing handler. handle related error in recv loop to quit
+                closed = DivertClose(divertHandle);
+                assert(closed);
+
+                // release to let read loop exit properly
+                /***************** leave critical region ************************/
+                if (!ReleaseMutex(mutex)) {
+                    LOG("Fatal: Failed to release mutex (%lu)", GetLastError());
+                    ABORT();
+                }
+                return 0;
+                break;
+            }
         }
     }
 }
@@ -280,7 +303,7 @@ static DWORD divertReadLoop(LPVOID arg) {
 
     for(;;) {
         // each step must fully consume the list
-        assert(isListEmpty());
+        assert(isListEmpty()); // FIXME has failed this assert before. don't know why
         if (!DivertRecv(divertHandle, packetBuf, MAX_PACKETSIZE, &addrBuf, &readLen)) {
             DWORD lastError = GetLastError();
             if (lastError == ERROR_INVALID_HANDLE || lastError == ERROR_OPERATION_ABORTED) {
@@ -301,13 +324,19 @@ static DWORD divertReadLoop(LPVOID arg) {
         waitResult = WaitForSingleObject(mutex, INFINITE);
         switch(waitResult) {
             case WAIT_OBJECT_0:
+                /***************** enter critical region ************************/
+                if (stopLooping) {
+                    LOG("Lost last recved packet but user stopped. Stop read loop.");
+                    return 0;
+                }
                 // create node and put it into the list
                 pnode = createNode(packetBuf, readLen, &addrBuf);
                 appendNode(pnode);
                 divertConsumeStep();
+                /***************** leave critical region ************************/
                 if (!ReleaseMutex(mutex)) {
-                    LOG("Failed to release mutex (%lu)", GetLastError());
-                    return 0;
+                    LOG("Falal: Failed to release mutex (%lu)", GetLastError());
+                    ABORT();
                 }
                 break;
             case WAIT_TIMEOUT:
@@ -320,11 +349,6 @@ static DWORD divertReadLoop(LPVOID arg) {
             case WAIT_FAILED:
                 LOG("Aquire failed.");
                 return 0;
-        }
-        if (stopLooping) {
-            // still allow exit gracefully
-            LOG("Stop read loop.");
-            break;
         }
     }
 
