@@ -11,7 +11,8 @@ Module* modules[MODULE_CNT] = {
     &lagModule,
     &dropModule,
     &throttleModule,
-    &oodModule
+    &oodModule,
+    &dupModule
 };
 
 // global iup handlers
@@ -135,8 +136,18 @@ static int uiOnDialogShow(Ihandle *ih, int state) {
     // only need to process on show
     HWND hWnd;
     BOOL exit;
+    HICON icon;
+    HINSTANCE hInstance;
     if (state != IUP_SHOW) return IUP_DEFAULT;
     hWnd = (HWND)IupGetAttribute(ih, "HWND");
+    hInstance = GetModuleHandle(NULL);
+
+    // set application icon
+    icon = LoadIcon(hInstance, "CLUMSY_ICON");
+    SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM)icon);
+    SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LPARAM)icon);
+
+    // try elevate and decides whether to exit
     exit = tryElevate(hWnd);
     return exit ? IUP_CLOSE : IUP_DEFAULT;
 }

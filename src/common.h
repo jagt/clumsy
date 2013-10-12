@@ -7,7 +7,7 @@
 #define CLUMSY_VERSION "0.0"
 #define MSG_BUFSIZE 512
 #define NAME_SIZE 16
-#define MODULE_CNT 4
+#define MODULE_CNT 5
 #define ICON_UPDATE_MS 200
 
 #define CONTROLS_HANDLE "__CONTROLS_HANDLE"
@@ -92,6 +92,7 @@ extern Module lagModule;
 extern Module dropModule;
 extern Module throttleModule;
 extern Module oodModule;
+extern Module dupModule;
 extern Module* modules[MODULE_CNT]; // all modules in a list
 
 // Iup GUI
