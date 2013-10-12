@@ -54,11 +54,6 @@ static void oodCloseDown(PacketNode *head, PacketNode *tail) {
     }
 }
 
-static __inline short oodCheckDirection(UINT8 dir) {
-    return (oodInbound && IS_INBOUND(dir))
-                || (oodOutbound && IS_OUTBOUND(dir));
-}
-
 // find the next packet fits the direction check or null
 static PacketNode* nextCorrectDirectionNode(PacketNode *p) {
     if (p == NULL) {
@@ -67,7 +62,7 @@ static PacketNode* nextCorrectDirectionNode(PacketNode *p) {
 
     do {
         p = p->next;
-    } while (p->next != NULL && !oodCheckDirection(p->addr.Direction));
+    } while (p->next != NULL && !checkDirection(p->addr.Direction, oodInbound, oodOutbound));
 
     return p->next == NULL ? NULL : p;
 }
@@ -110,7 +105,7 @@ static short oodProcess(PacketNode *head, PacketNode *tail) {
         PacketNode *pac = head->next;
         if (pac->next == tail) {
             // only contains a single packet, then pick it out and insert later
-            if (oodCheckDirection(pac->addr.Direction) && calcChance(chance)) {
+            if (checkDirection(pac->addr.Direction, oodInbound, oodOutbound) && calcChance(chance)) {
                 oodPacket = popNode(pac);
                 LOG("Ooo picked packet w/ chance %.1f%%, direction %s", chance/10.0, BOUND_TEXT(pac->addr.Direction));
                 return TRUE;

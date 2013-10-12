@@ -20,7 +20,7 @@ static PacketNode lagHeadNode = {0}, lagTailNode = {0};
 static PacketNode *bufHead = &lagHeadNode, *bufTail = &lagTailNode;
 static int bufSize = 0;
 
-static __inline short isBufEmpty() {
+static INLINE_FUNCTION short isBufEmpty() {
     short ret = bufHead->next == bufTail;
     if (ret) assert(bufSize == 0);
     return ret;
@@ -81,8 +81,7 @@ static short lagProcess(PacketNode *head, PacketNode *tail) {
     PacketNode *pac = tail->prev;
     // pick up all packets and fill in the current time
     while (bufSize < KEEP_AT_MOST && pac != head) {
-        if ((lagInbound && IS_INBOUND(pac->addr.Direction)) ||
-                (lagOutbound && IS_OUTBOUND(pac->addr.Direction))) {
+        if (checkDirection(pac->addr.Direction, lagInbound, lagOutbound)) {
             insertAfter(popNode(pac), bufHead)->timestamp = timeGetTime();
             ++bufSize;
             pac = tail->prev;

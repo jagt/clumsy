@@ -36,7 +36,7 @@ solution('clumsy')
 
         configuration("gmake")
             links({'kernel32', 'gdi32', 'comdlg32', 'uuid', 'ole32'}) -- additional libs
-            buildoptions({'-Wno-missing-braces'}) -- suppress a bug in gcc warns about {0} initialization
+            buildoptions({'-Wno-missing-braces', '--std=c99'}) -- suppress a bug in gcc warns about {0} initialization
             --linkoptions({'--std=c90'})
             -- notice that tdm-gcc use static runtime by default
             objdir('obj_vs')

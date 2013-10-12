@@ -15,6 +15,14 @@
 #define INTEGER_MAX "__INTEGER_MAX"
 #define INTEGER_MIN "__INTEGER_MIN"
 
+
+#ifdef __MINGW32__
+#define INLINE_FUNCTION __inline__
+#else
+#define INLINE_FUNCTION __inline
+#endif
+
+
 // seems mingw has no InterlockedExchange16, use builtin __atomic instead
 // TODO but seems 64bit have this, need to figure out why
 #ifdef __MINGW32__
@@ -98,10 +106,19 @@ void divertStop();
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
 
+short calcChance(short chance);
+
 #define BOUND_TEXT(b) ((b) == DIVERT_DIRECTION_INBOUND ? "IN" : "OUT")
 #define IS_INBOUND(b) ((b) == DIVERT_DIRECTION_INBOUND)
 #define IS_OUTBOUND(b) ((b) == DIVERT_DIRECTION_OUTBOUND)
-short calcChance(short chance);
+// inline helper for inbound outbound check
+static INLINE_FUNCTION
+BOOL checkDirection(UINT8 dir, short inbound, short outbound) {
+    return (inbound && IS_INBOUND(dir))
+                || (outbound && IS_OUTBOUND(dir));
+}
+
+
 
 // wraped timeBegin/EndPeriod to keep calling safe and end when exit
 #define TIMER_RESOLUTION 4

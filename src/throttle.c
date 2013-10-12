@@ -21,7 +21,7 @@ static PacketNode *bufHead = &throttleHeadNode, *bufTail = &throttleTailNode;
 static int bufSize = 0;
 static DWORD throttleStartTick = 0;
 
-static __inline short isBufEmpty() {
+static INLINE_FUNCTION short isBufEmpty() {
     short ret = bufHead->next == bufTail;
     if (ret) assert(bufSize == 0);
     return ret;
@@ -108,8 +108,7 @@ THROTTLE_START:
             PacketNode *pac = tail->prev;
             DWORD currentTick = timeGetTime();
             while (bufSize < KEEP_AT_MOST && pac != head) {
-                if ((throttleInbound && IS_INBOUND(pac->addr.Direction)) ||
-                        (throttleOutbound && IS_OUTBOUND(pac->addr.Direction))) {
+                if (checkDirection(pac->addr.Direction, throttleInbound, throttleOutbound)) {
                     insertAfter(popNode(pac), bufHead);
                     ++bufSize;
                     pac = tail->prev;
