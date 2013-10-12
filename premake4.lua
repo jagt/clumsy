@@ -118,6 +118,7 @@ solution('clumsy')
                     postbuildcommands({
                         "robocopy " .. divert_lib .." ../"   .. subdir .. '  *.dll *.sys *.inf > robolog.txt',
                         "robocopy " .. iup_lib .. " ../"   .. subdir .. ' iup.dll >> robolog.txt',
+                        "robocopy ../etc/ ../"   .. subdir .. ' config.txt >> robolog.txt',
                         "exit /B 0"
                     })
                 elseif platform == 'gmake' then 
@@ -125,6 +126,7 @@ solution('clumsy')
                         -- robocopy returns non 0 will fail make
                         'cp ' .. divert_lib .. "WinDivert.* ../" .. subdir,
                         'cp ' .. divert_lib .. "WdfCoInstaller01009.dll ../" .. subdir,
+                        "cp ../etc/config.txt ../" .. subdir,
                     })
                 end
         end

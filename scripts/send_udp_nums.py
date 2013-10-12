@@ -1,6 +1,7 @@
 # send incrementing packets containing numbers to given host
 # start up a server by using ncat
 # the static 5.59BETA1 version would work
+# http://nmap.org/dist/ncat-portable-5.59BETA1.zip
 # the server should be started with CRLF as EOF
 # eg: ncat -u -l -C localhost 9111
 import subprocess

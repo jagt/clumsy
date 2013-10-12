@@ -1,0 +1,27 @@
+# filters presets. clumsy will capture packets base filter criteria
+# each entry must contains single line
+# filter-name:filter-text
+# see <https://github.com/basil00/Divert/wiki/WinDivert-Documentation#7-filter-language> for details
+
+# loopback packets can only be filtered using 'outbound'.
+localhost ipv4 all:outbound and ip.DstAddr >= 127.0.0.1 and ip.DstAddr <= 127.255.255.255
+localhost ipv4 tcp:tcp and outbound and ip.DstAddr >= 127.0.0.1 and ip.DstAddr <= 127.255.255.255
+localhost ipv4 udp:udp and outbound and ip.DstAddr >= 127.0.0.1 and ip.DstAddr <= 127.255.255.255
+
+# more general
+all sending packets: outbound
+all receiving packets: inbound
+
+# more specific
+all ipv4 against specific ip: ip.DstAddr == 198.51.100.1 or ip.SrcAddr == 198.51.100.1
+tcp ipv4 against specific ip: tcp and (ip.DstAddr == 198.51.100.1 or ip.SrcAddr == 198.51.100.1)
+udp ipv4 against specific ip: udp and (ip.DstAddr == 198.51.100.1 or ip.SrcAddr == 198.51.100.1)
+all ipv4 against port: ip.DstPort == 12354 or ip.SrcPort == 12354 
+tcp ipv4 against port: tcp and (tcp.DstPort == 12354 or tcp.SrcPort == 12354)
+udp ipv4 against port: udp and (udp.DstPort == 12354 or udp.SrcPort == 12354)
+
+# ipv6 is supported but usually not that useful
+ipv6 all: ipv6
+
+# you can add your usual filters here for your own use:
+#http requests ONLY(data transmit on other ports): outbound and tcp.DstPort == 80

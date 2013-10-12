@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <direct.h>
 #include <time.h>
 #include <Windows.h>
@@ -20,6 +21,7 @@ Module* modules[MODULE_CNT] = {
 static Ihandle *dialog, *topFrame, *bottomFrame; 
 static Ihandle *statusLabel;
 static Ihandle *filterText, *filterButton;
+Ihandle *filterSelectList;
 // timer to update icons
 static Ihandle *timer;
 
@@ -28,12 +30,95 @@ static int uiOnDialogShow(Ihandle *ih, int state);
 static int uiStopCb(Ihandle *ih);
 static int uiStartCb(Ihandle *ih);
 static int uiTimerCb(Ihandle *ih);
+static int uiListSelectCb(Ihandle *ih, char *text, int item, int state);
 static void uiSetupModule(Module *module, Ihandle *parent);
 
+// serializing config files using a stupid custom format
+#define CONFIG_FILE "config.txt"
+#define CONFIG_MAX_RECORDS 64
+#define CONFIG_BUF_SIZE 4096
+typedef struct {
+    char* filterName;
+    char* filterValue;
+} filterRecord;
+UINT filtersSize;
+filterRecord filters[CONFIG_MAX_RECORDS] = {0};
+char configBuf[CONFIG_BUF_SIZE+2]; // add some padding to write \n
+
+// loading up filters and fill in
+void loadConfig() {
+    char path[MSG_BUFSIZE];
+    char *p;
+    FILE *f;
+    GetModuleFileName(NULL, path, MSG_BUFSIZE);
+    LOG("Executable path: %s", path);
+    p = strrchr(path, '\\');
+    if (p == NULL) p = strrchr(path, '/'); // holy shit
+    strcpy(p+1, CONFIG_FILE);
+    LOG("Config path: %s", path);
+    f = fopen(path, "r");
+    if (f) {
+        size_t len;
+        char *p, *last;
+        len = fread(configBuf, sizeof(char), CONFIG_BUF_SIZE, f);
+        if (len == CONFIG_BUF_SIZE) {
+            LOG("Config file is larger than %d bytes, get truncated.", CONFIG_BUF_SIZE);
+        }
+        // always patch in a newline at the end to ease parsing
+        configBuf[len] = '\n';
+        configBuf[len+1] = '\0';
+
+        // parse out the kv pairs. isn't quite safe
+        filtersSize = 0;
+        last = p = configBuf;
+        do {
+            // eat up empty lines
+EAT_SPACE:  while (isspace(*p)) {
+                ++p;
+            }
+            if (*p == '#') {
+                p = strchr(p, '\n');
+                if (!p) break;
+                p = p + 1;
+                goto EAT_SPACE;
+            }
+
+            // now we can start
+            last = p;
+            p = strchr(last, ':');
+            if (!p) break;
+            *p = '\0';
+            filters[filtersSize].filterName = last;
+            last = p + 1;
+            p = strchr(last, '\n');
+            if (!p) break;
+            filters[filtersSize].filterValue = last;
+            *p = '\0';
+            if (*(p-1) == '\r') *(p-1) = 0;
+            last = p = p + 1;
+            ++filtersSize;
+        } while (last && last - configBuf < CONFIG_BUF_SIZE);
+        LOG("Loaded %u records.", filtersSize);
+    }
+
+    if (!f || filtersSize == 0)
+    {
+        LOG("Failed to load from config. Fill in a simple one.");
+        // config is missing or ill-formed. fill in some simple ones
+        filters[filtersSize].filterName = "loopback packets";
+        filters[filtersSize].filterValue = "outbound and ip.DstAddr >= 127.0.0.1 and ip.DstAddr <= 127.255.255.255";
+        filtersSize = 1;
+    }
+}
+
 void init(int argc, char* argv[]) {
-    int ix;
-    Ihandle *topVbox, *bottomVbox, *dialogVBox;
+    UINT ix;
+    Ihandle *topVbox, *bottomVbox, *dialogVBox, *controlHbox;
     Ihandle *noneIcon, *doingIcon;
+
+    // fill in config
+    loadConfig();
+
     // iup inits
     IupOpen(&argc, &argv);
 
@@ -46,7 +131,13 @@ void init(int argc, char* argv[]) {
     topFrame = IupFrame(
         topVbox = IupVbox(
             filterText = IupText(NULL),
-            filterButton = IupButton("Start", NULL),
+            controlHbox = IupHbox(
+                filterButton = IupButton("Start", NULL),
+                IupFill(),
+                IupLabel("Presets:  "),
+                filterSelectList = IupList(NULL),
+                NULL
+            ),
             NULL
         )
     );
@@ -54,9 +145,24 @@ void init(int argc, char* argv[]) {
     IupSetAttribute(topFrame, "TITLE", "Filtering");
     IupSetAttribute(topFrame, "EXPAND", "HORIZONTAL");
     IupSetAttribute(filterText, "EXPAND", "HORIZONTAL");
+    IupSetAttribute(filterButton, "PADDING", "8x");
     IupSetCallback(filterButton, "ACTION", uiStartCb);
     IupSetAttribute(topVbox, "NCMARGIN", "4x4");
     IupSetAttribute(topVbox, "NCGAP", "4x2");
+    IupSetAttribute(controlHbox, "ALIGNMENT", "ACENTER");
+
+    // fill in options and setup callback
+    IupSetAttribute(filterSelectList, "VISIBLECOLUMNS", "24");
+    IupSetAttribute(filterSelectList, "DROPDOWN", "YES");
+    for (ix = 0; ix < filtersSize; ++ix) {
+        char ixBuf[4];
+        sprintf(ixBuf, "%d", ix+1); // ! staring from 1, following lua indexing
+        IupStoreAttribute(filterSelectList, ixBuf, filters[ix].filterName);
+    }
+    IupSetAttribute(filterSelectList, "VALUE", "1");
+    IupSetCallback(filterSelectList, "ACTION", (Icallback)uiListSelectCb);
+    // set filter text value since the callback won't take effect before main loop starts
+    IupSetAttribute(filterText, "VALUE", filters[0].filterValue);
 
     // functionalities frame 
     bottomFrame = IupFrame(
@@ -111,8 +217,6 @@ void init(int argc, char* argv[]) {
 }
 
 void startup() {
-    // set simple loopback default filter
-    IupStoreAttribute(filterText, "VALUE", "outbound and ip.DstAddr >= 127.0.0.1 and ip.DstAddr <= 127.255.255.255");
     // initialize seed
     srand((unsigned int)time(NULL));
 
@@ -225,6 +329,15 @@ static int uiTimerCb(Ihandle *ih) {
     return IUP_DEFAULT;
 }
 
+static int uiListSelectCb(Ihandle *ih, char *text, int item, int state) {
+    UNREFERENCED_PARAMETER(text);
+    UNREFERENCED_PARAMETER(ih);
+    if (state == 1) {
+        IupSetAttribute(filterText, "VALUE", filters[item-1].filterValue);
+    }
+    return IUP_DEFAULT;
+}
+
 static void uiSetupModule(Module *module, Ihandle *parent) {
     Ihandle *groupBox, *toggle, *controls, *icon;
     groupBox = IupHbox(
@@ -253,8 +366,6 @@ static void uiSetupModule(Module *module, Ihandle *parent) {
 }
 
 int main(int argc, char* argv[]) {
-    char cwd[MSG_BUFSIZE];
-    LOG("Working directory: %s", _getcwd(cwd, MSG_BUFSIZE));
     LOG("Is Run As Admin: %d", IsRunAsAdmin());
     LOG("Is Elevated: %d", IsElevated());
     init(argc, argv);

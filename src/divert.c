@@ -351,8 +351,6 @@ static DWORD divertReadLoop(LPVOID arg) {
                 return 0;
         }
     }
-
-    return 0;
 }
 
 void divertStop() {
