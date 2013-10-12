@@ -149,22 +149,34 @@ static int sendAllListPackets() {
         if (!DivertSend(divertHandle, pnode->packet, pnode->packetLen, &(pnode->addr), &sendLen)) {
             PDIVERT_ICMPHDR icmp_header;
             PDIVERT_ICMPV6HDR icmpv6_header;
+            PDIVERT_IPHDR ip_header;
+            PDIVERT_IPV6HDR ipv6_header;
             LOG("Failed to send a packet. (%lu)", GetLastError());
             // as noted in windivert help, reinject inbound icmp packets some times would fail
             // workaround this by resend them as outbound
             // TODO not sure is this even working as can't find a way to test
             //      need to document about this
-            DivertHelperParsePacket(pnode->packet, pnode->packetLen, NULL, NULL,
+            DivertHelperParsePacket(pnode->packet, pnode->packetLen, &ip_header, &ipv6_header,
                 &icmp_header, &icmpv6_header, NULL, NULL, NULL, NULL);
             if ((icmp_header || icmpv6_header) && IS_INBOUND(pnode->addr.Direction)) {
                 BOOL resent;
                 pnode->addr.Direction = DIVERT_DIRECTION_OUTBOUND;
+                if (ip_header) {
+                    UINT32 tmp = ip_header->SrcAddr;
+                    ip_header->SrcAddr = ip_header->DstAddr;
+                    ip_header->DstAddr = tmp;
+                } else if (ipv6_header) {
+                    UINT32 tmpArr[4];
+                    memcpy(tmpArr, ipv6_header->SrcAddr, sizeof(tmpArr));
+                    memcpy(ipv6_header->SrcAddr, ipv6_header->DstAddr, sizeof(tmpArr));
+                    memcpy(ipv6_header->DstAddr, tmpArr, sizeof(tmpArr));
+                }
                 resent = DivertSend(divertHandle, pnode->packet, pnode->packetLen, &(pnode->addr), &sendLen);
                 LOG("Resend failed inbound ICMP packets as outbound: %s", resent ? "SUCCESS" : "FAIL");
             }
         }
         if (sendLen < pnode->packetLen) {
-            // don't know how this can happen, or it needs to resent like good old UDP packet
+            // TODO don't know how this can happen, or it needs to be resend like good old UDP packet
             LOG("Internal Error: DivertSend truncated send packet.");
         }
         freeNode(pnode);

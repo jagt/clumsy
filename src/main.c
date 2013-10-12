@@ -73,9 +73,7 @@ void loadConfig() {
         last = p = configBuf;
         do {
             // eat up empty lines
-EAT_SPACE:  while (isspace(*p)) {
-                ++p;
-            }
+EAT_SPACE:  while (isspace(*p)) { ++p; }
             if (*p == '#') {
                 p = strchr(p, '\n');
                 if (!p) break;
@@ -89,7 +87,9 @@ EAT_SPACE:  while (isspace(*p)) {
             if (!p) break;
             *p = '\0';
             filters[filtersSize].filterName = last;
-            last = p + 1;
+            p += 1;
+            while (isspace(*p)) { ++p; } // eat potential space after :
+            last = p;
             p = strchr(last, '\n');
             if (!p) break;
             filters[filtersSize].filterValue = last;
