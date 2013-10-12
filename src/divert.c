@@ -339,6 +339,10 @@ static DWORD divertReadLoop(LPVOID arg) {
                 /***************** enter critical region ************************/
                 if (stopLooping) {
                     LOG("Lost last recved packet but user stopped. Stop read loop.");
+                    /***************** leave critical region ************************/
+                    if (!ReleaseMutex(mutex)) {
+                        LOG("Falal: Failed to release mutex on stopping (%lu). Will stop anyway.", GetLastError());
+                    }
                     return 0;
                 }
                 // create node and put it into the list

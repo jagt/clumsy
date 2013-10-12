@@ -10,18 +10,20 @@ from sys import argv, exit
 
 if __name__ == '__main__':
     if len(argv) < 3:
-        print "usage : python send_udp_nums.py <host> <port> [<period-in-ms>]"
+        print "usage : python send_udp_nums.py <host> <port> [<period-in-ms>|nosleep]"
         exit(1)
     if len(argv) == 3: argv.append('400')
     host, port, period = argv[1:]
-    period = int(period)
+    if not period == 'nosleep':
+        period = int(period)
     cnt = 0
     ncat = subprocess.Popen(['ncat', '-u', '-C', host, port], stdin=subprocess.PIPE)
     while True: # send till die
         ncat.stdin.write('%d\r\n' % (cnt % 100))
         cnt += 1
         print cnt
-        sleep(period/1000.0)
+        if not period == 'nosleep':
+            sleep(period/1000.0)
 
 
 
