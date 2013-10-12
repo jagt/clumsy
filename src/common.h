@@ -60,6 +60,7 @@ void initPacketNodeList();
 PacketNode* createNode(char* buf, UINT len, DIVERT_ADDRESS *addr);
 void freeNode(PacketNode *node);
 PacketNode* popNode(PacketNode *node);
+PacketNode* insertBefore(PacketNode *node, PacketNode *target);
 PacketNode* insertAfter(PacketNode *node, PacketNode *target);
 PacketNode* appendNode(PacketNode *node);
 short isListEmpty();
