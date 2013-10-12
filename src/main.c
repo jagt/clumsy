@@ -12,7 +12,8 @@ Module* modules[MODULE_CNT] = {
     &dropModule,
     &throttleModule,
     &oodModule,
-    &dupModule
+    &dupModule,
+    &tamperModule
 };
 
 // global iup handlers
