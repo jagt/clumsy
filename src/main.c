@@ -31,6 +31,7 @@ static int uiStopCb(Ihandle *ih);
 static int uiStartCb(Ihandle *ih);
 static int uiTimerCb(Ihandle *ih);
 static int uiListSelectCb(Ihandle *ih, char *text, int item, int state);
+static int uiFilterTextCb(Ihandle *ih);
 static void uiSetupModule(Module *module, Ihandle *parent);
 
 // serializing config files using a stupid custom format
@@ -145,6 +146,7 @@ void init(int argc, char* argv[]) {
     IupSetAttribute(topFrame, "TITLE", "Filtering");
     IupSetAttribute(topFrame, "EXPAND", "HORIZONTAL");
     IupSetAttribute(filterText, "EXPAND", "HORIZONTAL");
+    IupSetCallback(filterText, "VALUECHANGED_CB", (Icallback)uiFilterTextCb);
     IupSetAttribute(filterButton, "PADDING", "8x");
     IupSetCallback(filterButton, "ACTION", uiStartCb);
     IupSetAttribute(topVbox, "NCMARGIN", "4x4");
@@ -335,6 +337,13 @@ static int uiListSelectCb(Ihandle *ih, char *text, int item, int state) {
     if (state == 1) {
         IupSetAttribute(filterText, "VALUE", filters[item-1].filterValue);
     }
+    return IUP_DEFAULT;
+}
+
+static int uiFilterTextCb(Ihandle *ih)  {
+    UNREFERENCED_PARAMETER(ih);
+    // unselect list
+    IupSetAttribute(filterSelectList, "VALUE", "0");
     return IUP_DEFAULT;
 }
 
