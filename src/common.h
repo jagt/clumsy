@@ -99,6 +99,13 @@ extern Module dupModule;
 extern Module tamperModule;
 extern Module* modules[MODULE_CNT]; // all modules in a list
 
+// status for sending packets, 
+#define SEND_STATUS_NONE 0
+#define SEND_STATUS_SEND 1
+#define SEND_STATUS_FAIL -1
+extern volatile short sendState;
+
+
 // Iup GUI
 void showStatus(const char* line);
 

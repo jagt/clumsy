@@ -147,6 +147,8 @@ static int sendAllListPackets() {
         pnode = popNode(tail->prev);
         sendLen = 0;
         assert(pnode != head);
+        // FIXME inbound injection on any kind of packet is failing with a very high percentage
+        //       need to contact windivert auther and wait for next release
         if (!DivertSend(divertHandle, pnode->packet, pnode->packetLen, &(pnode->addr), &sendLen)) {
             PDIVERT_ICMPHDR icmp_header;
             PDIVERT_ICMPV6HDR icmpv6_header;
@@ -174,12 +176,21 @@ static int sendAllListPackets() {
                 }
                 resent = DivertSend(divertHandle, pnode->packet, pnode->packetLen, &(pnode->addr), &sendLen);
                 LOG("Resend failed inbound ICMP packets as outbound: %s", resent ? "SUCCESS" : "FAIL");
+                InterlockedExchange16(&sendState, SEND_STATUS_SEND);
+            } else {
+                InterlockedExchange16(&sendState, SEND_STATUS_FAIL);
+            }
+        } else {
+            if (sendLen < pnode->packetLen) {
+                // TODO don't know how this can happen, or it needs to be resend like good old UDP packet
+                LOG("Internal Error: DivertSend truncated send packet.");
+                InterlockedExchange16(&sendState, SEND_STATUS_FAIL);
+            } else {
+                InterlockedExchange16(&sendState, SEND_STATUS_SEND);
             }
         }
-        if (sendLen != 0 && sendLen < pnode->packetLen) {
-            // TODO don't know how this can happen, or it needs to be resend like good old UDP packet
-            LOG("Internal Error: DivertSend truncated send packet.");
-        }
+
+
         freeNode(pnode);
         ++sendCount;
     }

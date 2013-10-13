@@ -17,12 +17,15 @@ Module* modules[MODULE_CNT] = {
     &tamperModule
 };
 
+volatile short sendState = SEND_STATUS_NONE;
+
 // global iup handlers
 static Ihandle *dialog, *topFrame, *bottomFrame; 
 static Ihandle *statusLabel;
 static Ihandle *filterText, *filterButton;
 Ihandle *filterSelectList;
 // timer to update icons
+static Ihandle *stateIcon;
 static Ihandle *timer;
 
 void showStatus(const char *line);
@@ -115,7 +118,7 @@ EAT_SPACE:  while (isspace(*p)) { ++p; }
 void init(int argc, char* argv[]) {
     UINT ix;
     Ihandle *topVbox, *bottomVbox, *dialogVBox, *controlHbox;
-    Ihandle *noneIcon, *doingIcon;
+    Ihandle *noneIcon, *doingIcon, *errorIcon;
 
     // fill in config
     loadConfig();
@@ -133,6 +136,7 @@ void init(int argc, char* argv[]) {
         topVbox = IupVbox(
             filterText = IupText(NULL),
             controlHbox = IupHbox(
+                stateIcon = IupLabel(NULL),
                 filterButton = IupButton("Start", NULL),
                 IupFill(),
                 IupLabel("Presets:  "),
@@ -152,6 +156,10 @@ void init(int argc, char* argv[]) {
     IupSetAttribute(topVbox, "NCMARGIN", "4x4");
     IupSetAttribute(topVbox, "NCGAP", "4x2");
     IupSetAttribute(controlHbox, "ALIGNMENT", "ACENTER");
+
+    // setup state icon
+    IupSetAttribute(stateIcon, "IMAGE", "none_icon");
+    IupSetAttribute(stateIcon, "PADDING", "4x");
 
     // fill in options and setup callback
     IupSetAttribute(filterSelectList, "VISIBLECOLUMNS", "24");
@@ -179,12 +187,16 @@ void init(int argc, char* argv[]) {
     // create icons
     noneIcon = IupImage(8, 8, icon8x8);
     doingIcon = IupImage(8, 8, icon8x8);
+    errorIcon = IupImage(8, 8, icon8x8);
     IupSetAttribute(noneIcon, "0", "BGCOLOR");
     IupSetAttribute(noneIcon, "1", "224 224 224");
     IupSetAttribute(doingIcon, "0", "BGCOLOR");
     IupSetAttribute(doingIcon, "1", "109 170 44");
+    IupSetAttribute(errorIcon, "0", "BGCOLOR");
+    IupSetAttribute(errorIcon, "1", "208 70 72");
     IupSetHandle("none_icon", noneIcon);
     IupSetHandle("doing_icon", doingIcon);
+    IupSetHandle("error_icon", errorIcon);
 
     // setup module uis
     for (ix = 0; ix < MODULE_CNT; ++ix) {
@@ -294,8 +306,11 @@ static int uiStopCb(Ihandle *ih) {
     // stop timer and clean up icons
     IupSetAttribute(timer, "RUN", "NO");
     for (ix = 0; ix < MODULE_CNT; ++ix) {
+        modules[ix]->processTriggered = 0; // use = here since is threads already stopped
         IupSetAttribute(modules[ix]->iconHandle, "IMAGE", "none_icon");
     }
+    sendState = SEND_STATUS_NONE;
+    IupSetAttribute(stateIcon, "IMAGE", "none_icon");
 
     showStatus("Successfully stoped. Edit criteria and click Start to begin again.");
     return IUP_DEFAULT;
@@ -322,10 +337,26 @@ static int uiTimerCb(Ihandle *ih) {
     for (ix = 0; ix < MODULE_CNT; ++ix) {
         if (modules[ix]->processTriggered) {
             IupSetAttribute(modules[ix]->iconHandle, "IMAGE", "doing_icon");
-            modules[ix]->processTriggered = 0; 
+            InterlockedAnd16(&(modules[ix]->processTriggered), 0);
         } else {
             IupSetAttribute(modules[ix]->iconHandle, "IMAGE", "none_icon");
         }
+    }
+
+    // update global send status icon
+    switch (sendState)
+    {
+    case SEND_STATUS_NONE:
+        IupSetAttribute(stateIcon, "IMAGE", "none_icon");
+        break;
+    case SEND_STATUS_SEND:
+        IupSetAttribute(stateIcon, "IMAGE", "doing_icon");
+        InterlockedAnd16(&sendState, SEND_STATUS_NONE);
+        break;
+    case SEND_STATUS_FAIL:
+        IupSetAttribute(stateIcon, "IMAGE", "error_icon");
+        InterlockedAnd16(&sendState, SEND_STATUS_NONE);
+        break;
     }
 
     return IUP_DEFAULT;
