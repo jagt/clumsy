@@ -23,15 +23,24 @@
 #endif
 
 
-// seems mingw has no InterlockedExchange16, use builtin __atomic instead
-// TODO but seems 64bit have this, need to figure out why
+// my mingw seems missing some of the functions
+// undef all mingw linked interlock* and use __atomic gcc builtins
 #ifdef __MINGW32__
-#ifndef InterlockedExchange16
+// and 16 seems to be broken
+#ifdef InterlockedAnd16
+#undef InterlockedAnd16
+#endif
+#define InterlockedAnd16(p, val) (__atomic_and_fetch((short*)(p), (val), __ATOMIC_SEQ_CST))
+
+#ifdef InterlockedExchange16
+#undef InterlockedExchange16
+#endif
 #define InterlockedExchange16(p, val) (__atomic_exchange_n((short*)(p), (val), __ATOMIC_SEQ_CST))
+
+#ifdef InterlockedIncrement16
+#undef InterlockedIncrement16
 #endif
-#ifndef InterlockedIncrement16
 #define InterlockedIncrement16(p) (__atomic_add_fetch((short*)(p), 1, __ATOMIC_SEQ_CST))
-#endif
 #endif
 
 #ifdef _DEBUG
