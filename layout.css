@@ -1,0 +1,55 @@
+body {
+    color: #333333;
+    background-color: #F8F8F8;
+    line-height: 1.3em;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: Verdana, Geneva, sans-serif;
+    font-weight: normal;
+}
+
+p, span, .textlist {
+    font-family: Georgia, Times, "Times New Roman", serif;
+}
+
+pre, code {
+    font-family: Consolas, monaco, monospace;
+}
+
+a {
+    color: #333333;
+}
+
+.header {
+    border-bottom: 1px solid gray; 
+    font-family: Verdana, Geneva, sans-serif;
+    font-size: 80%;
+    margin-top: 4px;
+}
+
+.header li a {
+    border: 1px solid gray;
+    border-top-left-radius: 2px;
+    border-top-right-radius: 2px;
+    margin-bottom: -1px;
+}
+
+.header .pure-menu-selected a {
+    border-bottom: 1px solid #F8F8F8;
+}
+
+.title {
+    background: url('clumsy-icon.png') no-repeat center left;
+    background-size: 48px;
+    padding: 1em 0;
+    margin: 1em 0.5em;
+}
+.title h1 {
+    margin: 0 0 0 64px;
+}
+
+.centered {
+    margin: 0 auto;
+    max-width: 960px;
+}
