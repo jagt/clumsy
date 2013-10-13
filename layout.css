@@ -6,6 +6,9 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
     font-family: Verdana, Geneva, sans-serif;
+}
+
+h1 {
     font-weight: normal;
 }
 
@@ -52,4 +55,12 @@ a {
 .centered {
     margin: 0 auto;
     max-width: 960px;
+}
+
+.demo {
+    display: block;
+    margin: 0 auto;
+    padding: 4px;
+    border: 1px solid gray;
+    border-radius: 2px;
 }
