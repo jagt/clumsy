@@ -1,1 +1,41 @@
-hello
+<!DOCTYPE html>
+<html>
+<head>
+    <title>clumsy, an utility for simulating broken network for Windows Vista / Windows 7 and above</title>
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.3.0/pure-min.css">
+    <link rel="stylesheet" href="layout.css">
+</head>
+<body>
+<div class="pure-g">
+<div class="pure-u-1">
+    <div class="header">
+        <div class="pure-menu pure-menu-open pure-menu-horizontal centered">
+        <ul>
+            <li class="pure-menu-selected"><a href="#">About</a></li>
+            <li><a href="#">Download</a></li>
+        </ul>
+        </div>
+    </div>
+    <div class="centered">
+        <div class="title">
+        <h1>clumsy 0.01</h1>
+        </div>
+        <p>
+            <strong>clumsy makes your network condition on Windows significantly worse, but in a controlled and interactive manner.</strong>
+            <br>
+            <br>
+            Leveraging the awesome <a href="">WinDivert library</a>, clumsy stops living network packets and capture them, introduces aritificial lag/drop/tamper/else  on demand, then send them away. Whether you want to track down weird bugs related to broken network, or evaluating your application on poor connections, clumsy will come in handy with awesome features: 
+        </p>
+        <ul class="textlist">
+            <li>No need for proxy setup or code change in your application.</li>
+            <li>System wide network capturing means it works on any application.</li>
+            <li>Works even if you're connecting from localhost to localhost.</li>
+            <li>Your application keeps running, while clumsy can start and stop anytime.</li>
+            <li>Interactive controll how bad the network can be, with enough feedback to tell you what's going on.</li>
+        </ul>
+    </div>
+    <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+</div>
+</div>
+</body>
+</html>
