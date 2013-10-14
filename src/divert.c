@@ -1,6 +1,7 @@
-#include <stdio.h>
+#include <stdlib.h>
 #include <memory.h>
 #include <winsock2.h>
+#include <Ws2tcpip.h>
 #include "divert.h"
 #include "common.h"
 #define DIVERT_PRIORITY 0
@@ -76,9 +77,89 @@ void dumpPacket(char *buf, int len, PDIVERT_ADDRESS paddr) {
 #define dumpPacket(x, y, z)
 #endif
 
+// TODO not really working...
+// as windivert can't reinject inbound loopback packets, here simply try to exclude
+// them from all filters. append user filter by 'and not (ip.SrcAddr = x.x.x.x ...)'
+// to not capture all packets send from localhost by other ip address names
+static BOOL patchFilter(char buf[]) {
+    char hostname[256];
+    char ipStr[INET6_ADDRSTRLEN];
+    char ipFilterBuf[INET6_ADDRSTRLEN+32];
+    struct addrinfo hints, *hostInfo, *p;
+    WSADATA wsaData;
+    int ix = 0;
+    BOOL hasOnlySpace = TRUE;
+
+    while(*buf != '\0') {
+        hasOnlySpace = isspace(*buf);
+        ++buf;
+    }
+
+    if (hasOnlySpace) return FALSE;
+
+    *(buf++) = ' ';
+    *buf = '\0';
+
+    // get all ip addresses 
+
+    if (WSAStartup(MAKEWORD(1, 1), &wsaData) != 0) {
+        LOG("WSAStartup failed.");
+        return FALSE;
+    }
+
+    if (gethostname(hostname, sizeof(hostname)) != 0) {
+        LOG("WSAStartup failed.");
+        return FALSE;
+    }
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC; // need both ipv4 and ipv6
+    if (getaddrinfo(hostname, NULL, &hints, &hostInfo) != 0) {
+        LOG("getaddrinfo failed");
+        return FALSE;
+    }
+    
+    strcat(buf, "and not (inbound and ");
+    for (p = hostInfo; p != NULL; p = p->ai_next) {
+        if (p->ai_family == AF_INET) {
+            struct sockaddr_in *ipv4 = (struct sockaddr_in *)p->ai_addr;
+            inet_ntop(AF_INET, &(ipv4->sin_addr), ipStr, sizeof(ipStr));
+            LOG("ipv4: %s", ipStr);
+            sprintf(ipFilterBuf, "ip.SrcAddr == %s or ", ipStr);
+            strcat(buf, ipFilterBuf);
+        } else if (p->ai_family == AF_INET6) {
+            struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)p->ai_addr;
+            inet_ntop(AF_INET6, &(ipv6->sin6_addr), ipStr, sizeof(ipStr));
+            LOG("ipv6: %s", ipStr);
+            sprintf(ipFilterBuf, "ipv6.SrcAddr == %s or ", ipStr);
+            strcat(buf, ipFilterBuf);
+        }
+    }
+    // back track a bit and find the last of
+    LOG("wtf %s", buf);
+    buf = strrchr(buf, 'o');
+    assert(buf);
+    *buf = '\0';
+    strcat(buf, ")");
+
+    return TRUE;
+}
+
 int divertStart(const char *filter, char buf[]) {
     int ix;
-    divertHandle = DivertOpen(filter, DIVERT_LAYER_NETWORK, DIVERT_PRIORITY, 0);
+    char patched[FILTER_BUFSIZE] = {0};
+    strcpy(patched, filter);
+
+    // FIXME patching the filters doesn't really help.
+    /*
+    if (!patchFilter(patched)) {
+        strcpy(buf, "Failed to patch filter text.");
+        return FALSE;
+    }
+    LOG("Patched filter: %s", patched);
+    */
+
+    divertHandle = DivertOpen(patched, DIVERT_LAYER_NETWORK, DIVERT_PRIORITY, 0);
     if (divertHandle == INVALID_HANDLE_VALUE) {
         DWORD lastError = GetLastError();
         if (lastError == ERROR_INVALID_PARAMETER) {
@@ -155,6 +236,7 @@ static int sendAllListPackets() {
             PDIVERT_IPHDR ip_header;
             PDIVERT_IPV6HDR ipv6_header;
             LOG("Failed to send a packet. (%lu)", GetLastError());
+            dumpPacket(pnode->packet, pnode->packetLen, &(pnode->addr));
             // as noted in windivert help, reinject inbound icmp packets some times would fail
             // workaround this by resend them as outbound
             // TODO not sure is this even working as can't find a way to test
