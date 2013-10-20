@@ -51,6 +51,13 @@ a {
 .title h1 {
     margin: 0 0 0 64px;
 }
+.title-no-image {
+    padding: 1em 0;
+    margin: 1em 0;
+}
+.title-no-image h1 {
+    margin: 0;
+}
 
 .centered {
     margin: 0 auto;
@@ -63,4 +70,34 @@ a {
     padding: 4px;
     border: 1px solid gray;
     border-radius: 2px;
+}
+
+.footer {
+    margin-bottom: 2em;
+    text-align: right;
+}
+.footer p {
+    margin-right: 2em;
+}
+
+/* details boxes */
+.detailbox {
+    padding: 0.4em 0.6em;
+}
+
+.leftbox {
+    width: 40%;
+    float: left;
+    height: 6em;
+}
+.arrowbox {
+    width: 20%;
+    float: left;
+    height: 6em;
+    vertical-align: center;
+}
+.rightbox {
+    width: 40%;
+    float: left;
+    height: 6em;
 }

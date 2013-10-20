@@ -4,6 +4,9 @@
     <title>clumsy, an utility for simulating broken network for Windows Vista / Windows 7 and above</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.3.0/pure-min.css">
     <link rel="stylesheet" href="layout.css">
+<!--[if lte IE 8]>
+    <link rel="stylesheet" href="ie8.css">
+<![endif]-->
 </head>
 <body>
 <div class="pure-g">
@@ -11,38 +14,64 @@
     <div class="header">
         <div class="pure-menu pure-menu-open pure-menu-horizontal centered">
         <ul>
-            <li class="pure-menu-selected"><a href="#">About</a></li>
-            <li><a href="#">Download</a></li>
-            <li><a href="#">Manual</a></li>
+            <li class="pure-menu-selected"><a href="index.html">About</a></li>
+            <li><a href="download.html">Download</a></li>
+            <li><a href="download.html">Manual</a></li>
         </ul>
         </div>
     </div>
     <div class="centered">
         <div class="title">
-        <h1>clumsy 0.01</h1>
+        <h1>clumsy 0.1</h1>
         </div>
         <p>
-            <strong>clumsy makes your network condition on Windows significantly worse, but in a controlled and interactive manner.</strong>
+            <strong>clumsy makes your network condition on Windows significantly worse, but in a managed and interactive manner.</strong>
         </p>
         <h4>Introduction</h4>
         <p>
-            Leveraging the awesome <a href="">WinDivert library</a>, clumsy stops living network packets and capture them, introduces aritificial lag/drop/tamper/else  on demand, then send them away. Whether you want to track down weird bugs related to broken network, or evaluating your application on poor connections, clumsy will come in handy with awesome features: 
+            Leveraging the awesome <a href="">WinDivert library</a>, clumsy stops living network packets and capture them, lag/drop/tamper/.. the packets on demand, then send them away. Whether you want to track down weird bugs related to broken network, or evaluate your application on poor connections, clumsy will come in handy:
         </p>
         <ul class="textlist">
+            <li>No installation.</li>
             <li>No need for proxy setup or code change in your application.</li>
             <li>System wide network capturing means it works on any application.</li>
-            <li>Works even if you're connecting from localhost to localhost.</li>
+            <li>Works even if you're offline (ie, connecting from localhost to localhost).</li>
             <li>Your application keeps running, while clumsy can start and stop anytime.</li>
-            <li>Interactive controll how bad the network can be, with enough feedback to tell you what's going on.</li>
+            <li>Interactive controll how bad the network can be, with enough visual feedback to tell you what's going on.</li>
         </ul>
 
         <h4>In Action</h4>
         <p>
-            Here's a demo of clumsy working on a localhost udp server, illustrated as animated gif:
+            Here's a demo of clumsy working on a netcat listening for localhost udp packets, illustrated as animated gif.<br>
+            If you figured out what's going on then go to <a href="download">Download</a> page and give it a try! If not, scroll on:
         </p>
         <img class="demo" src="clumsy-demo.gif">
+
+        <h4>Details</h4>
+        <p>
+            clumsy will choose which packets to capture by given <i>filter</i>, in which in can specify whether it's inbound or outbound, tcp or udp, socket port or ip, or a logical combination of many of those criterias. When started clumsy will only capture packets based on the filter, leaving others untouched.
+        </p>
+        <p>
+            After packets are captured, you can choose to enable provided functions to worsen perspective network condition:
+        </p>
+        <ol class="textlist">
+            <li>Lag, hold the packets for a short period of time to emulate network lagging.</li>
+            <li>Drop, randomly discard packets.</li>
+            <li>Throttle, block traffic for a given time frame, then send them in a single batch.</li>
+            <li>Duplicate, send cloned packets right after to the original one.</li>
+            <li>Out of order, re-arrange the order of packets.</li>
+            <li>Tamper, nudge bits of packet's content.</li>
+        </ol>
+        <p>
+            Though nowadays it seems everybody have high speed broadband Internet connection, it's still important to face the fact that network transportation isn't always reliable. You don't want a duplicated UDP packet to crash your application. Properly handle this usually requires adding more code in their projects, and it's not always easy nor possible. Hopefully clumsy can provide an easy and painless (though suboptimal) option to do this for busy developers.
+        </p>
+        <p>
+            The project repository is on <a href="https://github.com/jagt/clumsy">github</a>. Download clumsy <a href="download.html">here</a>. But before you actually use it, be sure to read the <a href="manual.html">manual</a> to know its capabilities and limitations.
+        </p>
+        <hr>
+        <div class="footer"><span><a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#106;&#97;&#103;&#116;&#116;&#116;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;">&#106;&#97;&#103;&#116;&#116;&#116;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;</a></span></div>
     </div>
-    <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+    <script type="text/javascript" src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-2.0.1.min.js"></script>
 </div>
 </div>
 </body>
