@@ -12,8 +12,8 @@ Module* modules[MODULE_CNT] = {
     &lagModule,
     &dropModule,
     &throttleModule,
-    &oodModule,
     &dupModule,
+    &oodModule,
     &tamperModule
 };
 
