@@ -40,6 +40,23 @@
         <p>
             If you have Visual Studio 2012 or TDM-GCC 4.8.1 installed then building is rather easy. Currently no other environment is supported.
         </p>
+        <p>
+            Clone the repository. Then you'll need <a href="http://industriousone.com/premake/download">premake 4.4-beta4</a> to build the solution or makefiles. premake currently can only generate VS2010 solution file. Open it in VS2012 and choose upgrade works fine. All external dependencies are included in the repo, so it should build out of the box.
+            <pre>
+git clone https://github.com/jagt/clumsy.git 
+premake4 vs2010
+premake4 gmake
+            </pre>
+        </p>
+        <p>
+            If you choose to build using VS2012, remember the runtime <strong>MUST</strong> be dynamically linked. This is due to provided library binaries are using dynamic runtime. This means if you want to distribute your builds, the user needs to install <a href="http://www.microsoft.com/en-us/download/details.aspx?id=30679">VS2012 runtime</a>. It is recommended to use the awesome <a href="http://tdm-gcc.tdragon.net/">TDM64-GCC 4.8.1</a> to build the project. It would generate binaries without other dependencies execpt those are included here. This is also how the provided clumsy binaries above are built.
+            <pre>
+mingw32-make -C build CC=gcc config=debug32
+mingw32-make -C build CC=gcc config=debug64
+mingw32-make -C build CC=gcc config=release32
+mingw32-make -C build CC=gcc config=release64
+            </pre>
+        </p>
         <hr>
         <div class="footer"><span><a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#106;&#97;&#103;&#116;&#116;&#116;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;">&#106;&#97;&#103;&#116;&#116;&#116;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;</a></span></div>
     </div>

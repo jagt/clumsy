@@ -80,24 +80,8 @@ a {
     margin-right: 2em;
 }
 
-/* details boxes */
-.detailbox {
-    padding: 0.4em 0.6em;
+pre {
+    margin: 0 4em;
 }
 
-.leftbox {
-    width: 40%;
-    float: left;
-    height: 6em;
-}
-.arrowbox {
-    width: 20%;
-    float: left;
-    height: 6em;
-    vertical-align: center;
-}
-.rightbox {
-    width: 40%;
-    float: left;
-    height: 6em;
-}
+
