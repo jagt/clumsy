@@ -72,12 +72,22 @@ a {
     border-radius: 2px;
 }
 
+.centered-img {
+    display: block;
+    margin: 0 auto;
+}
+
 .footer {
     margin-bottom: 2em;
     text-align: right;
 }
 .footer p {
     margin-right: 2em;
+}
+
+.snap {
+    margin-top: 0;
+    margin-bottom: 0;
 }
 
 pre {
