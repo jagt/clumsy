@@ -19,7 +19,8 @@ if __name__ == '__main__':
     cnt = 0
     ncat = subprocess.Popen(['ncat', '-u', '-C', host, port], stdin=subprocess.PIPE)
     while True: # send till die
-        ncat.stdin.write('%d\r\n' % (cnt % 100))
+        ncat.stdin.write('%s\r\n' % ('-' * (1 + (cnt % 8))))
+        #ncat.stdin.write('%d\r\n' % (cnt % 100))
         cnt += 1
         print cnt
         if not period == 'nosleep':
