@@ -57,6 +57,19 @@ mingw32-make -C build CC=gcc config=release32
 mingw32-make -C build CC=gcc config=release64
             </pre>
         </p>
+
+        <h4>Technologies</h4>
+        <p>
+        Here's a list of things used to build clumsy. 
+        <ul class="textlist">
+        <li><a href="http://reqrypt.org/windivert.html">WinDivert</a> used to handle the magical Windows packet capturing/reinjecting. It installs network drivers at runtime and removes it when closing, encapsuled the underdocumented Windows Filtering Platform, does a bunch of things that non Windows developers can hardly figure out how in months. WinDivert jam all these into a handful of functions for you to use for free, while similar commercial solution costs thousands.</li>
+        <li><a href="http://www.tecgraf.puc-rio.br/iup/">IUP Portable User Interface</a> ANSI C library to build <i>native</i> cross platform GUI. It's so wonderfully designed and you can pick it up in a single day, and it's a full funcion GUI toolkit in C. Think about it.</li>
+        <li><a href="http://www.cockos.com/licecap/">LICEcap</a> free and open source gif capturing that just works.</li>
+        </ul>
+        </p>
+
+        <h4>License</h4>
+        <p><a href="http://opensource.org/licenses/MIT">The MIT License (MIT)</a></p>
         <hr>
         <div class="footer"><span><a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#106;&#97;&#103;&#116;&#116;&#116;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;">&#106;&#97;&#103;&#116;&#116;&#116;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;</a></span></div>
     </div>
