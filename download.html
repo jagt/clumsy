@@ -41,7 +41,7 @@
             If you have Visual Studio 2012 or TDM-GCC 4.8.1 installed then building is rather easy. Currently no other environment is supported.
         </p>
         <p>
-            Clone the repository. Then you'll need <a href="http://industriousone.com/premake/download">premake 4.4-beta4</a> to build the solution or makefiles. premake currently can only generate VS2010 solution file. Open it in VS2012 and choose upgrade works fine. All external dependencies are included in the repo, so it should build out of the box.
+            Clone the <a href="https://github.com/jagt/clumsy">repository</a>. Then you'll need <a href="http://industriousone.com/premake/download">premake 4.4-beta4</a> to build the solution or makefiles. premake currently can only generate VS2010 solution file. Open it in VS2012 and choose upgrade works fine. All external dependencies are included in the repo, so it should build out of the box.
             <pre>
 git clone https://github.com/jagt/clumsy.git 
 premake4 vs2010
@@ -62,7 +62,7 @@ mingw32-make -C build CC=gcc config=release64
         <p>
         Here's a list of things used to build clumsy. 
         <ul class="textlist">
-        <li><a href="http://reqrypt.org/windivert.html">WinDivert</a> used to handle the magical Windows packet capturing/reinjecting. It installs network drivers at runtime and removes it when closing, encapsuled the underdocumented Windows Filtering Platform, does a bunch of things that non Windows developers can hardly figure out how in months. WinDivert jam all these into a handful of functions for you to use for free, while similar commercial solution costs thousands.</li>
+        <li><a href="http://reqrypt.org/windivert.html">WinDivert</a> used to handle the magical Windows packet capturing/reinjecting. It installs network drivers at runtime and removes it when closing, encapsuled the underdocumented Windows Filtering Platform, does a bunch of things that non Windows developers can hardly figure out how in years. WinDivert jam all these into a handful of functions for you to use for free, while similar commercial solution costs thousands.</li>
         <li><a href="http://www.tecgraf.puc-rio.br/iup/">IUP Portable User Interface</a> ANSI C library to build <i>native</i> cross platform GUI. It's so wonderfully designed and you can pick it up in a single day, and it's a full funcion GUI toolkit in C. Think about it.</li>
         <li><a href="http://www.cockos.com/licecap/">LICEcap</a> free and open source gif capturing that just works.</li>
         </ul>
