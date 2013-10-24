@@ -15,8 +15,8 @@
         <div class="pure-menu pure-menu-open pure-menu-horizontal centered">
         <ul>
             <li><a href="index.html">About</a></li>
-            <li class="pure-menu-selected"><a href="download.html">Download</a></li>
-            <li><a href="manual.html">Manual</a></li>
+            <li><a href="download.html">Download</a></li>
+            <li class="pure-menu-selected"><a href="manual.html">Manual</a></li>
         </ul>
         </div>
     </div>
@@ -25,22 +25,73 @@
         <h1>Manual</h1>
         </div>
         <h4>Terminalogy</h4>
-        <p>Here're a list of terminalogies that would be repeatly used in this page. It's pretty easy to understand though.</p>
+        <p>Here're a list of terminalogies that would be repeatly used on this page. It's pretty easy to understand though.</p>
         <ul class="textlist">
             <li><strong>Loopback packets</strong>: packets send from <i>localhost</i> (ie 127.0.0.1) to <i>localhost</i>.</li>
             <li><strong>Inbound packets</strong>: packets send <i>in</i> to your computer. It can be from somewhere else and also from your computer.</li>
             <li><strong>Outbound packets</strong>: packets send <i>out</i> from your computer.</li>
-            <li><strong>Reinjecting packets</strong>:</li>
+            <li><strong>Filtering</strong>: you often want to select a subset of interested network packets for clumsy to process. This is done by provide a <i>filter</i> to specify which IP, protocol, or other criterias.</li>
+            <li><strong>Capturing packets</strong>: clumsy needs to intercept the packets from your application so it can process it. So when your applicatioon is sending/receiving a packet, clumsy would <i>capture</i> it.</li>
+            <li><strong>Reinjecting packets</strong>: after we captured the packets, we need to let them of again so your application can get it. The process is called <i>reinjecting</i>.</li>
         </ul>
 
         <h4>Limitations</h4>
         <p><strong>Be sure you don't skip this part.</strong></p>
         <p>
-        <ol class="textlist">
-            <li>Inbound packets can't be </li>
-            <li>Loopback packets are captured twice.</li>
-        </ol>
+            There's some issues with no easy workaround found. So here's a list of limitations that you should be aware of before using clumsy.
         </p>
+        <ol class="textlist">
+            <li>Loopback inbound packets can't be captured or reinjected.<br>
+            When you think about it, it's really difficult to tell it's an inbound or outbound packets when you're sending packets from the computer to itself. In fact the underlying <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/aa366510(v=vs.85).aspx">Windows Filtering Platform</a> seems to classify all loopback packets as <i>outbound</i>. The thing to remember is that when you're processing on loopback packets, you can't have "inbound" in your filter. It's important to know that your computer may have IPs other than 127.0.0.1, like an intranet IP allocated by your router. These are also considered loopback packets.
+            </li>
+            <li>Loopback packets are captured twice.<br>
+            Since we don't have inbound loopback packets, all loopback packets are considered as outbound. So clumsy will process them <i>twice</i>: first time is when sending, and second time when receiving. A simple example is that when filter is simply "outbound", and apply a lag of 500ms. When you ping localhost, it would be a lag of 1000ms. You can work around it by specify destination port and things like this. But it would be easier to just keep this in mind and be careful when setting the parameters.
+            </li>
+            <li>Inbound packet capturing is not working all the time.<br>
+            As previously noted, loopback inbound packets can't be reinjected. The problem is that on occasions some packets may be classified as inbound packets, even if the destination IP isn't of your computer. This only affects non-loopback packets. If you're only working on localhost it's going to be fine. The goal of future release is to diagnose what caused this and provide a solution.
+            </li>
+            <li>Can't filter based on process<br>
+            System wide network capturing is listed as a <i>feature</i>. But really this is since there's no easy way to provide a robust solution.
+            </li>
+        </ol>
+
+        <h4>How to use:</h4>
+        <p>
+        <a href="download.html">Download</a> the release based on your Windows bitness. Remember 64bit system should use the 64bit one or it might not work at all. Another thing to note is that clumsy needs administrator privilege to run. clumsy will try to pop out the UAC dialogue. If it doesn't work then you should right click on the executable and choose <i>"Run as Administrator"</i>. After clumsy starts up, the GUI should be pretty easy to grasp. Here's a screenshot:
+        </p>
+        <img src="screen.png" class="centered-img">
+        <p>
+        In the order of numbered icons in the screenshot:
+        </p>
+        <ol class="textlist">
+            <li>Filter input. The detailed syntax will be explained in next section. But it's just like bool expression in most programming language. Packets are captured based on this filter.</li>
+            <li>Presets. There's a list of builtin presets for you to choose. You can skim through to see what the filters can be like. And if you've get more familar with clumsy, you can add your own filters in <i>config.txt</i> bundled along the executable.</li>
+            <li>Control button. Click this to start capturing. In a few occasions it might fail. For example if your filter isn't syntatical right. In some occasions it might fail with other errors. See Faqs in the next section for more info. Once it's started the text would be changed to "Stop". There's a small icon on the left. When there's packets captured it would green. When there's failed rejecting the icon would turn red. When this happens it's mostly due to the limitations listed above. You should change your filter accordingly.</li>
+            <li>Function control. Tick the checkbox to enable functions. There's also an icon on the left side of the controls. It would turn green when this function is working. You can tick the checkbox anytime during the whole process and it would be toggled on and off as expected.</li>
+            <li>Parameters control. For each function there's some additionally control for you to tune.
+            The most common ones are:
+            <ul class="textlist snap">
+                <li>Inbound/Outbound: whether to process inbound/outbound packets. These are independent of the filter ones and allow you to change anytime.</li>
+                <li>Chance: the probability of this function to process. Obviously you don't want to drop packets all the time so you'd better set chances to a reasonable value.</li>
+            </ul>
+            <li>Status: show some helpful text messages about the current state.</li>
+            </li>
+        </ol>
+        <p>The functions should be self-explanatory. You can refer to the <a href="index.html">introduction<a> for an overview, or just try it by your self. If you can't find something to test on, you can set filter to "tcp and outbound" and play with your broweser.</p>
+
+        <h4>Faqs</h4>
+        <p>
+            <strong>Failed to start with error code 3.</strong><br>
+            Run cmd and use these two lines:
+        </p>
+<pre>
+sc stop WinDivert1.0
+sc delete WinDivert1.0 
+</pre>
+        <p>
+            This will be addressed in future version.
+        </p>
+
         <hr>
         <div class="footer"><span><a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#106;&#97;&#103;&#116;&#116;&#116;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;">&#106;&#97;&#103;&#116;&#116;&#116;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;</a></span></div>
     </div>
