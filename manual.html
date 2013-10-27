@@ -59,14 +59,14 @@
         <p>
         <a href="download.html">Download</a> the release based on your Windows bitness. Remember 64bit system should use the 64bit one or it might not work at all. Another thing to note is that clumsy needs administrator privilege to run. clumsy will try to pop out the UAC dialogue. If it doesn't work then you should right click on the executable and choose <i>"Run as Administrator"</i>. After clumsy starts up, the GUI should be pretty easy to grasp. Here's a screenshot:
         </p>
-        <img src="screen.png" class="centered-img">
+        <img src="screen.png" class="centered-block">
         <p>
         In the order of numbered icons in the screenshot:
         </p>
         <ol class="textlist">
             <li>Filter input. The detailed syntax will be explained in next section. But it's just like bool expression in most programming language. Packets are captured based on this filter.</li>
             <li>Presets. There's a list of builtin presets for you to choose. You can skim through to see what the filters can be like. And if you've get more familar with clumsy, you can add your own filters in <i>config.txt</i> bundled along the executable.</li>
-            <li>Control button. Click this to start capturing. In a few occasions it might fail. For example if your filter isn't syntatical right. In some occasions it might fail with other errors. See Faqs in the next section for more info. Once it's started the text would be changed to "Stop". There's a small icon on the left. When there's packets captured it would green. When there's failed rejecting the icon would turn red. When this happens it's mostly due to the limitations listed above. You should change your filter accordingly.</li>
+            <li>Control button. Click this to start capturing. In a few occasions it might fail. For example if your filter isn't syntatical right. In some occasions it might fail with other errors. See Faqs for more info. Once it's started the text would be changed to "Stop". There's a small icon on the left. When there's packets captured it would green. When there's failed rejecting the icon would turn red. When this happens it's mostly due to the limitations listed above. You should change your filter accordingly.</li>
             <li>Function control. Tick the checkbox to enable functions. There's also an icon on the left side of the controls. It would turn green when this function is working. You can tick the checkbox anytime during the whole process and it would be toggled on and off as expected.</li>
             <li>Parameters control. For each function there's some additionally control for you to tune.
             The most common ones are:
@@ -78,6 +78,33 @@
             </li>
         </ol>
         <p>The functions should be self-explanatory. You can refer to the <a href="index.html">introduction<a> for an overview, or just try it by your self. If you can't find something to test on, you can set filter to "tcp and outbound" and play with your broweser.</p>
+
+        <h4>Filter Syntax</h4>
+        <p>
+        The filtering text is directly feed to WinDivert. The syntax is well documented <a href="http://reqrypt.org/windivert-doc.html#filter_language">here</a>. If you've programmed in any language, it should be looks very familar to what you put in the <i>if</i> condition. You can use <i>and</i>, <i>or</i>, <i>not</i> and <i>parentheses</i> to build the logic expression. Ops like <i>=</i>, <i>!=</i>, <i>&lsaquo;</i>, <i>&rsaquo;</i> are also provided. A list of available fields from WinDivert documentation is attached as below. You can also refer to the presets for example.
+        </p>
+        <div>
+            <table border="1" cellpadding="1" class="textlist" style="width:460px; margin:0 auto;">
+            <tr><td><tt>outbound</tt></td><td>Is outbound?</td></tr>
+            <tr><td><tt>inbound</tt></td><td>Is inbound?</td></tr>
+            <tr><td><tt>ifIdx</tt></td><td>Interface index</td></tr>
+            <tr><td><tt>subIfIdx</tt></td><td>Sub-interface index</td></tr>
+            <tr><td><tt>ip</tt></td><td>Is IPv4?</td></tr>
+            <tr><td><tt>ipv6</tt></td><td>Is IPv6?</td></tr>
+            <tr><td><tt>icmp</tt></td><td>Is ICMP?</td></tr>
+            <tr><td><tt>icmpv6</tt></td><td>Is ICMPv6?</td></tr>
+            <tr><td><tt>tcp</tt></td><td>Is TCP?</td></tr>
+            <tr><td><tt>udp</tt></td><td>Is UDP?</td></tr>
+            <tr><td><tt>ip.*</tt></td><td>IPv4 fields (see <tt>DIVERT_IPHDR</tt>)</td></tr>
+            <tr><td><tt>ipv6.*</tt></td><td>IPv6 fields (see <tt>DIVERT_IPV6HDR</tt>)</td></tr>
+            <tr><td><tt>icmp.*</tt></td><td>ICMP fields (see <tt>DIVERT_ICMPHDR</tt>)</td></tr>
+            <tr><td><tt>icmpv6.*</tt></td><td>ICMPV6 fields (see <tt>DIVERT_ICMPV6HDR</tt>)</td></tr>
+            <tr><td><tt>tcp.*</tt></td><td>TCP fields (see <tt>DIVERT_TCPHDR</tt>)</td></tr>
+            <tr><td><tt>tcp.PayloadLength</tt></td><td>The TCP payload length</td></tr>
+            <tr><td><tt>udp.*</tt></td><td>UDP fields (see <tt>DIVERT_UDPHDR</tt>)</td></tr>
+            <tr><td><tt>udp.PayloadLength</tt></td><td>The UDP payload length</td></tr>
+            </table>
+        </div>
 
         <h4>Faqs</h4>
         <p>
