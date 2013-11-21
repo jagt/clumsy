@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>clumsy, 在 Windows Vista / Windows 7 下模拟劣化网络环境(网络延迟，掉包，重发)的小工具。</title>
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.3.0/pure-min.css">
+    <link rel="stylesheet" href="layout.css">
+<!--[if lte IE 8]>
+    <link rel="stylesheet" href="ie8.css">
+<![endif]-->
+</head>
+<body>
+<div class="pure-g">
+<div class="pure-u-1">
+    <div class="header">
+        <div class="pure-menu pure-menu-open pure-menu-horizontal centered">
+        <ul>
+            <li class="pure-menu-selected"><a href="index.html">介绍</a></li>
+            <li><a href="download.html">下载</a></li>
+            <li><a href="manual.html">文档</a></li>
+        </ul>
+        </div>
+    </div>
+    <div class="centered">
+        <div class="title">
+        <h1>clumsy 0.1</h1>
+        </div>
+        <p>
+            <strong>clumsy 能在 Windows 平台下人工造成不稳定的网络状况，方便你调试应用程序在极端网络状况下的表现。</strong>
+        </p>
+        <h4>简介</h4>
+        <p>
+            利用封装 Winodws Filtering Platform 的<a href="http://reqrypt.org/windivert.html">WinDivert 库</a>, clumsy 能实时的将系统接收和发出的网络数据包拦截下来，人工的造成延迟，掉包和篡改操作后再进行发送。无论你是要重现网络异常造成的程序错误，还是评估你的应用程序在不良网络状况下的表现，clumsy 都能让你在不需要额外添加代码的情况下，在系统层次帮你达到想要的效果：
+        </p>
+        <span>特色：</span>
+        <ul class="textlist">
+            <li>下载即用，不需要安装任何东西。</li>
+            <li>不需要额外设置，不需要修改你的程序的代码。</li>
+            <li>系统级别的网络控制，可以适用于命令行，图形界面等任何 Windows 应用程序。</li>
+            <li>不仅仅只支持 HTTP，任何 TCP, UDP 的网络连接都可以被处理。</li>
+            <li>支持本地调试(服务器和客户端都在 localhost)</li>
+            <li>"热插拔"，你的程序可以一直运行，而 clumsy 可以随时开启和关闭。</li>
+            <li>实时调节各种参数，详细控制网络情况。</li>
+        </ul>
+
+        <h4>实例</h4>
+        <p>
+            下面的动画展示了 clumsy 作用于一个本地的基于 netcat 的 UDP 服务器/客户端的情况。仔细观察你可以看到数据根据在 clumsy 的影响下产生了相应的变化。
+            如果你基本知道了 clumsy 是干什么用的，不妨到<a href="download">下载页面</a>选择适用于你系统的版本进行下载。
+        </p>
+        <img class="demo" src="clumsy-demo.gif">
+
+        <h4>详细信息</h4>
+        <p>
+            clumsy 首先根据用户选择的 <i>filter</i> 来拦截指定的网络数据。在 filter 中可以设定你感兴趣的协议(tcp/udp)，端口号，是接收还是发出的端口。你也可以通过简单的逻辑语句来进一步缩小范围。当 clumsy 被激活时，只有符合这些标准的网络数据会被进行处理，而你不感兴趣的数据仍然会由系统正常传输。
+        </p>
+        <p>
+            当被 filter 的网络数据包被拦截后，你可以选择 clumsy 提供的功能来有目的性的调整网络情况：
+        </p>
+        <ol class="textlist">
+            <li>延迟(Lag)，把数据包缓存一段时间后再发出，这样能够模拟网络延迟的状况。</li>
+            <li>掉包(Drop)，随机丢弃一些数据。</li>
+            <li>节流(Throttle)，把一小段时间内的数据拦截下来后再在之后的同一时间一同发出去。</li>
+            <li>重发(Duplicate)，随机复制一些数据并与其本身一同发送。</li>
+            <li>乱序(Out of order)，打乱数据包发送的顺序。</li>
+            <li>篡改(Tamper)，随机修改小部分的包裹内容。</li>
+        </ol>
+        <p>
+            尽管当前宽带网络连接十分普及，但网络传输其本身在本质上总不是稳定的。如果你的应用程序中没有应对各种情况的处理，那么有可能一个丢失的 UDP 包裹都会让你的程序崩溃。正确的调试这类行为
+            显然需要再代码结构上进行仔细的设计和处理，还会很花功夫。而且在某些封装紧密的开发环境(Unity3D 自带的网络库可能是一个例子)下会更麻烦。clumsy 以尽可能减轻程序员负担为目标，
+            希望提供一个简单方便（但并不完美）的解决方案。
+        </p>
+        <p>
+            项目的代码可以在<a href="https://github.com/jagt/clumsy">github</a>上获取。在<a href="download.html">下载页面</a>有编译好的版本。强烈建议在使用前花点时间阅读一下<a href="manual.html">文档</a>，来
+            了解 clumsy 的功能和限制。
+        </p>
+        <hr>
+        <div class="footer"><span><a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#106;&#97;&#103;&#116;&#116;&#116;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;">&#106;&#97;&#103;&#116;&#116;&#116;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;</a></span></div>
+    </div>
+</div>
+</div>
+</body>
+</html>

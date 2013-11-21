@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>clumsy, 在 Windows Vista / Windows 7 下模拟劣化网络环境(网络延迟，掉包，重发)的小工具。</title>
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.3.0/pure-min.css">
+    <link rel="stylesheet" href="layout.css">
+<!--[if lte IE 8]>
+    <link rel="stylesheet" href="ie8.css">
+<![endif]-->
+</head>
+<body>
+<div class="pure-g">
+<div class="pure-u-1">
+    <div class="header">
+        <div class="pure-menu pure-menu-open pure-menu-horizontal centered">
+        <ul>
+            <li><a href="index.html">介绍</a></li>
+            <li class="pure-menu-selected"><a href="download.html">下载</a></li>
+            <li><a href="manual.html">文档</a></li>
+        </ul>
+        </div>
+    </div>
+    <div class="centered">
+        <div class="title-no-image">
+        <h1>下载</h1>
+        </div>
+        <h4>发布版本</h4>
+        <p><strong>注意: clumsy 仅支持 Windows Vista, Windows 7 及以上版本。如果你安装的是 64 位的系统，请一定下载对应的 64 位版本，否则 clumsy 无法正常工作。</strong></p>
+        <ul class="textlist">
+            <li>32位版本: <a href="https://github.com/jagt/clumsy/releases/download/0.1/clumsy-0.1-win32.zip">clumsy-0.1-win32.zip</a> (MD5:b8eb28c399f15f02112f5461f6465153)</li>
+            <li>64位版本: <a href="https://github.com/jagt/clumsy/releases/download/0.1/clumsy-0.1-win64.zip">clumsy-0.1-win64.zip</a> (MD5:e75419e28321cdc2cb4ca6f9e4044fd0)</li>
+        </ul>
+
+        <h4>安装</h4>
+        <p>
+            下载上面的压缩包，解压到任意路径后双击 <i>clumsy.exe</i> 执行。目前 clumsy 虽然基本功能已经基本完整但<strong>极其缺乏测试和实际使用</strong>。请务必仔细阅读<a href="manual.html">文档</a>。
+        </p>
+
+        <h4>编译</h4>
+        <p>
+            如果你系统中已经安装好了 Visual Studio 2012 或者 TDM-GCC 4.8.1 那么编译本项目非常容易。目前没有支持其他开发环境。
+        </p>
+        <p>
+            用 git <a href="https://github.com/jagt/clumsy">获取项目代码</a>。之后你需要 <a href="http://industriousone.com/premake/download">premake 4.4-beta4</a> 来生成 VS 项目文件或 Makefile。当前
+            premake 只支持生成 VS2010 的项目，用 VS2012 打开后进行自动升级就可以正常编译。下载的代码中也自带了项目依赖的第三方库，所以基本上执行下面的命令后就准备就绪了。 
+            <pre>
+git clone https://github.com/jagt/clumsy.git 
+premake4 vs2010
+premake4 gmake
+            </pre>
+        </p>
+        <p>
+            如果你使用 VS2012 进行开发，请注意 VC 的 runtime <strong>必须用动态链接</strong>。原因是 WinDivert 提供的 VS2012 版本本身是动态链接的。这就意味着如果你想要将编译出的程序给用户使用的话，他们至少需要
+            在机器上安装 <a href="http://www.microsoft.com/en-us/download/details.aspx?id=30679">VS2012 runtime</a>。 如果你选择使用牛逼的 <a href="http://tdm-gcc.tdragon.net/">TDM64-GCC 4.8.1</a> 进行编译的话那么可以生成无其他依赖的可执行文件。上面提供下载的版本也是这样编译的。
+            <pre>
+mingw32-make -C build CC=gcc config=debug32
+mingw32-make -C build CC=gcc config=debug64
+mingw32-make -C build CC=gcc config=release32
+mingw32-make -C build CC=gcc config=release64
+            </pre>
+        </p>
+
+        <h4>其他</h4>
+        <p>
+        以下是 clumsy 依赖的其他库和程序。
+        <ul class="textlist">
+        <li><a href="http://reqrypt.org/windivert.html">WinDivert</a> 把复杂而且文档少的 Windows Filtering Platform 封装成了十来个函数。没有这个本项目基本没法做。</li>
+        <li><a href="http://www.tecgraf.puc-rio.br/iup/">IUP Portable User Interface</a> ANSI C 跨平台<i>原生</i> UI 库。功能齐全上手快。</li>
+        <li><a href="http://www.cockos.com/licecap/">LICEcap</a> 开源免费的 gif 截屏工具。</li>
+        </ul>
+        </p>
+
+        <h4>License</h4>
+        <p><a href="http://opensource.org/licenses/MIT">The MIT License (MIT)</a></p>
+        <hr>
+        <div class="footer"><span><a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#106;&#97;&#103;&#116;&#116;&#116;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;">&#106;&#97;&#103;&#116;&#116;&#116;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;</a></span></div>
+    </div>
+</div>
+</div>
+</body>
+</html>
