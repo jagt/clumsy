@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>clumsy, an utility for simulating broken network for Windows Vista / Windows 7 and above</title>
+    <meta charset="utf-8"> 
+    <title>clumsy, 在 Windows Vista / Windows 7 下模拟劣化网络环境(网络延迟，掉包，重发)的小工具。</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.3.0/pure-min.css">
     <link rel="stylesheet" href="layout.css">
 <!--[if lte IE 8]>
@@ -14,109 +15,112 @@
     <div class="header">
         <div class="pure-menu pure-menu-open pure-menu-horizontal centered">
         <ul>
-            <li><a href="index.html">About</a></li>
-            <li><a href="download.html">Download</a></li>
-            <li class="pure-menu-selected"><a href="manual.html">Manual</a></li>
+            <li><a href="index.html">介绍</a></li>
+            <li><a href="download.html">下载</a></li>
+            <li class="pure-menu-selected"><a href="manual.html">文档</a></li>
         </ul>
+        <span class="lang-span">
+        <a href="../index.html">English Version</a>
+        </span>
         </div>
     </div>
     <div class="centered">
         <div class="title-no-image">
-        <h1>Manual</h1>
+        <h1>文档</h1>
         </div>
-        <h4>Terminalogy</h4>
-        <p>Here're a list of terminalogies that would be repeatly used on this page. It's pretty easy to understand though.</p>
+        <h4>术语</h4>
+        <p>为了后文阅读方便，这里列出本页面中反复使用的一些术语。</p>
         <ul class="textlist">
-            <li><strong>Loopback packets</strong>: packets send from <i>localhost</i> (ie 127.0.0.1) to <i>localhost</i>.</li>
-            <li><strong>Inbound packets</strong>: packets send <i>in</i> to your computer. It can be from somewhere else and also from your computer.</li>
-            <li><strong>Outbound packets</strong>: packets send <i>out</i> from your computer.</li>
-            <li><strong>Filtering</strong>: you often want to select a subset of interested network packets for clumsy to process. This is done by provide a <i>filter</i> to specify which IP, protocol, or other criterias.</li>
-            <li><strong>Capturing packets</strong>: clumsy needs to intercept the packets from your application so it can process it. So when your applicatioon is sending/receiving a packet, clumsy would <i>capture</i> it.</li>
-            <li><strong>Reinjecting packets</strong>: after we captured the packets, we need to let them of again so your application can get it. The process is called <i>reinjecting</i>.</li>
+            <li><strong>回送数据包(Loopback packets)</strong>: 从<i>本机</i> (可以简单理解为 127.0.0.1) 发送到<i>本机</i>的数据包。通常在调试程序的时候为了配置简单，很多情况下就是简单的把服务器和客户端都架设在一台机器上，回送数据包在这种情况下就很常见。</li>
+            <li><strong>输入数据包(Inbound packets)</strong>: 当前计算机<i>接收到</i>的数据包。其来源可能是网络上的其他机器，也可能就是本机。</li>
+            <li><strong>输出数据包(Outbound packets)</strong>: 从当前计算机<i>发送出去</i>的数据包。</li>
+            <li><strong>数据包过滤(Filtering)</strong>: 大部分情况你只对所有的数据包的一个子集感兴趣。在 clumsy 里你可以提供一个 <i>filter</i> 来指定你感兴趣的数据包发送至/发送于某个 IP，包裹协议，以及一些其他的标准。</li>
+            <li><strong>数据包捕获(Capturing packets)</strong>: 根据之前设定的 filter, clumsy 会拦截下这些符合标准的数据包。在你的程序发出数据包之后，或者再接受到数据包之前，clumsy 会拦截下这些包裹进行处理，进行指定的处理来达到模拟劣化网络环境的效果。</li>
+            <li><strong>重新注入数据包(Reinjecting packets)</strong>: 在数据包被拦截下来后，他们还是需要被重新发送给目标的端口，这样应用程序才能接收到它们并继续工作。这个步骤科学的讲就叫做重新注入 (reinjecting) 数据包。</li>
         </ul>
 
-        <h4>Limitations</h4>
-        <p><strong>! Be sure you don't skip this part.</strong></p>
+        <h4>限制</h4>
+        <p><strong>！这部分内容非常重要，请务必不要略过。</strong></p>
         <p>
-            There's some issues with no easy workaround found. So here's a list of limitations that you should be aware of before using clumsy.
+            目前的实现中有一些难以绕过的限制和问题，列表如下：
         </p>
         <ol class="textlist">
-            <li>Loopback inbound packets can't be captured or reinjected.<br>
-            When you think about it, it's really difficult to tell it's an inbound or outbound packets when you're sending packets from the computer to itself. In fact the underlying <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/aa366510(v=vs.85).aspx">Windows Filtering Platform</a> seems to classify all loopback packets as <i>outbound</i>. The thing to remember is that when you're processing on loopback packets, you can't have "inbound" in your filter. It's important to know that your computer may have IPs other than 127.0.0.1, like an intranet IP allocated by your router. These are also considered loopback packets.
+            <li>回送的输入数据包(Loopback inbound packets)无法被重新注入。<br>
+            仔细想想你就会发现我们没有很好的方法来区分一个回送数据包到底是被发出还是被接收到，因为它们的目标和来源 IP 地址都是本机。事实上 clumsy 底层的 WinDivert，以及其基于的
+            <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/aa366510(v=vs.85).aspx">Windows Filtering Platform</a> 把所有的回送数据包统统认为是<i>输出 (Outbound) </i>数据包。这里需要记住的是，当你在本机上处理回送数据包的时候，你不能把 "inbound" 设置在 filter 条件中，最简单的方法就是在条件中简单的加上 "outbound"。另一件容易出问题的事情是，你本机的 IP 不仅仅只有 127.0.0.1 一个，还有类似路由器分配给你机器的 IP 也是属于你的本机 IP。
             </li>
-            <li>Loopback packets are captured twice.<br>
-            Since we don't have inbound loopback packets, all loopback packets are considered as outbound. So clumsy will process them <i>twice</i>: first time is when sending, and second time when receiving. A simple example is that when filter is simply "outbound", and apply a lag of 500ms. When you ping localhost, it would be a lag of 1000ms. You can work around it by specify destination port and things like this. But it would be easier to just keep this in mind and be careful when setting the parameters.
+            <li>回送数据包会被处理两次。<br>
+            因为所有的回送数据包都被认为是输出数据包，clumsy 会重复处理它们<i>两次</i>。一次是在发出的时候，一次是在接受到的时候。一个简单的例子是简单的把 filter 设置为 outbound，然后在 clumsy 中设置 500ms 的延迟并开启，之后在命令行里 ping localhost。这时你会发现延迟是 1000ms。当然你可以仔细的设置 filter 条件通过设置端口来只捕捉一部分的回送数据包，但是这样会比较麻烦。最简单的做法就是记住这个问题，然后设置参数的时候做相应的计算。
             </li>
-            <li>Inbound packet capturing is not working all the time.<br>
-            As previously noted, loopback inbound packets can't be reinjected. The problem is that on occasions some packets may be classified as inbound packets, even if the destination IP isn't of your computer. This only affects non-loopback packets. If you're only working on localhost it's going to be fine. The goal of future release is to diagnose what caused this and provide a solution.
+            <li>输入数据包的重新注入有些问题。<br>
+            根据上面的描述，回送的输入包裹无法被重新注入。问题是现在有些来自包裹虽然其地址不是本机的 IP，其偶尔也会被认为是输入包裹。这种情况如果被捕捉到是无法进行重新注入的。这个问题仅仅影响非回送数据包，所以如果你仅仅是在本机上调试服务器和客户端那么是不会有这个问题的。未来版本的目标是准确的重现这个问题并进行修复。
             </li>
-            <li>Can't filter based on process<br>
-            System wide network capturing is listed as a <i>feature</i>. But really this is since there's no easy way to provide a robust solution.
+            <li>无法根据进程来进行数据包过滤。<br>
+            全系统级的数据包捕获虽然被列在了功能里，实际上是在当前的实现下，没法找到一个合适且稳定的方法来进行根据进程的数据包捕获。
             </li>
         </ol>
 
-        <h4>How to use:</h4>
+        <h4>如何使用</h4>
         <p>
-        <a href="download.html">Download</a> the release based on your Windows bitness. Remember 64bit system should use the 64bit one or it might not work at all. Another thing to note is that clumsy needs administrator privilege to run. clumsy will try to pop out the UAC dialogue. If it doesn't work then you should right click on the executable and choose <i>"Run as Administrator"</i>. After clumsy starts up, the GUI should be pretty easy to grasp. Here's a screenshot:
+        首先请根据你系统的版本(32位或64位)<a href="download.html">下载</a> clumsy 最新版本。注意如果你安装的是64位的系统那么一定要下载64位的 clumsy。另一件重要的事实 clumsy 需要管理员权限才能正常工作。双击打开 clumsy 的话会弹出 UAC 对话框。如果没有的话请右键点击 clumsy.exe 选择"以管理员身份运行"。如果一切正常，你应该能看到如下图的界面：
         </p>
         <img src="screen.png" class="centered-block">
         <p>
-        In the order of numbered icons in the screenshot:
+        根据上图中的数字图标顺序：
         </p>
         <ol class="textlist">
-            <li>Filter input. The detailed syntax will be explained in next section. But it's just like bool expression in most programming language. Packets are captured based on this filter.</li>
-            <li>Presets. There's a list of builtin presets for you to choose. You can skim through to see what the filters can be like. And if you've get more familar with clumsy, you can add your own filters in <i>config.txt</i> bundled along the executable.</li>
-            <li>Control button. Click this to start capturing. In a few occasions it might fail. For example if your filter isn't syntatical right. In some occasions it might fail with other errors. See Faqs for more info. Once it's started the text would be changed to "Stop". There's a small icon on the left. When there's packets captured it would green. When there's failed rejecting the icon would turn red. When this happens it's mostly due to the limitations listed above. You should change your filter accordingly.</li>
-            <li>Function control. Tick the checkbox to enable functions. There's also an icon on the left side of the controls. It would turn green when this function is working. You can tick the checkbox anytime during the whole process and it would be toggled on and off as expected.</li>
-            <li>Parameters control. For each function there's some additionally control for you to tune.
-            The most common ones are:
+            <li>Filter。详细的 filter 语法在下一部分有仔细的讲解。但是简单的讲它跟你常见的编程语言中的 if 中的条件写法几乎一样。数据包将根据这个标准被拦截。</li>
+            <li>预设 Filte。 这里提供了一系列内置的预设 Filter 供你使用。你可以通过参考他们来写你自己需要的 Filter，也可以把你发现常用的 filter 写到 clumsy.exe 所在文件夹下的 <i>config.txt</i> 中。</li>
+            <li>开始/结束 按钮。点击此按钮 clumsy 就会开始捕捉数据包。在某些情况下，比如提供的 filter 语法有问题 clumsy 无法正常开始工作。请参考底部的提示进行操作。如果一切正常按钮上的文字会变为 "Stop"，按下就会停止捕捉包裹，系统网络会恢复正常。按钮左边有一个小图标，每当数据包被捕获的时候它会变绿，当包裹重新注入失败的时候它会变红色。这时你应该考虑是否遇到了上面限制中提到的问题。另外需要提到的是开启和结束可以随时进行并实时生效。
+            <li>功能控制。勾选功能对应的选框来开启对应的功能。每个功能左边也有一个小图标，其起作用的时候就会变绿。在数据包捕获开启的状态下，你可以实时开启/关闭任何功能，它们都会即时生效。</li>
+            <li>参数控制。对每个功能，都附有对应的参数控制控件让你进行详细的配置。其中最常见的有：
             <ul class="textlist snap">
-                <li>Inbound/Outbound: whether to process inbound/outbound packets. These are independent of the filter ones and allow you to change anytime.</li>
-                <li>Chance: the probability of this function to process. Obviously you don't want to drop packets all the time so you'd better set chances to a reasonable value.</li>
+                <li>Inbound/Outbound: 是否处理输入/输出数据包。这里在 filter 的控制之外额外提供一个选择的机会，并且也可以在实时生效。</li>
+                <li>Chance: 功能生效的概率。显然你需要把它们设置在一个合理的范围内才不会让网络在可以接受的范围内劣化。</li>
             </ul>
-            <li>Status: show some helpful text messages about the current state.</li>
+            <li>状态。显示 clumsy 当前状态的帮助信息。</li>
             </li>
         </ol>
-        <p>The functions should be self-explanatory. You can refer to the <a href="index.html">introduction<a> for an overview, or just try it by your self. If you can't find something to test on, you can set filter to "tcp and outbound" and play with your broweser.</p>
+        <p>clumsy 提供的功能应该很容易理解，你可以在首页的<a href="index.html">介绍<a>中获得简单的描述，或者你也可以直接试试看。如果你一下子没想起来有什么地方可以用的上，你可以把 filter 设置为 "inbound and outbound" 然后打开你最喜欢的浏览器访问任意网站，看看 clumsy 效果如何。.</p>
 
-        <h4>Filter Syntax</h4>
+        <h4>Filter 语法</h4>
         <p>
-        The filtering text is directly feed to WinDivert. The syntax is well documented <a href="http://reqrypt.org/windivert-doc.html#filter_language">here</a>. If you've programmed in any language, it should be looks very familar to what you put in the <i>if</i> condition. You can use <i>and</i>, <i>or</i>, <i>not</i> and <i>parentheses</i> to build the logic expression. Ops like <i>=</i>, <i>!=</i>, <i>&lsaquo;</i>, <i>&rsaquo;</i> are also provided. A list of available fields from WinDivert documentation is attached as below. You can also refer to the presets for example.
+        这里 filter 中提供的语句会被直接作为参数提供给 WinDivert。语法在 <a href="http://reqrypt.org/windivert-doc.html#filter_language">WinDivert 的文档</a>中有详细的描述。如果你写过一点程序你会发现这个语法跟你放在 <i>if</i> 里面的判断表达式非常类似。你可以用 <i>and</i>, <i>or</i>, <i>not</i> 和 <i>括号</i> 来表达简单的逻辑规则。类似 <i>=</i>, <i>!=</i>, <i>&lsaquo;</i>, <i>&rsaquo;</i> 的操作符也可以被使用。下面是 filter 中可以使用的变量的列表(直接拷贝自 WinDivert 的文档)。你也可以通过以预设的 filter 作为例子参考。
         </p>
         <div>
             <table border="1" cellpadding="1" class="textlist" style="width:460px; margin:0 auto;">
-            <tr><td><tt>outbound</tt></td><td>Is outbound?</td></tr>
-            <tr><td><tt>inbound</tt></td><td>Is inbound?</td></tr>
-            <tr><td><tt>ifIdx</tt></td><td>Interface index</td></tr>
-            <tr><td><tt>subIfIdx</tt></td><td>Sub-interface index</td></tr>
-            <tr><td><tt>ip</tt></td><td>Is IPv4?</td></tr>
-            <tr><td><tt>ipv6</tt></td><td>Is IPv6?</td></tr>
-            <tr><td><tt>icmp</tt></td><td>Is ICMP?</td></tr>
-            <tr><td><tt>icmpv6</tt></td><td>Is ICMPv6?</td></tr>
-            <tr><td><tt>tcp</tt></td><td>Is TCP?</td></tr>
-            <tr><td><tt>udp</tt></td><td>Is UDP?</td></tr>
-            <tr><td><tt>ip.*</tt></td><td>IPv4 fields (see <tt>DIVERT_IPHDR</tt>)</td></tr>
-            <tr><td><tt>ipv6.*</tt></td><td>IPv6 fields (see <tt>DIVERT_IPV6HDR</tt>)</td></tr>
-            <tr><td><tt>icmp.*</tt></td><td>ICMP fields (see <tt>DIVERT_ICMPHDR</tt>)</td></tr>
-            <tr><td><tt>icmpv6.*</tt></td><td>ICMPV6 fields (see <tt>DIVERT_ICMPV6HDR</tt>)</td></tr>
-            <tr><td><tt>tcp.*</tt></td><td>TCP fields (see <tt>DIVERT_TCPHDR</tt>)</td></tr>
-            <tr><td><tt>tcp.PayloadLength</tt></td><td>The TCP payload length</td></tr>
-            <tr><td><tt>udp.*</tt></td><td>UDP fields (see <tt>DIVERT_UDPHDR</tt>)</td></tr>
-            <tr><td><tt>udp.PayloadLength</tt></td><td>The UDP payload length</td></tr>
+            <tr><td><tt>outbound</tt></td><td>是否为输出数据包</td></tr>
+            <tr><td><tt>inbound</tt></td><td>是否为输入数据包</td></tr>
+            <tr><td><tt>ifIdx</tt></td><td>网络设备 index</td></tr>
+            <tr><td><tt>subIfIdx</tt></td><td>副网络设备 index </td></tr>
+            <tr><td><tt>ip</tt></td><td>是否为 IPv4</td></tr>
+            <tr><td><tt>ipv6</tt></td><td>是否为 IPv6</td></tr>
+            <tr><td><tt>icmp</tt></td><td>是否为 ICMP</td></tr>
+            <tr><td><tt>icmpv6</tt></td><td>是否为 ICMPv6</td></tr>
+            <tr><td><tt>tcp</tt></td><td>是否为 TCP</td></tr>
+            <tr><td><tt>udp</tt></td><td>是否为 UDP</td></tr>
+            <tr><td><tt>ip.*</tt></td><td>IPv4 的参数 (见 <tt>DIVERT_IPHDR</tt>)</td></tr>
+            <tr><td><tt>ipv6.*</tt></td><td>IPv6 的参数 (见 <tt>DIVERT_IPV6HDR</tt>)</td></tr>
+            <tr><td><tt>icmp.*</tt></td><td>ICMP 的参数 (见 <tt>DIVERT_ICMPHDR</tt>)</td></tr>
+            <tr><td><tt>icmpv6.*</tt></td><td>ICMPV6 的参数 (见 <tt>DIVERT_ICMPV6HDR</tt>)</td></tr>
+            <tr><td><tt>tcp.*</tt></td><td>TCP 的参数 (见 <tt>DIVERT_TCPHDR</tt>)</td></tr>
+            <tr><td><tt>tcp.PayloadLength</tt></td><td>TCP 数据段长度</td></tr>
+            <tr><td><tt>udp.*</tt></td><td>UDP 的参数 (见 <tt>DIVERT_UDPHDR</tt>)</td></tr>
+            <tr><td><tt>udp.PayloadLength</tt></td><td>UDP 数据段长度</td></tr>
             </table>
         </div>
 
-        <h4>Faqs</h4>
+        <h4>常见问题</h4>
         <p>
-            <strong>Failed to start with error code 3.</strong><br>
-            Run cmd and use these two lines:
+            <strong>无法开始，错误代码 "3"</strong><br>
+            在命令行中输入一下两行并执行：
         </p>
 <pre>
 sc stop WinDivert1.0
 sc delete WinDivert1.0 
 </pre>
         <p>
-            This will be addressed in future version.
+            在下一版本中这个问题应该会被修正。
         </p>
 
         <hr>
