@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include <assert.h>
 #include "iup.h"
-#include "divert.h"
+#include "windivert.h"
 
-#define CLUMSY_VERSION "0.0"
+#define CLUMSY_VERSION "0.2"
 #define MSG_BUFSIZE 512
 #define FILTER_BUFSIZE 1024
 #define NAME_SIZE 16
@@ -63,13 +63,13 @@
 typedef struct _NODE {
     char *packet;
     UINT packetLen;
-    DIVERT_ADDRESS addr;
+    WINDIVERT_ADDRESS addr;
     DWORD timestamp; // ! timestamp isn't filled when creating node since it's only needed for lag
     struct _NODE *prev, *next;
 } PacketNode;
 
 void initPacketNodeList();
-PacketNode* createNode(char* buf, UINT len, DIVERT_ADDRESS *addr);
+PacketNode* createNode(char* buf, UINT len, WINDIVERT_ADDRESS *addr);
 void freeNode(PacketNode *node);
 PacketNode* popNode(PacketNode *node);
 PacketNode* insertBefore(PacketNode *node, PacketNode *target);
@@ -130,9 +130,9 @@ void divertStop();
 
 short calcChance(short chance);
 
-#define BOUND_TEXT(b) ((b) == DIVERT_DIRECTION_INBOUND ? "IN" : "OUT")
-#define IS_INBOUND(b) ((b) == DIVERT_DIRECTION_INBOUND)
-#define IS_OUTBOUND(b) ((b) == DIVERT_DIRECTION_OUTBOUND)
+#define BOUND_TEXT(b) ((b) == WINDIVERT_DIRECTION_INBOUND ? "IN" : "OUT")
+#define IS_INBOUND(b) ((b) == WINDIVERT_DIRECTION_INBOUND)
+#define IS_OUTBOUND(b) ((b) == WINDIVERT_DIRECTION_OUTBOUND)
 // inline helper for inbound outbound check
 static INLINE_FUNCTION
 BOOL checkDirection(UINT8 dir, short inbound, short outbound) {

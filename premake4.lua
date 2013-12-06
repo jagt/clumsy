@@ -45,7 +45,7 @@ solution('clumsy')
             defines({"_CRT_SECURE_NO_WARNINGS"})
             flags({'NoManifest'})
             buildoptions({'/wd"4214"'})
-            includedirs({'external/WinDivert-1.0.5-MSVC/include'})
+            includedirs({'external/WinDivert-1.1.1-MSVC/include'})
             objdir('obj_gmake')
 
         configuration({'x32', 'vs*'})
@@ -54,7 +54,7 @@ solution('clumsy')
             defines({'X32'})
             includedirs({'external/iup-3.8_Win32_dll11_lib/include'})
             libdirs({
-                'external/WinDivert-1.0.5-MSVC/x86',
+                'external/WinDivert-1.1.1-MSVC/x86',
                 'external/iup-3.8_Win32_dll11_lib'
                 })
 
@@ -62,26 +62,26 @@ solution('clumsy')
             defines({'X64'})
             includedirs({'external/iup-3.8_Win64_dll11_lib/include'})
             libdirs({
-                'external/WinDivert-1.0.5-MSVC/amd64',
+                'external/WinDivert-1.1.1-MSVC/amd64',
                 'external/iup-3.8_Win64_dll11_lib'
                 })
 
         configuration({'x32', 'gmake'})
             defines({'X32'}) -- defines would be passed to resource compiler for whatever reason
-            includedirs({'external/WinDivert-1.0.5-MINGW/include',
+            includedirs({'external/WinDivert-1.1.1-MINGW/include',
                 'external/iup-3.8_Win64_mingw4_lib/include'})
             libdirs({
-                'external/WinDivert-1.0.5-MINGW/x86',
+                'external/WinDivert-1.1.1-MINGW/x86',
                 'external/iup-3.8_Win32_mingw4_lib'
                 })
             resoptions({'-O coff', '-F pe-i386'}) -- mingw64 defaults to x64
 
         configuration({'x64', 'gmake'})
             defines({'X64'})
-            includedirs({'external/WinDivert-1.0.5-MINGW/include',
+            includedirs({'external/WinDivert-1.1.1-MINGW/include',
                 'external/iup-3.8_Win64_mingw4_lib/include'})
             libdirs({
-                'external/WinDivert-1.0.5-MINGW/amd64',
+                'external/WinDivert-1.1.1-MINGW/amd64',
                 'external/iup-3.8_Win64_mingw4_lib'
                 })
 
@@ -96,18 +96,18 @@ solution('clumsy')
             local divert_lib, iup_lib
             if platform == 'vs*' then 
                 if arch == 'x64' then
-                    divert_lib = '../external/WinDivert-1.0.5-MSVC/amd64/'
+                    divert_lib = '../external/WinDivert-1.1.1-MSVC/amd64/'
                     iup_lib = '../external/iup-3.8_Win64_dll11_lib'
                 else
-                    divert_lib = '../external/WinDivert-1.0.5-MSVC/x86/'
+                    divert_lib = '../external/WinDivert-1.1.1-MSVC/x86/'
                     iup_lib = '../external/iup-3.8_Win32_dll11_lib'
                 end
             elseif platform == 'gmake' then
                 if arch == 'x64' then
-                    divert_lib = '../external/WinDivert-1.0.5-MINGW/amd64/'
+                    divert_lib = '../external/WinDivert-1.1.1-MINGW/amd64/'
                     iup_lib = '../external/iup-3.8_Win64_mingw4_lib'
                 else
-                    divert_lib = '../external/WinDivert-1.0.5-MINGW/x86/'
+                    divert_lib = '../external/WinDivert-1.1.1-MINGW/x86/'
                     iup_lib = '../external/iup-3.8_Win32_mingw4_lib'
                 end
             end

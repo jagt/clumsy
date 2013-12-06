@@ -1,6 +1,6 @@
 // tampering packet module
 #include "iup.h"
-#include "divert.h"
+#include "windivert.h"
 #include "common.h"
 
 static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput, *checksumCheckbox;
@@ -83,7 +83,7 @@ static short tamperProcess(PacketNode *head, PacketNode *tail) {
             && calcChance(chance)) {
             char *data = NULL;
             UINT dataLen = 0;
-            if (DivertHelperParsePacket(pac->packet, pac->packetLen, NULL, NULL, NULL,
+            if (WinDivertHelperParsePacket(pac->packet, pac->packetLen, NULL, NULL, NULL,
                 NULL, NULL, NULL, (PVOID*)&data, &dataLen) 
                 && data != NULL && dataLen != 0) {
                 // trying to tamper the more center part of the packet,
@@ -101,7 +101,7 @@ static short tamperProcess(PacketNode *head, PacketNode *tail) {
                 }
                 // FIXME checksum seems to have some problem
                 if (doChecksum) {
-                    DivertHelperCalcChecksums(pac->packet, pac->packetLen, 0);
+                    WinDivertHelperCalcChecksums(pac->packet, pac->packetLen, 0);
                 }
                 tampered = TRUE;
             }
