@@ -49,7 +49,7 @@ int uiSyncChance(Ihandle *ih) {
 
 int uiSyncToggle(Ihandle *ih, int state) {
     short *togglePtr = (short*)IupGetAttribute(ih, SYNCED_VALUE);
-    InterlockedExchange16(togglePtr, (short)state);
+    InterlockedExchange16(togglePtr, I2S(state));
     return IUP_DEFAULT;
 }
 
@@ -88,3 +88,58 @@ const unsigned char icon8x8[8*8] = {
     0, 1, 1, 1, 1, 1, 1, 0,
     0, 0, 1, 1, 1, 1, 0, 0,
 };
+
+typedef int (*IstateCallback)(Ihandle *ih, int state);
+// parameterized setter
+void setFromParameter(Ihandle *ih, const char *field, const char *key) {
+    char* val = IupGetGlobal(key);
+    Icallback cb;
+    IstateCallback scb;
+    // FIXME there should be a way to trigger handler
+    // manually trigger the callback, as iup won't call it
+    // Notice that currently only works on IupToggle, IupText
+    // and Iup lacks a way to get widget's type, so can't do much about this
+    if (val) {
+        IupSetAttribute(ih, field, val);
+        cb = IupGetCallback(ih, "VALUECHANGED_CB");
+        if (cb) {
+            LOG("triggered VALUECHANGED_CB on key: %s", key);
+            cb(ih);
+            return;
+        }
+        // cb's argument type IS NOT ONLY Ihandle, receives a extra "state" int
+        scb = (IstateCallback)IupGetCallback(ih, "ACTION");
+        if (scb) {
+            LOG("triggered ACTION on key: %s", key);
+            // IupGetInt handles yes/no on/off upper lower case things.
+            scb(ih, IupGetInt(ih, "VALUE"));
+            return;
+        }
+    }
+}
+
+// parse arguments and set globals
+// only checks for argument style, no extra validation is done
+BOOL parseArgs(int argc, char* argv[]) {
+    int ix = 0;
+    char *key, *value;
+    // begin parsing "--key value" args. 
+    // notice that quoted arg with spaces in between is already handled by shell
+    if (argc == 1) return 0;
+    for (;;) {
+        if (++ix >= argc) break;
+        key = argv[ix];
+        if (key[0] != '-' || key[1] != '-' || key[2] == '\0') {
+            return 0;
+        }
+        key = &(key[2]); // skip "--"
+        if (++ix >= argc) {
+            return 0;
+        }
+        value = argv[ix];
+        IupStoreGlobal(key, value);
+        LOG("option: %s : %s", key, value);
+    }
+
+    return 1;
+}

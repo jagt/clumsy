@@ -48,6 +48,7 @@ typedef struct {
 UINT filtersSize;
 filterRecord filters[CONFIG_MAX_RECORDS] = {0};
 char configBuf[CONFIG_BUF_SIZE+2]; // add some padding to write \n
+BOOL parameterized = 0; // parameterized flag, means reading args from command line
 
 // loading up filters and fill in
 void loadConfig() {
@@ -147,6 +148,18 @@ void init(int argc, char* argv[]) {
         )
     );
 
+    // parse arguments and set globals *before* setting up UI.
+    // arguments can be read and set after callbacks are setup
+    // FIXME as Release is built as WindowedApp, stdout/stderr won't show
+    LOG("argc: %d", argc);
+    if (argc > 1) {
+        if (!parseArgs(argc, argv)) {
+            fprintf(stderr, "invalid argument count. ensure you're using options as \"--drop on\"");
+            exit(-1); // fail fast.
+        }
+        parameterized = 1;
+    }
+
     IupSetAttribute(topFrame, "TITLE", "Filtering");
     IupSetAttribute(topFrame, "EXPAND", "HORIZONTAL");
     IupSetAttribute(filterText, "EXPAND", "HORIZONTAL");
@@ -228,6 +241,7 @@ void init(int argc, char* argv[]) {
     timer = IupTimer();
     IupSetAttribute(timer, "TIME", STR(ICON_UPDATE_MS));
     IupSetCallback(timer, "ACTION_CB", uiTimerCb);
+
 }
 
 void startup() {
@@ -267,7 +281,13 @@ static int uiOnDialogShow(Ihandle *ih, int state) {
     SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LPARAM)icon);
 
     // try elevate and decides whether to exit
-    exit = tryElevate(hWnd);
+    exit = tryElevate(hWnd, parameterized);
+    if (!exit && parameterized) {
+        setFromParameter(filterText, "VALUE", "filter");
+        LOG("is parameterized, start filtering upon execution.");
+        uiStartCb(filterButton);
+    }
+
     return exit ? IUP_CLOSE : IUP_DEFAULT;
 }
 
@@ -322,10 +342,10 @@ static int uiToggleControls(Ihandle *ih, int state) {
     int controlsActive = IupGetInt(controls, "ACTIVE");
     if (controlsActive && !state) {
         IupSetAttribute(controls, "ACTIVE", "NO");
-        InterlockedExchange16(target, (short)state);
+        InterlockedExchange16(target, I2S(state));
     } else if (!controlsActive && state) {
         IupSetAttribute(controls, "ACTIVE", "YES");
-        InterlockedExchange16(target, (short)state);
+        InterlockedExchange16(target, I2S(state));
     }
 
     return IUP_DEFAULT;
@@ -382,7 +402,7 @@ static void uiSetupModule(Module *module, Ihandle *parent) {
     Ihandle *groupBox, *toggle, *controls, *icon;
     groupBox = IupHbox(
         icon = IupLabel(NULL),
-        toggle = IupToggle(module->name, NULL),
+        toggle = IupToggle(module->displayName, NULL),
         IupFill(),
         controls = module->setupUIFunc(),
         NULL
@@ -403,6 +423,11 @@ static void uiSetupModule(Module *module, Ihandle *parent) {
     IupSetAttribute(icon, "IMAGE", "none_icon");
     IupSetAttribute(icon, "PADDING", "4x");
     module->iconHandle = icon;
+
+    // parameterize toggle
+    if (parameterized) {
+        setFromParameter(toggle, "VALUE", module->shortName);
+    }
 }
 
 int main(int argc, char* argv[]) {

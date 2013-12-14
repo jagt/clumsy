@@ -1,6 +1,7 @@
 // throttling packets
 #include "iup.h"
 #include "common.h"
+#define NAME "throttle"
 #define TIME_MIN "0"
 #define TIME_MAX "1000"
 #define TIME_DEFAULT 30
@@ -57,6 +58,13 @@ static Ihandle *throttleSetupUI() {
     // enable by default to avoid confusing
     IupSetAttribute(inboundCheckbox, "VALUE", "ON");
     IupSetAttribute(outboundCheckbox, "VALUE", "ON");
+
+    if (parameterized) {
+        setFromParameter(inboundCheckbox, "VALUE", NAME"-inbound");
+        setFromParameter(outboundCheckbox, "VALUE", NAME"-outbound");
+        setFromParameter(chanceInput, "VALUE", NAME"-chance");
+        setFromParameter(frameInput, "VALUE", NAME"-frame");
+    }
 
     return throttleControlsBox;
 }
@@ -129,6 +137,7 @@ THROTTLE_START:
 
 Module throttleModule = {
     "Throttle",
+    NAME,
     (short*)&throttleEnabled,
     throttleSetupUI,
     throttleStartUp,

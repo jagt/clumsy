@@ -16,6 +16,10 @@
 #define INTEGER_MAX "__INTEGER_MAX"
 #define INTEGER_MIN "__INTEGER_MIN"
 
+// workaround stupid vs2012 runtime check.
+// it would show even when seeing explicit "(short)(i);"
+#define I2S(x) ((short)((x) & 0xFFFF))
+
 
 #ifdef __MINGW32__
 #define INLINE_FUNCTION __inline__
@@ -87,7 +91,8 @@ typedef struct {
     /*
      * Static module data
      */
-    const char *name; // name of the module
+    const char *displayName; // display name shown in ui
+    const char *shortName; // single word name
     short *enabledFlag; // volatile short flag to determine enabled or not
     Ihandle* (*setupUIFunc)(); // return hbox as controls group
     void (*startUp)(); // called when starting up the module
@@ -150,7 +155,13 @@ void endTimePeriod();
 // elevate
 BOOL IsElevated();
 BOOL IsRunAsAdmin();
-BOOL tryElevate(HWND hWnd);
+BOOL tryElevate(HWND hWnd, BOOL silent);
 
 // icons
 extern const unsigned char icon8x8[8*8];
+
+// parameterized
+extern BOOL parameterized;
+void setFromParameter(Ihandle *ih, const char *field, const char *key);
+BOOL parseArgs(int argc, char* argv[]);
+

@@ -1,6 +1,7 @@
 // out of order arrange packets module
 #include "iup.h"
 #include "common.h"
+#define NAME "ood"
 // keep a picked packet at most for KEEP_TURNS_MAX steps, or if there's no following
 // one it would just to be sended
 #define KEEP_TURNS_MAX 10 
@@ -34,6 +35,12 @@ static Ihandle *oodSetupUI() {
     // enable by default to avoid confusing
     IupSetAttribute(inboundCheckbox, "VALUE", "ON");
     IupSetAttribute(outboundCheckbox, "VALUE", "ON");
+
+    if (parameterized) {
+        setFromParameter(inboundCheckbox, "VALUE", NAME"-inbound");
+        setFromParameter(outboundCheckbox, "VALUE", NAME"-outbound");
+        setFromParameter(chanceInput, "VALUE", NAME"-chance");
+    }
 
     return oodControlsBox;
 }
@@ -134,6 +141,7 @@ static short oodProcess(PacketNode *head, PacketNode *tail) {
 
 Module oodModule = {
     "Out of order",
+    NAME,
     (short*)&oodEnabled,
     oodSetupUI,
     oodStartUp,

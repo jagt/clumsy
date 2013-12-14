@@ -2,6 +2,7 @@
 #include "iup.h"
 #include "windivert.h"
 #include "common.h"
+#define NAME "tamper"
 
 static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput, *checksumCheckbox;
 
@@ -37,6 +38,13 @@ static Ihandle* tamperSetupUI() {
     IupSetAttribute(inboundCheckbox, "VALUE", "ON");
     IupSetAttribute(outboundCheckbox, "VALUE", "ON");
     IupSetAttribute(checksumCheckbox, "VALUE", "ON");
+
+    if (parameterized) {
+        setFromParameter(inboundCheckbox, "VALUE", NAME"-inbound");
+        setFromParameter(outboundCheckbox, "VALUE", NAME"-outbound");
+        setFromParameter(chanceInput, "VALUE", NAME"-chance");
+        setFromParameter(checksumCheckbox, "VALUE", NAME"-checksum");
+    }
 
     return dupControlsBox;
 }
@@ -114,6 +122,7 @@ static short tamperProcess(PacketNode *head, PacketNode *tail) {
 
 Module tamperModule = {
     "Tamper",
+    NAME,
     (short*)&tamperEnabled,
     tamperSetupUI,
     tamperStartup,

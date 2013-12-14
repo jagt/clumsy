@@ -98,17 +98,18 @@ BOOL IsElevated( ) {
 }
 
 // try elevate and error out when can't happen
+// is silent then no message boxes are shown
 // return whether to close the program
-BOOL tryElevate(HWND hWnd) {
+BOOL tryElevate(HWND hWnd, BOOL silent) {
     // Check the current process's "run as administrator" status.
     BOOL fIsRunAsAdmin;
     OSVERSIONINFO osver = {sizeof(osver)}; // MUST initialize with the size or GetVersionEx fails
     if (!GetVersionEx(&osver)) {
-        MessageBox(hWnd, (LPCSTR)"Failed to get os version. clumsy only supports Windows Vista or above.",
+        if (!silent) MessageBox(hWnd, (LPCSTR)"Failed to get os version. clumsy only supports Windows Vista or above.",
             (LPCSTR)"Aborting", MB_OK);
         return TRUE;
     } else if (osver.dwMajorVersion < 6) {
-        MessageBox(hWnd, (LPCSTR)"Unsupported Windows version. clumsy only supports Windows Vista or above.",
+        if (!silent) MessageBox(hWnd, (LPCSTR)"Unsupported Windows version. clumsy only supports Windows Vista or above.",
             (LPCSTR)"Aborting", MB_OK);
         return TRUE;
     }
@@ -116,7 +117,10 @@ BOOL tryElevate(HWND hWnd) {
     fIsRunAsAdmin = IsRunAsAdmin();
     if (fIsRunAsAdmin) {
         return FALSE;
-    } else {
+    }
+
+    // when not silent then trying to reinvoke to elevate
+    if (!silent) {
         wchar_t szPath[MAX_PATH];
         if (GetModuleFileName(NULL, (LPSTR)szPath, ARRAYSIZE(szPath)))
         {
@@ -145,8 +149,8 @@ BOOL tryElevate(HWND hWnd) {
             MessageBox(hWnd, (LPCSTR)"Failed to get clumsy path. Please place the executable in a normal directory.",
                 (LPCSTR)"Aborting", MB_OK);
         }
-
-        // exit when not run as admin
-        return TRUE;
     }
+
+    // exit when not run as admin
+    return TRUE;
 }

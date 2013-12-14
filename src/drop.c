@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include "iup.h"
 #include "common.h"
+#define NAME "drop"
 
 static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput;
 
@@ -32,6 +33,12 @@ static Ihandle* dropSetupUI() {
     // enable by default to avoid confusing
     IupSetAttribute(inboundCheckbox, "VALUE", "ON");
     IupSetAttribute(outboundCheckbox, "VALUE", "ON");
+
+    if (parameterized) {
+        setFromParameter(inboundCheckbox, "VALUE", NAME"-inbound");
+        setFromParameter(outboundCheckbox, "VALUE", NAME"-outbound");
+        setFromParameter(chanceInput, "VALUE", NAME"-chance");
+    }
 
     return dropControlsBox;
 }
@@ -68,6 +75,7 @@ static short dropProcess(PacketNode *head, PacketNode* tail) {
 
 Module dropModule = {
     "Drop",
+    NAME,
     (short*)&dropEnabled,
     dropSetupUI,
     dropStartUp,

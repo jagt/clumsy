@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "iup.h"
 #include "common.h"
+#define NAME "duplicate"
 #define COPIES_MIN "2"
 #define COPIES_MAX "50"
 #define COPIES_COUNT 2
@@ -44,6 +45,13 @@ static Ihandle* dupSetupUI() {
     IupSetAttribute(inboundCheckbox, "VALUE", "ON");
     IupSetAttribute(outboundCheckbox, "VALUE", "ON");
 
+    if (parameterized) {
+        setFromParameter(inboundCheckbox, "VALUE", NAME"-inbound");
+        setFromParameter(outboundCheckbox, "VALUE", NAME"-outbound");
+        setFromParameter(chanceInput, "VALUE", NAME"-chance");
+        setFromParameter(countInput, "VALUE", NAME"-count");
+    }
+
     return dupControlsBox;
 }
 
@@ -78,6 +86,7 @@ static short dupProcess(PacketNode *head, PacketNode *tail) {
 
 Module dupModule = {
     "Duplicate",
+    NAME,
     (short*)&dupEnabled,
     dupSetupUI,
     dupStartup,

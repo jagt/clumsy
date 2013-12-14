@@ -1,6 +1,7 @@
 // lagging packets
 #include "iup.h"
 #include "common.h"
+#define NAME "lag"
 #define LAG_MIN "0"
 #define LAG_MAX "3000"
 #define KEEP_AT_MOST 2000
@@ -49,6 +50,12 @@ static Ihandle *lagSetupUI() {
     // enable by default to avoid confusing
     IupSetAttribute(inboundCheckbox, "VALUE", "ON");
     IupSetAttribute(outboundCheckbox, "VALUE", "ON");
+
+    if (parameterized) {
+        setFromParameter(inboundCheckbox, "VALUE", NAME"-inbound");
+        setFromParameter(outboundCheckbox, "VALUE", NAME"-outbound");
+        setFromParameter(timeInput, "VALUE", NAME"-time");
+    }
 
     return lagControlsBox;
 }
@@ -117,6 +124,7 @@ static short lagProcess(PacketNode *head, PacketNode *tail) {
 
 Module lagModule = {
     "Lag",
+    NAME,
     (short*)&lagEnabled,
     lagSetupUI,
     lagStartUp,
