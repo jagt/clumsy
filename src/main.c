@@ -26,13 +26,15 @@ static Ihandle *filterText, *filterButton;
 Ihandle *filterSelectList;
 // timer to update icons
 static Ihandle *stateIcon;
-static Ihandle *timer;
+static Ihandle *timer = NULL;
+static Ihandle *timeout = NULL;
 
 void showStatus(const char *line);
 static int uiOnDialogShow(Ihandle *ih, int state);
 static int uiStopCb(Ihandle *ih);
 static int uiStartCb(Ihandle *ih);
 static int uiTimerCb(Ihandle *ih);
+static int uiTimeoutCb(Ihandle *ih);
 static int uiListSelectCb(Ihandle *ih, char *text, int item, int state);
 static int uiFilterTextCb(Ihandle *ih);
 static void uiSetupModule(Module *module, Ihandle *parent);
@@ -120,6 +122,7 @@ void init(int argc, char* argv[]) {
     UINT ix;
     Ihandle *topVbox, *bottomVbox, *dialogVBox, *controlHbox;
     Ihandle *noneIcon, *doingIcon, *errorIcon;
+    char* arg_value = NULL;
 
     // fill in config
     loadConfig();
@@ -242,6 +245,18 @@ void init(int argc, char* argv[]) {
     IupSetAttribute(timer, "TIME", STR(ICON_UPDATE_MS));
     IupSetCallback(timer, "ACTION_CB", uiTimerCb);
 
+    // setup timeout of program
+    arg_value = IupGetGlobal("timeout");
+    if(arg_value != NULL)
+    {
+        char valueBuf[16];
+        sprintf(valueBuf, "%s000", arg_value);  // convert from seconds to milliseconds
+
+        timeout = IupTimer();
+        IupStoreAttribute(timeout, "TIME", valueBuf);
+        IupSetCallback(timeout, "ACTION_CB", uiTimeoutCb);
+        IupSetAttribute(timeout, "RUN", "YES");
+    }
 }
 
 void startup() {
@@ -255,7 +270,10 @@ void startup() {
 }
 
 void cleanup() {
-    IupDestroy(timer);
+
+    if(timeout) { IupDestroy(timeout); }
+    if(timer)   { IupDestroy(timer);   }
+
     IupClose();
     endTimePeriod(); // try close if not closing
 }
@@ -381,6 +399,11 @@ static int uiTimerCb(Ihandle *ih) {
 
     return IUP_DEFAULT;
 }
+
+static int uiTimeoutCb(Ihandle *ih) {
+    UNREFERENCED_PARAMETER(ih);
+    return IUP_CLOSE;
+ }
 
 static int uiListSelectCb(Ihandle *ih, char *text, int item, int state) {
     UNREFERENCED_PARAMETER(text);
