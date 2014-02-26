@@ -26,7 +26,7 @@ static Ihandle *filterText, *filterButton;
 Ihandle *filterSelectList;
 // timer to update icons
 static Ihandle *stateIcon;
-static Ihandle *timer = NULL;
+static Ihandle *timer;
 static Ihandle *timeout = NULL;
 
 void showStatus(const char *line);
@@ -271,8 +271,10 @@ void startup() {
 
 void cleanup() {
 
-    if(timeout) { IupDestroy(timeout); }
-    if(timer)   { IupDestroy(timer);   }
+    IupDestroy(timer);
+    if (timeout) {
+        IupDestroy(timeout);
+    }
 
     IupClose();
     endTimePeriod(); // try close if not closing
