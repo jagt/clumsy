@@ -114,13 +114,27 @@
         <p>
             <strong>Failed to start with error code 3.</strong><br>
             Run cmd and use these two lines:
-        </p>
-<pre>
-sc stop WinDivert1.0
-sc delete WinDivert1.0 
-</pre>
-        <p>
+            <pre>
+            sc stop WinDivert1.0
+            sc delete WinDivert1.0 
+            </pre>
+            <p>
             This will be addressed in future version.
+            </p>
+        </p>
+        <p>
+            <strong>clumsy introduces overhead to the network.</strong><br>
+            When you enter you filter and hit 'Start', clumsy has already started captureing packets. This would definetely add overhead into the network. Fortunately this is sort of consistent with the usage of this software. There is room for optimization, but it might need more work.
+
+            It would be better to make your filters accurately capture the packets you're interested in.
+        </p>
+        <p>
+            <strong>Lag is much more higher than the parameter set.</strong><br>
+            The gist is that the parameters are <i>not</i> intended to be an accurate measure. It's more of a parameter to control the behavior.
+
+            Another thing is that the lag introduced is on per network packet. For example if clumsy introduced 20ms lag on both incoming and outgoing packets. A TCP connection needs at least 3 packets to establish. Then it's a 3*20ms in total. In the example of a web page, it might need to finish some HTTP requests in sequence before it starts rendering in the browser. Say it needs to complete requests 1, 2 and 3. When each is slowed down by 60ms the time it takes to start rendering would be delayed by 3*60=180ms.
+
+            So don't worry too much when clumsy makes things slow too much :)
         </p>
 
         <hr>
