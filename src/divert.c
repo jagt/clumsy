@@ -185,7 +185,7 @@ static int sendAllListPackets() {
             }
         } else {
             if (sendLen < pnode->packetLen) {
-                // TODO don't know how this can happen, or it needs to be resend like good old UDP packet
+                // TODO don't know how this can happen, or it needs to be resent like good old UDP packet
                 LOG("Internal Error: DivertSend truncated send packet.");
                 InterlockedExchange16(&sendState, SEND_STATUS_FAIL);
             } else {
@@ -243,7 +243,7 @@ static DWORD divertClockLoop(LPVOID arg) {
     UNREFERENCED_PARAMETER(arg);
 
     for(;;) {
-        // use aquire as wait for yielding thread
+        // use acquire as wait for yielding thread
         startTick = GetTickCount();
         waitResult = WaitForSingleObject(mutex, CLOCK_WAITMS);
         switch(waitResult) {
@@ -268,11 +268,11 @@ static DWORD divertClockLoop(LPVOID arg) {
                 Sleep(CLOCK_WAITMS);
                 break;
             case WAIT_ABANDONED:
-                LOG("Aquired abandoned mutex");
+                LOG("Acquired abandoned mutex");
                 InterlockedIncrement16(&stopLooping);
                 break;
             case WAIT_FAILED:
-                LOG("Aquire failed (%lu)", GetLastError());
+                LOG("Acquire failed (%lu)", GetLastError());
                 InterlockedIncrement16(&stopLooping);
                 break;
         }
@@ -287,7 +287,7 @@ static DWORD divertClockLoop(LPVOID arg) {
             {
             case WAIT_ABANDONED:
             case WAIT_FAILED:
-                LOG("Aquire failed/abandoned mutex (%lu), will still try closing and return", GetLastError());
+                LOG("Acquire failed/abandoned mutex (%lu), will still try closing and return", GetLastError());
             case WAIT_OBJECT_0:
                 /***************** enter critical region ************************/
                 LOG("Read stopLooping, stopping...");
@@ -343,7 +343,7 @@ static DWORD divertReadLoop(LPVOID arg) {
         }
         if (readLen > MAX_PACKETSIZE) {
             // don't know how this can happen
-            LOG("Interal Error: DivertRecv truncated recv packet."); 
+            LOG("Internal Error: DivertRecv truncated recv packet."); 
         }
 
         //dumpPacket(packetBuf, readLen, &addrBuf);  
@@ -356,7 +356,7 @@ static DWORD divertReadLoop(LPVOID arg) {
                     LOG("Lost last recved packet but user stopped. Stop read loop.");
                     /***************** leave critical region ************************/
                     if (!ReleaseMutex(mutex)) {
-                        LOG("Falal: Failed to release mutex on stopping (%lu). Will stop anyway.", GetLastError());
+                        LOG("Fatal: Failed to release mutex on stopping (%lu). Will stop anyway.", GetLastError());
                     }
                     return 0;
                 }
@@ -366,19 +366,19 @@ static DWORD divertReadLoop(LPVOID arg) {
                 divertConsumeStep();
                 /***************** leave critical region ************************/
                 if (!ReleaseMutex(mutex)) {
-                    LOG("Falal: Failed to release mutex (%lu)", GetLastError());
+                    LOG("Fatal: Failed to release mutex (%lu)", GetLastError());
                     ABORT();
                 }
                 break;
             case WAIT_TIMEOUT:
-                LOG("Aquire timeout, dropping one read packet");
+                LOG("Acquire timeout, dropping one read packet");
                 continue;
                 break;
             case WAIT_ABANDONED:
-                LOG("Aquire abandoned.");
+                LOG("Acquire abandoned.");
                 return 0;
             case WAIT_FAILED:
-                LOG("Aquire failed.");
+                LOG("Acquire failed.");
                 return 0;
         }
     }

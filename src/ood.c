@@ -3,7 +3,7 @@
 #include "common.h"
 #define NAME "ood"
 // keep a picked packet at most for KEEP_TURNS_MAX steps, or if there's no following
-// one it would just to be sended
+// one, it will just be sent
 #define KEEP_TURNS_MAX 10 
 
 static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput;

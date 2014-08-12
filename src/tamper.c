@@ -10,7 +10,7 @@ static volatile short tamperEnabled = 0,
     tamperInbound = 1,
     tamperOutbound = 1,
     chance = 100, // [0 - 1000]
-    doChecksum = 1; // whether redo after tampering checksum
+    doChecksum = 1; // recompute checksum after after tampering
 
 static Ihandle* tamperSetupUI() {
     Ihandle *dupControlsBox = IupHbox(
@@ -94,7 +94,7 @@ static short tamperProcess(PacketNode *head, PacketNode *tail) {
             if (WinDivertHelperParsePacket(pac->packet, pac->packetLen, NULL, NULL, NULL,
                 NULL, NULL, NULL, (PVOID*)&data, &dataLen) 
                 && data != NULL && dataLen != 0) {
-                // trying to tamper the more center part of the packet,
+                // try to tamper the central part of the packet,
                 // since common packets put their checksum at head or tail
                 if (dataLen <= 4) {
                     // for short packet just tamper it all
