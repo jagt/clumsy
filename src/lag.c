@@ -31,7 +31,7 @@ static Ihandle *lagSetupUI() {
     Ihandle *lagControlsBox = IupHbox(
         inboundCheckbox = IupToggle("Inbound", NULL),
         outboundCheckbox = IupToggle("Outbound", NULL),
-        IupLabel("Lag time(ms):"),
+        IupLabel("Delay(ms):"),
         timeInput = IupText(NULL),
         NULL
         );

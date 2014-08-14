@@ -352,7 +352,7 @@ static int uiStopCb(Ihandle *ih) {
     sendState = SEND_STATUS_NONE;
     IupSetAttribute(stateIcon, "IMAGE", "none_icon");
 
-    showStatus("Successfully stoped. Edit criteria and click Start to begin again.");
+    showStatus("Stopped. To begin again, edit criteria and click Start.");
     return IUP_DEFAULT;
 }
 

@@ -5,6 +5,7 @@
 
 short calcChance(short chance) {
     // notice that here we made a copy of chance, so even though it's volatile it is still ok
+    // calculation is slightly biased, 0x3FF is 1023 but our chance ranges 0-1000
     return (chance == 1000) || ((rand() & 0x3FF) < chance);
 }
 
@@ -39,7 +40,7 @@ int uiSyncChance(Ihandle *ih) {
     if (newValue != value) { // equality compare is fine since newValue is a copy of value
         sprintf(valueBuf, "%.1f", newValue);
         IupStoreAttribute(ih, "VALUE", valueBuf);
-        // put caret at last to enable editting while normalizing
+        // put caret at end to enable editing while normalizing
         IupStoreAttribute(ih, "CARET", "10");
     }
     // and sync chance value
@@ -69,7 +70,7 @@ int uiSyncInteger(Ihandle *ih) {
     if (newValue != value && value != 0) {
         sprintf(valueBuf, "%d", newValue);
         IupStoreAttribute(ih, "VALUE", valueBuf);
-        // put caret at last to enable editting while normalizing
+        // put caret at end to enable editing while normalizing
         IupStoreAttribute(ih, "CARET", "10");
     }
     // sync back
