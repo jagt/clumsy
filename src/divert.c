@@ -87,7 +87,7 @@ int divertStart(const char *filter, char buf[]) {
             strcpy(buf, "Failed to start filtering : filter syntax error.");
         } else {
             sprintf(buf, "Failed to start filtering : failed to open device (code:%lu).\n"
-                "Make sure to you have run clumsy as Administrator.", lastError);
+                "Make sure you run clumsy as Administrator.", lastError);
         }
         return FALSE;
     }
