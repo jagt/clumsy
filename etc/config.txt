@@ -16,7 +16,7 @@ all receiving packets: inbound
 all ipv4 against specific ip: ip.DstAddr == 198.51.100.1 or ip.SrcAddr == 198.51.100.1
 tcp ipv4 against specific ip: tcp and (ip.DstAddr == 198.51.100.1 or ip.SrcAddr == 198.51.100.1)
 udp ipv4 against specific ip: udp and (ip.DstAddr == 198.51.100.1 or ip.SrcAddr == 198.51.100.1)
-all ipv4 against port: ip.DstPort == 12354 or ip.SrcPort == 12354 
+all ipv4 against port: tcp.DstPort == 12354 or tcp.SrcPort == 12354 or udp.DstPort == 12354 or udp.SrcPort == 12354
 tcp ipv4 against port: tcp and (tcp.DstPort == 12354 or tcp.SrcPort == 12354)
 udp ipv4 against port: udp and (udp.DstPort == 12354 or udp.SrcPort == 12354)
 
