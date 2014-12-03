@@ -91,5 +91,7 @@ Module dupModule = {
     dupSetupUI,
     dupStartup,
     dupCloseDown,
-    dupProcess
+    dupProcess,
+    // runtime fields
+    0, 0, NULL
 };

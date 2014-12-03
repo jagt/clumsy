@@ -1,9 +1,0 @@
-[Version]
-Signature="$WINDOWS NT$"
-
-[divert.NT.Wdf]
-KmdfService = divert, divert_WdfSection
-
-[divert_WdfSection]
-KmdfLibraryVersion = 1.9
-

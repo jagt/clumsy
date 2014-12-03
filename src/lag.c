@@ -129,5 +129,7 @@ Module lagModule = {
     lagSetupUI,
     lagStartUp,
     lagCloseDown,
-    lagProcess
+    lagProcess,
+    // runtime fields
+    0, 0, NULL
 };

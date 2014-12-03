@@ -127,5 +127,7 @@ Module tamperModule = {
     tamperSetupUI,
     tamperStartup,
     tamperCloseDown,
-    tamperProcess
+    tamperProcess,
+    // runtime fields
+    0, 0, NULL
 };

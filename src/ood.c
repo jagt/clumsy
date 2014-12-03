@@ -146,5 +146,7 @@ Module oodModule = {
     oodSetupUI,
     oodStartUp,
     oodCloseDown,
-    oodProcess
+    oodProcess,
+    // runtime fields
+    0, 0, NULL
 };

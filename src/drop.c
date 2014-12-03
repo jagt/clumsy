@@ -80,5 +80,7 @@ Module dropModule = {
     dropSetupUI,
     dropStartUp,
     dropCloseDown,
-    dropProcess
+    dropProcess,
+    // runtime fields
+    0, 0, NULL
 };

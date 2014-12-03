@@ -17,7 +17,7 @@ solution('clumsy')
         language("C")
         files({'src/**.c', 'src/**.h'})
         links({'WinDivert', 'iup', 'comctl32', 'Winmm', 'ws2_32'}) 
-        if _ACTION == 'vs2010' then -- only vs can include rc file in solution
+        if string.match(_ACTION, '^vs') then -- only vs can include rc file in solution
             files({'./etc/clumsy.rc'})
         elseif _ACTION == 'gmake' then
             files({'./etc/clumsy.rc'})
@@ -45,7 +45,7 @@ solution('clumsy')
             defines({"_CRT_SECURE_NO_WARNINGS"})
             flags({'NoManifest'})
             buildoptions({'/wd"4214"'})
-            includedirs({'external/WinDivert-1.1.1-MSVC/include'})
+            includedirs({'external/WinDivert-1.1.7-MSVC/include'})
             objdir('obj_gmake')
 
         configuration({'x32', 'vs*'})
@@ -54,7 +54,7 @@ solution('clumsy')
             defines({'X32'})
             includedirs({'external/iup-3.8_Win32_dll11_lib/include'})
             libdirs({
-                'external/WinDivert-1.1.1-MSVC/x86',
+                'external/WinDivert-1.1.7-MSVC/x86',
                 'external/iup-3.8_Win32_dll11_lib'
                 })
 
@@ -62,26 +62,26 @@ solution('clumsy')
             defines({'X64'})
             includedirs({'external/iup-3.8_Win64_dll11_lib/include'})
             libdirs({
-                'external/WinDivert-1.1.1-MSVC/amd64',
+                'external/WinDivert-1.1.7-MSVC/amd64',
                 'external/iup-3.8_Win64_dll11_lib'
                 })
 
         configuration({'x32', 'gmake'})
             defines({'X32'}) -- defines would be passed to resource compiler for whatever reason
-            includedirs({'external/WinDivert-1.1.1-MINGW/include',
+            includedirs({'external/WinDivert-1.1.7-MINGW/include',
                 'external/iup-3.8_Win64_mingw4_lib/include'})
             libdirs({
-                'external/WinDivert-1.1.1-MINGW/x86',
+                'external/WinDivert-1.1.7-MINGW/x86',
                 'external/iup-3.8_Win32_mingw4_lib'
                 })
             resoptions({'-O coff', '-F pe-i386'}) -- mingw64 defaults to x64
 
         configuration({'x64', 'gmake'})
             defines({'X64'})
-            includedirs({'external/WinDivert-1.1.1-MINGW/include',
+            includedirs({'external/WinDivert-1.1.7-MINGW/include',
                 'external/iup-3.8_Win64_mingw4_lib/include'})
             libdirs({
-                'external/WinDivert-1.1.1-MINGW/amd64',
+                'external/WinDivert-1.1.7-MINGW/amd64',
                 'external/iup-3.8_Win64_mingw4_lib'
                 })
 
@@ -96,18 +96,18 @@ solution('clumsy')
             local divert_lib, iup_lib
             if platform == 'vs*' then 
                 if arch == 'x64' then
-                    divert_lib = '../external/WinDivert-1.1.1-MSVC/amd64/'
+                    divert_lib = '../external/WinDivert-1.1.7-MSVC/amd64/'
                     iup_lib = '../external/iup-3.8_Win64_dll11_lib'
                 else
-                    divert_lib = '../external/WinDivert-1.1.1-MSVC/x86/'
+                    divert_lib = '../external/WinDivert-1.1.7-MSVC/x86/'
                     iup_lib = '../external/iup-3.8_Win32_dll11_lib'
                 end
             elseif platform == 'gmake' then
                 if arch == 'x64' then
-                    divert_lib = '../external/WinDivert-1.1.1-MINGW/amd64/'
+                    divert_lib = '../external/WinDivert-1.1.7-MINGW/amd64/'
                     iup_lib = '../external/iup-3.8_Win64_mingw4_lib'
                 else
-                    divert_lib = '../external/WinDivert-1.1.1-MINGW/x86/'
+                    divert_lib = '../external/WinDivert-1.1.7-MINGW/x86/'
                     iup_lib = '../external/iup-3.8_Win32_mingw4_lib'
                 end
             end
@@ -116,7 +116,7 @@ solution('clumsy')
                 debugdir(subdir)
                 if platform == 'vs*' then
                     postbuildcommands({
-                        "robocopy " .. divert_lib .." ../"   .. subdir .. '  *.dll *.sys *.inf > robolog.txt',
+                        "robocopy " .. divert_lib .." ../"   .. subdir .. '  *.dll *.sys > robolog.txt',
                         "robocopy " .. iup_lib .. " ../"   .. subdir .. ' iup.dll >> robolog.txt',
                         "robocopy ../etc/ ../"   .. subdir .. ' config.txt >> robolog.txt',
                         "exit /B 0"
@@ -124,8 +124,7 @@ solution('clumsy')
                 elseif platform == 'gmake' then 
                     postbuildcommands({
                         -- robocopy returns non 0 will fail make
-                        'cp ' .. divert_lib .. "WinDivert.* ../" .. subdir,
-                        'cp ' .. divert_lib .. "WdfCoInstaller01009.dll ../" .. subdir,
+                        'cp ' .. divert_lib .. "WinDivert* ../" .. subdir,
                         "cp ../etc/config.txt ../" .. subdir,
                     })
                 end

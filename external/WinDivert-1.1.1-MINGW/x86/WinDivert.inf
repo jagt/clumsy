@@ -1,9 +1,0 @@
-[Version]
-Signature="$WINDOWS NT$"
-
-[windivert.NT.Wdf]
-KmdfService = windivert, windivert_WdfSection
-
-[windivert_WdfSection]
-KmdfLibraryVersion = 1.9
-

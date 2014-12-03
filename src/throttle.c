@@ -142,5 +142,7 @@ Module throttleModule = {
     throttleSetupUI,
     throttleStartUp,
     throttleCloseDown,
-    throttleProcess
+    throttleProcess,
+    // runtime fields
+    0, 0, NULL
 };
