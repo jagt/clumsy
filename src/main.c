@@ -285,6 +285,19 @@ void showStatus(const char *line) {
     IupStoreAttribute(statusLabel, "TITLE", line); 
 }
 
+// in fact only 32bit binary would run on 64 bit os
+// if this happens pop out message box and exit
+static BOOL check32RunningOn64(HWND hWnd) {
+    BOOL is64ret;
+    // consider IsWow64Process return value
+    if (IsWow64Process(GetCurrentProcess(), &is64ret) && is64ret) {
+        MessageBox(hWnd, (LPCSTR)"You're running 32bit clumsy on 64bit Windows, which wouldn't work. Please use the 64bit clumsy version.",
+            (LPCSTR)"Aborting", MB_OK);
+        return TRUE;
+    }
+    return FALSE;
+}
+
 static int uiOnDialogShow(Ihandle *ih, int state) {
     // only need to process on show
     HWND hWnd;
@@ -300,8 +313,16 @@ static int uiOnDialogShow(Ihandle *ih, int state) {
     SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM)icon);
     SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LPARAM)icon);
 
+#ifdef _WIN32
+    exit = check32RunningOn64(hWnd);
+    if (exit) {
+        return IUP_CLOSE;
+    }
+#endif
+
     // try elevate and decides whether to exit
     exit = tryElevate(hWnd, parameterized);
+
     if (!exit && parameterized) {
         setFromParameter(filterText, "VALUE", "filter");
         LOG("is parameterized, start filtering upon execution.");
