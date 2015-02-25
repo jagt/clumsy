@@ -13,6 +13,7 @@ Module* modules[MODULE_CNT] = {
     &dropModule,
     &throttleModule,
     &dupModule,
+    &resetModule,
     &oodModule,
     &tamperModule
 };
