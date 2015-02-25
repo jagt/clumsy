@@ -4,14 +4,31 @@
 #include "common.h"
 #define NAME "reset"
 
-static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput, *countInput;
+static const unsigned int TCP_MIN_SIZE = sizeof(WINDIVERT_IPHDR) + sizeof(WINDIVERT_TCPHDR);
+
+static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput, *rstButton;
 
 static volatile short resetEnabled = 0,
     resetInbound = 1, resetOutbound = 1,
-    chance = 1; // [0-1000]
+    chance = 0, // [0-1000]
+    setNextCount = 0;
+
+
+static int resetSetRSTNextButtonCb(Ihandle *ih) {
+    UNREFERENCED_PARAMETER(ih);
+
+    if (!(*resetModule.enabledFlag)) {
+        return IUP_DEFAULT;
+    }
+
+    InterlockedIncrement16(&setNextCount);
+
+    return IUP_DEFAULT;
+}
 
 static Ihandle* resetSetupUI() {
     Ihandle *dupControlsBox = IupHbox(
+        rstButton = IupButton("RST next packet", NULL),
         inboundCheckbox = IupToggle("Inbound", NULL),
         outboundCheckbox = IupToggle("Outbound", NULL),
         IupLabel("Chance(%):"),
@@ -20,13 +37,15 @@ static Ihandle* resetSetupUI() {
         );
 
     IupSetAttribute(chanceInput, "VISIBLECOLUMNS", "4");
-    IupSetAttribute(chanceInput, "VALUE", "0.1");
+    IupSetAttribute(chanceInput, "VALUE", "0");
     IupSetCallback(chanceInput, "VALUECHANGED_CB", uiSyncChance);
     IupSetAttribute(chanceInput, SYNCED_VALUE, (char*)&chance);
     IupSetCallback(inboundCheckbox, "ACTION", (Icallback)uiSyncToggle);
     IupSetAttribute(inboundCheckbox, SYNCED_VALUE, (char*)&resetInbound);
     IupSetCallback(outboundCheckbox, "ACTION", (Icallback)uiSyncToggle);
     IupSetAttribute(outboundCheckbox, SYNCED_VALUE, (char*)&resetOutbound);
+    IupSetCallback(rstButton, "ACTION", resetSetRSTNextButtonCb);
+    IupSetAttribute(rstButton, "PADDING", "4x");
 
     // enable by default to avoid confusing
     IupSetAttribute(inboundCheckbox, "VALUE", "ON");
@@ -43,12 +62,14 @@ static Ihandle* resetSetupUI() {
 
 static void resetStartup() {
     LOG("reset enabled");
+    InterlockedExchange16(&setNextCount, 0);
 }
 
 static void resetCloseDown(PacketNode *head, PacketNode *tail) {
     UNREFERENCED_PARAMETER(head);
     UNREFERENCED_PARAMETER(tail);
     LOG("reset disabled");
+    InterlockedExchange16(&setNextCount, 0);
 }
 
 static short resetProcess(PacketNode *head, PacketNode *tail) {
@@ -56,14 +77,32 @@ static short resetProcess(PacketNode *head, PacketNode *tail) {
     PacketNode *pac = head->next;
     while (pac != tail) {
         if (checkDirection(pac->addr.Direction, resetInbound, resetOutbound)
-            && calcChance(chance)
-            && pac->packetLen > 33)
+            && pac->packetLen > TCP_MIN_SIZE
+            && (setNextCount || calcChance(chance)))
         {
-            LOG("injecting reset w/ chance %.1f%%", chance/10.0);
-            pac->packet[33] |= 4;
-            WinDivertHelperCalcChecksums(pac->packet, pac->packetLen, 0);
+            PWINDIVERT_TCPHDR pTcpHdr;
+            WinDivertHelperParsePacket(
+                pac->packet,
+                pac->packetLen,
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                &pTcpHdr,
+                NULL,
+                NULL,
+                NULL);
 
-            reset = TRUE;
+            if (pTcpHdr != NULL) {
+                LOG("injecting reset w/ chance %.1f%%", chance/10.0);
+                pTcpHdr->Rst = 1;
+                WinDivertHelperCalcChecksums(pac->packet, pac->packetLen, 0);
+
+                reset = TRUE;
+                if (setNextCount > 0) {
+                    InterlockedDecrement16(&setNextCount);
+                }
+            }
         }
         
         pac = pac->next;
@@ -72,7 +111,7 @@ static short resetProcess(PacketNode *head, PacketNode *tail) {
 }
 
 Module resetModule = {
-    "Set reset flag",
+    "Set TCP RST",
     NAME,
     (short*)&resetEnabled,
     resetSetupUI,

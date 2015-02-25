@@ -46,7 +46,15 @@
 #undef InterlockedIncrement16
 #endif
 #define InterlockedIncrement16(p) (__atomic_add_fetch((short*)(p), 1, __ATOMIC_SEQ_CST))
+
+#ifdef InterlockedDecrement16
+#undef InterlockedDecrement16
 #endif
+#define InterlockedDecrement16(p) (__atomic_sub_fetch((short*)(p), 1, __ATOMIC_SEQ_CST))
+
+#endif
+
+
 
 #ifdef _DEBUG
 #define ABORT() assert(0)

@@ -5,26 +5,32 @@
 # the server should be started with CRLF as EOF
 # eg: ncat -u -l -C localhost 9111
 import subprocess
+import argparse
 from time import sleep
 from sys import argv, exit
 
 if __name__ == '__main__':
-    if len(argv) < 3:
-        print "usage : python send_udp_nums.py <host> <port> [<period-in-ms>|nosleep]"
-        exit(1)
-    if len(argv) == 3: argv.append('400')
-    host, port, period = argv[1:]
-    if not period == 'nosleep':
-        period = int(period)
-    cnt = 0
-    ncat = subprocess.Popen(['ncat', '-u', '-C', host, port], stdin=subprocess.PIPE)
+    parser = argparse.ArgumentParser(description='ncat num sender')
+    parser.add_argument('host', type=str)
+    parser.add_argument('port', type=str)
+    parser.add_argument('-s', '--sleep', default=100, type=int, help='sleep time', required=False)
+    parser.add_argument('--nosleep', help='nosleep', action='store_true')
+    parser.add_argument('--tcp', help='use tcp instead of udp', action='store_true')
+    args = parser.parse_args()
+
+    cmd = ['ncat', '-u', '-C', args.host, args.port]
+    if args.tcp:
+        cmd.remove('-u')
+    ncat = subprocess.Popen(cmd, stdin=subprocess.PIPE)
+
+    cnt = 1
     while True: # send till die
         ncat.stdin.write('%s\r\n' % ('-' * (1 + (cnt % 8))))
         #ncat.stdin.write('%d\r\n' % (cnt % 100))
         cnt += 1
         print cnt
-        if not period == 'nosleep':
-            sleep(period/1000.0)
+        if not args.nosleep:
+            sleep(args.sleep/1000.0)
 
 
 
