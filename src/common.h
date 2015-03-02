@@ -8,13 +8,16 @@
 #define MSG_BUFSIZE 512
 #define FILTER_BUFSIZE 1024
 #define NAME_SIZE 16
-#define MODULE_CNT 7
+#define MODULE_CNT 8
 #define ICON_UPDATE_MS 200
 
 #define CONTROLS_HANDLE "__CONTROLS_HANDLE"
 #define SYNCED_VALUE "__SYNCED_VALUE"
 #define INTEGER_MAX "__INTEGER_MAX"
 #define INTEGER_MIN "__INTEGER_MIN"
+#define FIXED_MAX "__FIXED_MAX"
+#define FIXED_MIN "__FIXED_MIN"
+#define FIXED_EPSILON 0.01
 
 // workaround stupid vs2012 runtime check.
 // it would show even when seeing explicit "(short)(i);"
@@ -93,6 +96,8 @@ short isListEmpty();
 int uiSyncChance(Ihandle *ih);
 int uiSyncToggle(Ihandle *ih, int state);
 int uiSyncInteger(Ihandle *ih);
+int uiSyncFixed(Ihandle *ih);
+
 
 // module
 typedef struct {
@@ -119,8 +124,9 @@ extern Module dropModule;
 extern Module throttleModule;
 extern Module oodModule;
 extern Module dupModule;
-extern Module resetModule;
 extern Module tamperModule;
+extern Module resetModule;
+extern Module capModule;
 extern Module* modules[MODULE_CNT]; // all modules in a list
 
 // status for sending packets, 

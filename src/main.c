@@ -15,7 +15,8 @@ Module* modules[MODULE_CNT] = {
     &dupModule,
     &oodModule,
     &tamperModule,
-    &resetModule
+    &resetModule,
+    &capModule
 };
 
 volatile short sendState = SEND_STATUS_NONE;

@@ -78,6 +78,34 @@ int uiSyncInteger(Ihandle *ih) {
     return IUP_DEFAULT;
 }
 
+// naive fixed number of (short) * 0.01
+int uiSyncFixed(Ihandle *ih) {
+    short *fixedPointer = (short*)IupGetAttribute(ih, SYNCED_VALUE);
+    const float maxFixedValue = IupGetFloat(ih, FIXED_MAX);
+    const float minFixedValue = IupGetFloat(ih, FIXED_MIN);
+    float value = IupGetFloat(ih, "VALUE");
+    float newValue = value;
+    short fixValue;
+    char valueBuf[8];
+    if (newValue > maxFixedValue) {
+        newValue = maxFixedValue;
+    } else if (newValue < minFixedValue) {
+        newValue = minFixedValue;
+    }
+
+    if (newValue != value && value != 0) {
+        sprintf(valueBuf, "%.2f", newValue);
+        IupStoreAttribute(ih, "VALUE", valueBuf);
+        // put caret at end to enable editing while normalizing
+        IupStoreAttribute(ih, "CARET", "10");
+    }
+    // sync back
+    fixValue = newValue / FIXED_EPSILON;
+    InterlockedExchange16(fixedPointer, fixValue);
+    return IUP_DEFAULT;
+}
+
+
 // indicator icon, generated from scripts/im2carr.py
 const unsigned char icon8x8[8*8] = {
     0, 0, 1, 1, 1, 1, 0, 0,
