@@ -3,9 +3,9 @@
 #include "iup.h"
 #include "common.h"
 #define NAME "cap"
-#define CAP_MIN "0.0"
+#define CAP_MIN "0.1"
 #define CAP_MAX "320.0" // TODO CAP_MAX actually can't be larger than 2**15...
-#define KEEP_AT_MAX 5000
+#define KEEP_AT_MOST 5000
 
 static Ihandle *inboundCheckbox, *outboundCheckbox, *kpsInput;
 
@@ -69,6 +69,14 @@ static void clearBufPackets(PacketNode *tail) {
 }
 
 static void capStartUp() {
+    if (bufHead->next == NULL && bufTail->next == NULL) {
+        bufHead->next = bufTail;
+        bufTail->prev = bufHead;
+        bufSize = 0;
+    } else {
+        assert(isBufEmpty());
+    }
+
     startTimePeriod();
     capLastTick = timeGetTime();
 }
@@ -82,20 +90,71 @@ static void capCloseDown(PacketNode *head, PacketNode *tail) {
 
 static short capProcess(PacketNode *head, PacketNode *tail) {
     short capped = FALSE;
-    PacketNode *pac = head->next;
+    PacketNode *pac, *pacTmp, *oldLast;
     DWORD curTick = timeGetTime();
     DWORD deltaTick = curTick - capLastTick;
     int bytesCapped = (int)(deltaTick * 0.001 * kps * FIXED_EPSILON * 1024);
     int totalBytes = 0;
     LOG("kps val: %d, capped kps %.2f, capped at %d bytes", kps, kps * FIXED_EPSILON, bytesCapped);
+    capLastTick = curTick;
 
-    // calculate current kps
-    while (pac != tail) {
+
+    // process buffered packets
+    oldLast = tail->prev;
+    while (!isBufEmpty()) {
+        // TODO should check direction in buffer?
+        // sends at least one from buffer or it would get stuck
+        pac = bufTail->prev;
         totalBytes += pac->packetLen;
-        pac = pac->next;
+        insertAfter(popNode(pac), oldLast);
+        --bufSize;
+
+        LOG("sending out packets of %d bytes", totalBytes);
+
+        if (totalBytes > bytesCapped) {
+            break;
+        }   
     }
 
-    capLastTick = curTick;
+    // process live packets
+    pac = oldLast;
+    while (pac != head) {
+        if (!checkDirection(pac->addr.Direction, capInbound, capOutbound)) {
+            pac = pac->prev;
+            continue;
+        }
+
+        // live packets can all be kept
+        totalBytes += pac->packetLen;
+
+        if (totalBytes > bytesCapped) {
+            int capCnt = 0;
+            capped = TRUE;
+            // buffer from pac to head 
+            while (bufSize < KEEP_AT_MOST && pac != head) {
+                pacTmp = pac->prev;
+                insertAfter(popNode(pac), bufHead);
+                ++bufSize;
+                ++capCnt;
+                pac = pacTmp;
+            }
+
+            if (pac != head) {
+                LOG("! hitting cap max, dropping all remaining");
+                while (pac != head) {
+                    pacTmp = pac->prev;
+                    freeNode(pac);
+                    pac = pacTmp;
+                }
+            }
+            assert(pac == head);
+            LOG("capping %d packets", capCnt);
+            break;
+        } else {
+            pac = pac->prev;
+        }
+    }
+
     return capped;
 }
 
