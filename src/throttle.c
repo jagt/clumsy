@@ -8,14 +8,15 @@
 // threshold for how many packet to throttle at most
 #define KEEP_AT_MOST 1000
 
-static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput, *frameInput;
+static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput, *frameInput, *dropThrottledCheckbox;
 
 static volatile short throttleEnabled = 0,
     throttleInbound = 1, throttleOutbound = 1,
     chance = 1000, // [0-10000]
     // time frame in ms, when a throttle start the packets within the time 
     // will be queued and sent altogether when time is over
-    throttleFrame = TIME_DEFAULT; 
+    throttleFrame = TIME_DEFAULT,
+    dropThrottled = 0; 
 
 static PacketNode throttleHeadNode = {0}, throttleTailNode = {0};
 static PacketNode *bufHead = &throttleHeadNode, *bufTail = &throttleTailNode;
@@ -30,6 +31,7 @@ static INLINE_FUNCTION short isBufEmpty() {
 
 static Ihandle *throttleSetupUI() {
     Ihandle *throttleControlsBox = IupHbox(
+        dropThrottledCheckbox = IupToggle("Drop Throttled", NULL),
         IupLabel("Timeframe(ms):"),
         frameInput = IupText(NULL),
         inboundCheckbox = IupToggle("Inbound", NULL),
@@ -47,6 +49,9 @@ static Ihandle *throttleSetupUI() {
     IupSetAttribute(inboundCheckbox, SYNCED_VALUE, (char*)&throttleInbound);
     IupSetCallback(outboundCheckbox, "ACTION", (Icallback)uiSyncToggle);
     IupSetAttribute(outboundCheckbox, SYNCED_VALUE, (char*)&throttleOutbound);
+    IupSetCallback(dropThrottledCheckbox, "ACTION", (Icallback)uiSyncToggle);
+    IupSetAttribute(dropThrottledCheckbox, SYNCED_VALUE, (char*)&dropThrottled);
+
     // sync throttle packet number
     IupSetAttribute(frameInput, "VISIBLECOLUMNS", "3");
     IupSetAttribute(frameInput, "VALUE", STR(TIME_DEFAULT));
@@ -91,6 +96,16 @@ static void clearBufPackets(PacketNode *tail) {
     throttleStartTick = 0;
 }
 
+static void dropBufPackets() {
+    LOG("Throttled end, drop all %d packets. Buffer at max: %s", bufSize, bufSize == KEEP_AT_MOST ? "YES" : "NO");
+    while (!isBufEmpty()) {
+        freeNode(popNode(bufTail->prev));
+        --bufSize;
+    }
+    throttleStartTick = 0;
+}
+
+
 static void throttleCloseDown(PacketNode *head, PacketNode *tail) {
     UNREFERENCED_PARAMETER(tail);
     UNREFERENCED_PARAMETER(head);
@@ -127,7 +142,12 @@ THROTTLE_START:
 
             // send all when throttled enough, including in current step
             if (bufSize >= KEEP_AT_MOST || (currentTick - throttleStartTick > (unsigned int)throttleFrame)) {
-                clearBufPackets(tail);
+                // drop throttled if dropThrottled is toggled
+                if (dropThrottled) {
+                    dropBufPackets();
+                } else {
+                    clearBufPackets(tail);
+                }
             }
         }
     }
