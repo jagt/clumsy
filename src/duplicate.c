@@ -11,7 +11,7 @@ static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput, *countInput;
 
 static volatile short dupEnabled = 0,
     dupInbound = 1, dupOutbound = 1,
-    chance = 100, // [0-1000]
+    chance = 1000, // [0-10000]
     count = COPIES_COUNT; // how many copies to duplicate
 
 static Ihandle* dupSetupUI() {
@@ -72,7 +72,7 @@ static short dupProcess(PacketNode *head, PacketNode *tail) {
         if (checkDirection(pac->addr.Direction, dupInbound, dupOutbound)
             && calcChance(chance)) {
             short copies = count - 1;
-            LOG("duplicating w/ chance %.1f%%, cloned additionally %d packets", chance/10.0, copies);
+            LOG("duplicating w/ chance %.1f%%, cloned additionally %d packets", chance/100.0, copies);
             while (copies--) {
                 PacketNode *copy = createNode(pac->packet, pac->packetLen, &(pac->addr));
                 insertBefore(copy, pac); // must insertBefore or next packet is still pac

@@ -5,8 +5,7 @@
 
 short calcChance(short chance) {
     // notice that here we made a copy of chance, so even though it's volatile it is still ok
-    // calculation is slightly biased, 0x3FF is 1023 but our chance ranges 0-1000
-    return (chance == 1000) || ((rand() & 0x3FF) < chance);
+    return (chance == 10000) || ((rand() % 10000) < chance);
 }
 
 static short resolutionSet = 0;
@@ -44,7 +43,7 @@ int uiSyncChance(Ihandle *ih) {
         IupStoreAttribute(ih, "CARET", "10");
     }
     // and sync chance value
-    InterlockedExchange16(chancePtr, (short)(newValue * 10));
+    InterlockedExchange16(chancePtr, (short)(newValue * 100));
     return IUP_DEFAULT;
 }
 

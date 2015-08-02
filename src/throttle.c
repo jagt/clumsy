@@ -12,7 +12,7 @@ static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput, *frameInput;
 
 static volatile short throttleEnabled = 0,
     throttleInbound = 1, throttleOutbound = 1,
-    chance = 100, // [0-1000]
+    chance = 1000, // [0-10000]
     // time frame in ms, when a throttle start the packets within the time 
     // will be queued and sent altogether when time is over
     throttleFrame = TIME_DEFAULT; 

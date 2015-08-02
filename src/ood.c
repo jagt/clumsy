@@ -10,7 +10,7 @@ static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput;
 
 static volatile short oodEnabled = 0,
     oodInbound = 1, oodOutbound = 1,
-    chance = 100; // [0-1000]
+    chance = 1000; // [0-10000]
 static PacketNode *oodPacket = NULL;
 static int giveUpCnt;
 
@@ -114,7 +114,7 @@ static short oodProcess(PacketNode *head, PacketNode *tail) {
             // only contains a single packet, then pick it out and insert later
             if (checkDirection(pac->addr.Direction, oodInbound, oodOutbound) && calcChance(chance)) {
                 oodPacket = popNode(pac);
-                LOG("Ooo picked packet w/ chance %.1f%%, direction %s", chance/10.0, BOUND_TEXT(pac->addr.Direction));
+                LOG("Ooo picked packet w/ chance %.1f%%, direction %s", chance/100.0, BOUND_TEXT(pac->addr.Direction));
                 return TRUE;
             }
         } else if (calcChance(chance)) {

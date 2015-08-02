@@ -10,7 +10,7 @@ static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput, *rstButton;
 
 static volatile short resetEnabled = 0,
     resetInbound = 1, resetOutbound = 1,
-    chance = 0, // [0-1000]
+    chance = 0, // [0-10000]
     setNextCount = 0;
 
 
@@ -94,7 +94,7 @@ static short resetProcess(PacketNode *head, PacketNode *tail) {
                 NULL);
 
             if (pTcpHdr != NULL) {
-                LOG("injecting reset w/ chance %.1f%%", chance/10.0);
+                LOG("injecting reset w/ chance %.1f%%", chance/100.0);
                 pTcpHdr->Rst = 1;
                 WinDivertHelperCalcChecksums(pac->packet, pac->packetLen, 0);
 

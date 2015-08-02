@@ -9,7 +9,7 @@ static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput;
 
 static volatile short dropEnabled = 0,
     dropInbound = 1, dropOutbound = 1,
-    chance = 100; // [0-1000]
+    chance = 1000; // [0-10000]
 
 
 static Ihandle* dropSetupUI() {
@@ -57,11 +57,11 @@ static short dropProcess(PacketNode *head, PacketNode* tail) {
     int dropped = 0;
     while (head->next != tail) {
         PacketNode *pac = head->next;
-        // chance in range of [0, 1000]
+        // chance in range of [0, 10000]
         if (checkDirection(pac->addr.Direction, dropInbound, dropOutbound)
             && calcChance(chance)) {
             LOG("dropped with chance %.1f%%, direction %s",
-                chance/10.0, BOUND_TEXT(pac->addr.Direction));
+                chance/100.0, BOUND_TEXT(pac->addr.Direction));
             freeNode(popNode(pac));
             ++dropped;
         } else {
