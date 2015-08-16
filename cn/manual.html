@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"> 
     <title>clumsy, 在 Windows Vista / Windows 7 下模拟劣化网络环境(网络延迟，掉包，重发)的小工具。</title>
-    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.3.0/pure-min.css">
+    <link rel="stylesheet" href="https://yui-s.yahooapis.com/pure/0.3.0/pure-min.css">
     <link rel="stylesheet" href="layout.css">
 <!--[if lte IE 8]>
     <link rel="stylesheet" href="ie8.css">
@@ -47,7 +47,7 @@
         <ol class="textlist">
             <li>回送的输入数据包(Loopback inbound packets)无法被重新注入。<br>
             仔细想想你就会发现我们没有很好的方法来区分一个回送数据包到底是被发出还是被接收到，因为它们的目标和来源 IP 地址都是本机。事实上 clumsy 底层的 WinDivert，以及其基于的
-            <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/aa366510(v=vs.85).aspx">Windows Filtering Platform</a> 把所有的回送数据包统统认为是<i>输出 (Outbound) </i>数据包。这里需要记住的是，当你在本机上处理回送数据包的时候，你不能把 "inbound" 设置在 filter 条件中，最简单的方法就是在条件中简单的加上 "outbound"。另一件容易出问题的事情是，你本机的 IP 不仅仅只有 127.0.0.1 一个，还有类似路由器分配给你机器的 IP 也是属于你的本机 IP。
+            <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/aa366510(v=vs.85).aspx">Windows Filtering Platform</a> 把所有的回送数据包统统认为是<i>输出 (Outbound) </i>数据包。这里需要记住的是，当你在本机上处理回送数据包的时候，你不能把 "inbound" 设置在 filter 条件中，最简单的方法就是在条件中简单的加上 "outbound"。另一件容易出问题的事情是，你本机的 IP 不仅仅只有 127.0.0.1 一个，还有类似路由器分配给你机器的 IP 也是属于你的本机 IP。
             </li>
             <li>回送数据包会被处理两次。<br>
             因为所有的回送数据包都被认为是输出数据包，clumsy 会重复处理它们<i>两次</i>。一次是在发出的时候，一次是在接受到的时候。一个简单的例子是简单的把 filter 设置为 outbound，然后在 clumsy 中设置 500ms 的延迟并开启，之后在命令行里 ping localhost。这时你会发现延迟是 1000ms。当然你可以仔细的设置 filter 条件通过设置端口来只捕捉一部分的回送数据包，但是这样会比较麻烦。最简单的做法就是记住这个问题，然后设置参数的时候做相应的计算。
@@ -85,7 +85,7 @@
 
         <h4>Filter 语法</h4>
         <p>
-        这里 filter 中提供的语句会被直接作为参数提供给 WinDivert。语法在 <a href="http://reqrypt.org/windivert-doc.html#filter_language">WinDivert 的文档</a>中有详细的描述。如果你写过一点程序你会发现这个语法跟你放在 <i>if</i> 里面的判断表达式非常类似。你可以用 <i>and</i>, <i>or</i>, <i>not</i> 和 <i>括号</i> 来表达简单的逻辑规则。类似 <i>=</i>, <i>!=</i>, <i>&lsaquo;</i>, <i>&rsaquo;</i> 的操作符也可以被使用。下面是 filter 中可以使用的变量的列表(直接拷贝自 WinDivert 的文档)。你也可以通过以预设的 filter 作为例子参考。
+        这里 filter 中提供的语句会被直接作为参数提供给 WinDivert。语法在 <a href="https://reqrypt.org/windivert-doc.html#filter_language">WinDivert 的文档</a>中有详细的描述。如果你写过一点程序你会发现这个语法跟你放在 <i>if</i> 里面的判断表达式非常类似。你可以用 <i>and</i>, <i>or</i>, <i>not</i> 和 <i>括号</i> 来表达简单的逻辑规则。类似 <i>=</i>, <i>!=</i>, <i>&lsaquo;</i>, <i>&rsaquo;</i> 的操作符也可以被使用。下面是 filter 中可以使用的变量的列表(直接拷贝自 WinDivert 的文档)。你也可以通过以预设的 filter 作为例子参考。
         </p>
         <div>
             <table border="1" cellpadding="1" class="textlist" style="width:460px; margin:0 auto;">
@@ -138,7 +138,7 @@
         </p>
         <p>
             <strong>在 Windows Server 2008 上报错。</strong><br>
-            安装<a href="http://support.microsoft.com/kb/2761494">这个系统补丁</a>可以解决这个问题。 参见这个 <a href="https://github.com/jagt/clumsy/issues/14#issuecomment-72691983">issue</a>。
+            安装<a href="https://support.microsoft.com/kb/2761494">这个系统补丁</a>可以解决这个问题。 参见这个 <a href="https://github.com/jagt/clumsy/issues/14#issuecomment-72691983">issue</a>。
         </p>
 
         <hr>
