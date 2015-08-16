@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"> 
     <title>clumsy, an utility for simulating broken network for Windows Vista / Windows 7 and above</title>
-    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.3.0/pure-min.css">
+    <link rel="stylesheet" href="https://yui.yahooapis.com/pure/0.3.0/pure-min.css">
     <link rel="stylesheet" href="layout.css">
 <!--[if lte IE 8]>
     <link rel="stylesheet" href="ie8.css">
@@ -46,7 +46,7 @@
         </p>
         <ol class="textlist">
             <li>Loopback inbound packets can't be captured or reinjected.<br>
-            When you think about it, it's really difficult to tell it's an inbound or outbound packets when you're sending packets from the computer to itself. In fact the underlying <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/aa366510(v=vs.85).aspx">Windows Filtering Platform</a> seems to classify all loopback packets as <i>outbound</i>. The thing to remember is that when you're processing on loopback packets, you can't have "inbound" in your filter. It's important to know that your computer may have IPs other than 127.0.0.1, like an intranet IP allocated by your router. These are also considered loopback packets.
+            When you think about it, it's really difficult to tell it's an inbound or outbound packets when you're sending packets from the computer to itself. In fact the underlying <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/aa366510(v=vs.85).aspx">Windows Filtering Platform</a> seems to classify all loopback packets as <i>outbound</i>. The thing to remember is that when you're processing on loopback packets, you can't have "inbound" in your filter. It's important to know that your computer may have IPs other than 127.0.0.1, like an intranet IP allocated by your router. These are also considered loopback packets.
             </li>
             <li>Loopback packets are captured twice.<br>
             Since we don't have inbound loopback packets, all loopback packets are considered as outbound. So clumsy will process them <i>twice</i>: first time is when sending, and second time when receiving. A simple example is that when filter is simply "outbound", and apply a lag of 500ms. When you ping localhost, it would be a lag of 1000ms. You can work around it by specify destination port and things like this. But it would be easier to just keep this in mind and be careful when setting the parameters.
@@ -85,7 +85,7 @@
 
         <h4>Filter Syntax</h4>
         <p>
-        The filtering text is directly feed to WinDivert. The syntax is well documented <a href="http://reqrypt.org/windivert-doc.html#filter_language">here</a>. If you've programmed in any language, it should be looks very familar to what you put in the <i>if</i> condition. You can use <i>and</i>, <i>or</i>, <i>not</i> and <i>parentheses</i> to build the logic expression. Ops like <i>=</i>, <i>!=</i>, <i>&lsaquo;</i>, <i>&rsaquo;</i> are also provided. A list of available fields from WinDivert documentation is attached as below. You can also refer to the presets for example.
+        The filtering text is directly feed to WinDivert. The syntax is well documented <a href="https://reqrypt.org/windivert-doc.html#filter_language">here</a>. If you've programmed in any language, it should be looks very familar to what you put in the <i>if</i> condition. You can use <i>and</i>, <i>or</i>, <i>not</i> and <i>parentheses</i> to build the logic expression. Ops like <i>=</i>, <i>!=</i>, <i>&lsaquo;</i>, <i>&rsaquo;</i> are also provided. A list of available fields from WinDivert documentation is attached as below. You can also refer to the presets for example.
         </p>
         <div>
             <table border="1" cellpadding="1" class="textlist" style="width:460px; margin:0 auto;">
@@ -138,7 +138,7 @@
         </p>
         <p>
             <strong>Failed to start on Windows Server 2008.</strong><br>
-            This can be fixed by <a href="http://support.microsoft.com/kb/2761494">installing an patch from Microsoft</a>. See <a href="https://github.com/jagt/clumsy/issues/14#issuecomment-72691983">this</a>.
+            This can be fixed by <a href="https://support.microsoft.com/kb/2761494">installing an patch from Microsoft</a>. See <a href="https://github.com/jagt/clumsy/issues/14#issuecomment-72691983">this</a>.
         </p>
 
         <hr>
