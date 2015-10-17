@@ -4,7 +4,7 @@
 #include "iup.h"
 #include "windivert.h"
 
-#define CLUMSY_VERSION "0.2"
+#define CLUMSY_VERSION "0.3"
 #define MSG_BUFSIZE 512
 #define FILTER_BUFSIZE 1024
 #define NAME_SIZE 16
@@ -66,8 +66,14 @@
 #else
 #define LOG(fmt, ...) (printf(__FUNCTION__ ": " fmt "\n", ##__VA_ARGS__))
 #endif
+
+// check for assert
+#ifndef assert
 // some how vs can't trigger debugger on assert, which is really stupid
 #define assert(x) do {if (!(x)) {DebugBreak();} } while(0)
+#endif
+
+
 #else
 #define LOG(fmt, ...)
 #define ABORT()

@@ -99,7 +99,7 @@ int uiSyncFixed(Ihandle *ih) {
         IupStoreAttribute(ih, "CARET", "10");
     }
     // sync back
-    fixValue = newValue / FIXED_EPSILON;
+    fixValue = (short)(newValue / FIXED_EPSILON);
     InterlockedExchange16(fixedPointer, fixValue);
     return IUP_DEFAULT;
 }
