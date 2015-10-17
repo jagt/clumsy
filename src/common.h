@@ -4,7 +4,7 @@
 #include "iup.h"
 #include "windivert.h"
 
-#define CLUMSY_VERSION "0.2"
+#define CLUMSY_VERSION "0.3"
 #define MSG_BUFSIZE 512
 #define FILTER_BUFSIZE 1024
 #define NAME_SIZE 16

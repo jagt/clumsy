@@ -2,7 +2,7 @@
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
 <!-- the funky thing is that the version MUST be x.x.x.x, see msdn for info -->
 <assemblyIdentity
-    version="0.2.0.0"
+    version="0.3.0.0"
     processorArchitecture="amd64"
     name="clumsy"
     type="win32"
