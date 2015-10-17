@@ -11,7 +11,7 @@ static Ihandle *inboundCheckbox, *outboundCheckbox, *kpsInput;
 
 static volatile short capEnabled = 0,
     capInbound = 1, capOutbound = 1,
-    kps = 32 / FIXED_EPSILON; // kb / second
+    kps = (short)(32 / FIXED_EPSILON); // kb / second
 
 static PacketNode capHeadNode = {0}, capTailNode = {0};
 static PacketNode *bufHead = &capHeadNode, *bufTail = &capTailNode;

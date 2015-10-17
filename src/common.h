@@ -66,8 +66,14 @@
 #else
 #define LOG(fmt, ...) (printf(__FUNCTION__ ": " fmt "\n", ##__VA_ARGS__))
 #endif
+
+// check for assert
+#ifndef assert
 // some how vs can't trigger debugger on assert, which is really stupid
 #define assert(x) do {if (!(x)) {DebugBreak();} } while(0)
+#endif
+
+
 #else
 #define LOG(fmt, ...)
 #define ABORT()
