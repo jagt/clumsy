@@ -300,6 +300,23 @@ static BOOL check32RunningOn64(HWND hWnd) {
     return FALSE;
 }
 
+static BOOL checkIsRunning() {
+    //It will be closed and destroyed when programm terminates (according to MSDN).
+    HANDLE hStartEvent = CreateEventW(NULL, FALSE, FALSE, L"Global\\CLUMSY_IS_RUNNING_EVENT_NAME");
+
+    if (hStartEvent == NULL)
+        return TRUE;
+
+    if (GetLastError() == ERROR_ALREADY_EXISTS) {
+        CloseHandle(hStartEvent);
+        hStartEvent = NULL;
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+
 static int uiOnDialogShow(Ihandle *ih, int state) {
     // only need to process on show
     HWND hWnd;
@@ -314,6 +331,13 @@ static int uiOnDialogShow(Ihandle *ih, int state) {
     icon = LoadIcon(hInstance, "CLUMSY_ICON");
     SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM)icon);
     SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LPARAM)icon);
+
+    exit = checkIsRunning();
+    if (exit) {
+        MessageBox(hWnd, (LPCSTR)"Theres' already an instance of clumsy running.",
+            (LPCSTR)"Aborting", MB_OK);
+        return IUP_CLOSE;
+    }
 
 #ifdef _WIN32
     exit = check32RunningOn64(hWnd);
@@ -478,28 +502,7 @@ static void uiSetupModule(Module *module, Ihandle *parent) {
     }
 }
 
-static BOOL checkIsRunning() {
-	//It will be closed and destroyed when programm terminates (according to MSDN).
-	HANDLE hStartEvent = CreateEventW(NULL, FALSE, FALSE, L"Global\\CLUMSY_IS_RUNNING_EVENT_NAME");
-
-	if (hStartEvent == NULL)
-		return TRUE;
-
-	if (GetLastError() == ERROR_ALREADY_EXISTS) {
-		CloseHandle(hStartEvent);
-		hStartEvent = NULL;
-		return TRUE;
-	}
-
-	return FALSE;
-}
-
 int main(int argc, char* argv[]) {
-	if (checkIsRunning())	{
-		LOG("Clumsy is already running on this machine.\n");
-		return 1;
-	}
-
     LOG("Is Run As Admin: %d", IsRunAsAdmin());
     LOG("Is Elevated: %d", IsElevated());
     init(argc, argv);
