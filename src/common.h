@@ -85,7 +85,7 @@ typedef struct _NODE {
     char *packet;
     UINT packetLen;
     WINDIVERT_ADDRESS addr;
-    DWORD timestamp; // ! timestamp isn't filled when creating node since it's only needed for lag
+    DWORD sendTimestamp; // ! not filled when creating node since it's only needed for lag
     struct _NODE *prev, *next;
 } PacketNode;
 
@@ -121,7 +121,7 @@ typedef struct {
      * Flags used during program excution. Need to be re initialized on each run
      */
     short lastEnabled; // if it is enabled on last run
-    short processTriggered; // whether this module has been triggered in last step 
+    short processTriggered; // whether this module has been triggered in last step
     Ihandle *iconHandle; // store the icon to be updated
 } Module;
 
@@ -135,7 +135,7 @@ extern Module resetModule;
 extern Module capModule;
 extern Module* modules[MODULE_CNT]; // all modules in a list
 
-// status for sending packets, 
+// status for sending packets,
 #define SEND_STATUS_NONE 0
 #define SEND_STATUS_SEND 1
 #define SEND_STATUS_FAIL -1

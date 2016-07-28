@@ -4,18 +4,22 @@
 #define NAME "lag"
 #define LAG_MIN "0"
 #define LAG_MAX "3000"
+#define VARIATION_MIN "0"
+#define VARIATION_MAX "3000"
 #define KEEP_AT_MOST 2000
 // send FLUSH_WHEN_FULL packets when buffer is full
 #define FLUSH_WHEN_FULL 800
 #define LAG_DEFAULT 50
+#define VARIATION_DEFAULT 0
 
 // don't need a chance
-static Ihandle *inboundCheckbox, *outboundCheckbox, *timeInput;
+static Ihandle *inboundCheckbox, *outboundCheckbox, *timeInput, *variationInput;
 
 static volatile short lagEnabled = 0,
     lagInbound = 1,
     lagOutbound = 1,
-    lagTime = LAG_DEFAULT; // default for 50ms
+    lagTime = LAG_DEFAULT, // default for 50ms
+    lagVariation = VARIATION_DEFAULT; // default for no variation
 
 static PacketNode lagHeadNode = {0}, lagTailNode = {0};
 static PacketNode *bufHead = &lagHeadNode, *bufTail = &lagTailNode;
@@ -33,6 +37,8 @@ static Ihandle *lagSetupUI() {
         outboundCheckbox = IupToggle("Outbound", NULL),
         IupLabel("Delay(ms):"),
         timeInput = IupText(NULL),
+        IupLabel("Variation(ms):"),
+        variationInput = IupText(NULL),
         NULL
         );
 
@@ -42,8 +48,17 @@ static Ihandle *lagSetupUI() {
     IupSetAttribute(timeInput, SYNCED_VALUE, (char*)&lagTime);
     IupSetAttribute(timeInput, INTEGER_MAX, LAG_MAX);
     IupSetAttribute(timeInput, INTEGER_MIN, LAG_MIN);
+
+    IupSetAttribute(variationInput, "VISIBLECOLUMNS", "4");
+    IupSetAttribute(variationInput, "VALUE", STR(VARIATION_DEFAULT));
+    IupSetCallback(variationInput, "VALUECHANGED_CB", uiSyncInteger);
+    IupSetAttribute(variationInput, SYNCED_VALUE, (char*)&lagVariation);
+    IupSetAttribute(variationInput, INTEGER_MAX, VARIATION_MAX);
+    IupSetAttribute(variationInput, INTEGER_MIN, VARIATION_MIN);
+
     IupSetCallback(inboundCheckbox, "ACTION", (Icallback)uiSyncToggle);
     IupSetAttribute(inboundCheckbox, SYNCED_VALUE, (char*)&lagInbound);
+
     IupSetCallback(outboundCheckbox, "ACTION", (Icallback)uiSyncToggle);
     IupSetAttribute(outboundCheckbox, SYNCED_VALUE, (char*)&lagOutbound);
 
@@ -55,6 +70,7 @@ static Ihandle *lagSetupUI() {
         setFromParameter(inboundCheckbox, "VALUE", NAME"-inbound");
         setFromParameter(outboundCheckbox, "VALUE", NAME"-outbound");
         setFromParameter(timeInput, "VALUE", NAME"-time");
+        setFromParameter(variationInput, "VALUE", NAME"-variation");
     }
 
     return lagControlsBox;
@@ -89,7 +105,9 @@ static short lagProcess(PacketNode *head, PacketNode *tail) {
     // pick up all packets and fill in the current time
     while (bufSize < KEEP_AT_MOST && pac != head) {
         if (checkDirection(pac->addr.Direction, lagInbound, lagOutbound)) {
-            insertAfter(popNode(pac), bufHead)->timestamp = timeGetTime();
+            // lag varies from lagTime - lagVariation <= lag <= lagTime + lagVariation
+            short lag = lagTime + (rand() % (1 + 2 * lagVariation)) - lagVariation;
+            insertAfter(popNode(pac), bufHead)->sendTimestamp = currentTime + lag;
             ++bufSize;
             pac = tail->prev;
         } else {
@@ -100,7 +118,7 @@ static short lagProcess(PacketNode *head, PacketNode *tail) {
     // try sending overdue packets from buffer tail
     while (!isBufEmpty()) {
         PacketNode *pac = bufTail->prev;
-        if (currentTime > pac->timestamp + lagTime) {
+        if (currentTime >= pac->sendTimestamp) {
             insertAfter(popNode(bufTail->prev), head); // sending queue is already empty by now
             --bufSize;
             LOG("Send lagged packets.");
