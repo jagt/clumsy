@@ -5,24 +5,24 @@
 #include <Windows.h>
 #include "common.h"
 
-// 
+//
 //   FUNCTION: IsRunAsAdmin()
 //
-//   PURPOSE: The function checks whether the current process is run as 
-//   administrator. In other words, it dictates whether the primary access 
-//   token of the process belongs to user account that is a member of the 
+//   PURPOSE: The function checks whether the current process is run as
+//   administrator. In other words, it dictates whether the primary access
+//   token of the process belongs to user account that is a member of the
 //   local Administrators group and it is elevated.
 //
-//   RETURN VALUE: Returns TRUE if the primary access token of the process 
-//   belongs to user account that is a member of the local Administrators 
+//   RETURN VALUE: Returns TRUE if the primary access token of the process
+//   belongs to user account that is a member of the local Administrators
 //   group and it is elevated. Returns FALSE if the token does not.
 //
-//   EXCEPTION: If this function fails, it throws a C++ DWORD exception which 
+//   EXCEPTION: If this function fails, it throws a C++ DWORD exception which
 //   contains the Win32 error code of the failure.
 //   * changed to not throw and return false *
 //
 //   EXAMPLE CALL:
-//     try 
+//     try
 //     {
 //         if (IsRunAsAdmin())
 //             wprintf (L"Process is run as administrator\n");
@@ -43,18 +43,18 @@ BOOL IsRunAsAdmin()
     // Allocate and initialize a SID of the administrators group.
     SID_IDENTIFIER_AUTHORITY NtAuthority = SECURITY_NT_AUTHORITY;
     if (!AllocateAndInitializeSid(
-        &NtAuthority, 
-        2, 
-        SECURITY_BUILTIN_DOMAIN_RID, 
-        DOMAIN_ALIAS_RID_ADMINS, 
-        0, 0, 0, 0, 0, 0, 
+        &NtAuthority,
+        2,
+        SECURITY_BUILTIN_DOMAIN_RID,
+        DOMAIN_ALIAS_RID_ADMINS,
+        0, 0, 0, 0, 0, 0,
         &pAdministratorsGroup))
     {
         dwError = GetLastError();
         goto Cleanup;
     }
 
-    // Determine whether the SID of administrators group is enabled in 
+    // Determine whether the SID of administrators group is enabled in
     // the primary access token of the process.
     if (!CheckTokenMembership(NULL, pAdministratorsGroup, &fIsRunAsAdmin))
     {
@@ -103,7 +103,8 @@ BOOL IsElevated( ) {
 BOOL tryElevate(HWND hWnd, BOOL silent) {
     // Check the current process's "run as administrator" status.
     BOOL fIsRunAsAdmin;
-    OSVERSIONINFO osver = {sizeof(osver)}; // MUST initialize with the size or GetVersionEx fails
+    OSVERSIONINFO osver = {0};
+    osver.dwOSVersionInfoSize = sizeof(osver); // MUST initialize with the size or GetVersionEx fails
     if (!GetVersionEx(&osver)) {
         if (!silent) MessageBox(hWnd, (LPCSTR)"Failed to get os version. clumsy only supports Windows Vista or above.",
             (LPCSTR)"Aborting", MB_OK);
@@ -125,7 +126,8 @@ BOOL tryElevate(HWND hWnd, BOOL silent) {
         if (GetModuleFileName(NULL, (LPSTR)szPath, ARRAYSIZE(szPath)))
         {
             // Launch itself as administrator.
-            SHELLEXECUTEINFO sei = { sizeof(sei) };
+            SHELLEXECUTEINFO sei = {0};
+            sei.cbSize = sizeof(sei);
             sei.lpVerb = (LPSTR)"runas";
             sei.lpFile = (LPSTR)szPath;
             sei.hwnd = hWnd;

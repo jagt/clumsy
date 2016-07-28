@@ -61,7 +61,7 @@ static INLINE_FUNCTION short isBufEmpty() {
 
 static void clearBufPackets(PacketNode *tail) {
     PacketNode *oldLast = tail->prev;
-    LOG("Cap end, send all %d packets. Buffer at max: %s", bufSize, bufSize);
+    LOG("Cap end, send all %d packets.", bufSize);
     while (!isBufEmpty()) {
         insertAfter(popNode(bufTail->prev), oldLast);
         --bufSize;
@@ -113,7 +113,7 @@ static short capProcess(PacketNode *head, PacketNode *tail) {
 
         if (totalBytes > bytesCapped) {
             break;
-        }   
+        }
     }
 
     // process live packets
@@ -130,7 +130,7 @@ static short capProcess(PacketNode *head, PacketNode *tail) {
         if (totalBytes > bytesCapped) {
             int capCnt = 0;
             capped = TRUE;
-            // buffer from pac to head 
+            // buffer from pac to head
             while (bufSize < KEEP_AT_MOST && pac != head) {
                 pacTmp = pac->prev;
                 insertAfter(popNode(pac), bufHead);
