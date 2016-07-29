@@ -12,6 +12,8 @@
 #define QUEUE_LEN 2 << 10
 #define QUEUE_TIME 2 << 9
 
+static short loopDelay = CLOCK_WAITMS;
+
 static HANDLE divertHandle;
 static volatile short stopLooping;
 static HANDLE loopThread, clockThread, mutex, event;
@@ -213,6 +215,7 @@ static void divertConsumeStep() {
     DWORD startTick = GetTickCount(), dt;
 #endif
     int ix, cnt;
+    short delay;
     // use lastEnabled to keep track of module starting up and closing down
     for (ix = 0; ix < MODULE_CNT; ++ix) {
         Module *module = modules[ix];
@@ -221,7 +224,8 @@ static void divertConsumeStep() {
                 module->startUp();
                 module->lastEnabled = 1;
             }
-            if (module->process(head, tail)) {
+            if (module->process(head, tail, &delay)) {
+                loopDelay = min(loopDelay, delay);
                 InterlockedIncrement16(&(module->processTriggered));
             }
         } else {
@@ -249,7 +253,10 @@ static DWORD divertClockLoop(LPVOID arg) {
 
     for(;;) {
         // Wait to be woken up, either by a packet becoming available to process or by timeout.
-        WaitForSingleObject(event, CLOCK_WAITMS);
+        WaitForSingleObject(event, loopDelay);
+        loopDelay = CLOCK_WAITMS;
+
+        // Acquire mutex to perform processing.
         waitResult = WaitForSingleObject(mutex, INFINITE);
         switch(waitResult) {
             case WAIT_OBJECT_0:

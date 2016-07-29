@@ -72,7 +72,7 @@ static void resetCloseDown(PacketNode *head, PacketNode *tail) {
     InterlockedExchange16(&setNextCount, 0);
 }
 
-static short resetProcess(PacketNode *head, PacketNode *tail) {
+static short resetProcess(PacketNode *head, PacketNode *tail, short *delay) {
     short reset = FALSE;
     PacketNode *pac = head->next;
     while (pac != tail) {
@@ -104,9 +104,13 @@ static short resetProcess(PacketNode *head, PacketNode *tail) {
                 }
             }
         }
-        
+
         pac = pac->next;
     }
+
+    // We don't mind when we're next scheduled.
+    *delay = 1000;
+
     return reset;
 }
 

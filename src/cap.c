@@ -88,7 +88,7 @@ static void capCloseDown(PacketNode *head, PacketNode *tail) {
     endTimePeriod();
 }
 
-static short capProcess(PacketNode *head, PacketNode *tail) {
+static short capProcess(PacketNode *head, PacketNode *tail, short *delay) {
     short capped = FALSE;
     PacketNode *pac, *pacTmp, *oldLast;
     DWORD curTick = timeGetTime();
@@ -113,7 +113,7 @@ static short capProcess(PacketNode *head, PacketNode *tail) {
 
         if (totalBytes > bytesCapped) {
             break;
-        }   
+        }
     }
 
     // process live packets
@@ -130,7 +130,7 @@ static short capProcess(PacketNode *head, PacketNode *tail) {
         if (totalBytes > bytesCapped) {
             int capCnt = 0;
             capped = TRUE;
-            // buffer from pac to head 
+            // buffer from pac to head
             while (bufSize < KEEP_AT_MOST && pac != head) {
                 pacTmp = pac->prev;
                 insertAfter(popNode(pac), bufHead);
@@ -154,6 +154,9 @@ static short capProcess(PacketNode *head, PacketNode *tail) {
             pac = pac->prev;
         }
     }
+
+    // We don't mind when we're next scheduled.
+    *delay = 1000;
 
     return capped;
 }
