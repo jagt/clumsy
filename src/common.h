@@ -116,12 +116,12 @@ typedef struct {
     Ihandle* (*setupUIFunc)(); // return hbox as controls group
     void (*startUp)(); // called when starting up the module
     void (*closeDown)(PacketNode *head, PacketNode *tail); // called when starting up the module
-    short (*process)(PacketNode *head, PacketNode *tail);
+    short (*process)(PacketNode *head, PacketNode *tail, short *delay);
     /*
      * Flags used during program excution. Need to be re initialized on each run
      */
     short lastEnabled; // if it is enabled on last run
-    short processTriggered; // whether this module has been triggered in last step 
+    short processTriggered; // whether this module has been triggered in last step
     Ihandle *iconHandle; // store the icon to be updated
 } Module;
 
@@ -135,7 +135,7 @@ extern Module resetModule;
 extern Module capModule;
 extern Module* modules[MODULE_CNT]; // all modules in a list
 
-// status for sending packets, 
+// status for sending packets,
 #define SEND_STATUS_NONE 0
 #define SEND_STATUS_SEND 1
 #define SEND_STATUS_FAIL -1

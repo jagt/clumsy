@@ -4,7 +4,7 @@
 #define NAME "ood"
 // keep a picked packet at most for KEEP_TURNS_MAX steps, or if there's no following
 // one, it will just be sent
-#define KEEP_TURNS_MAX 10 
+#define KEEP_TURNS_MAX 10
 
 static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput;
 
@@ -100,7 +100,7 @@ static void swapNode(PacketNode *a, PacketNode *b) {
     }
 }
 
-static short oodProcess(PacketNode *head, PacketNode *tail) {
+static short oodProcess(PacketNode *head, PacketNode *tail, short *delay) {
     if (oodPacket != NULL) {
         if (!isListEmpty() || --giveUpCnt == 0) {
             LOG("Ooo sent direction %s, is giveup %s", BOUND_TEXT(oodPacket->addr.Direction), giveUpCnt ? "NO" : "YES");
@@ -135,6 +135,9 @@ static short oodProcess(PacketNode *head, PacketNode *tail) {
             return TRUE;
         }
     }
+
+    // We don't mind when we're next scheduled.
+    *delay = 1000;
 
     return FALSE;
 }

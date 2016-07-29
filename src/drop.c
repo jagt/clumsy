@@ -53,7 +53,7 @@ static void dropCloseDown(PacketNode *head, PacketNode *tail) {
     LOG("drop disabled");
 }
 
-static short dropProcess(PacketNode *head, PacketNode* tail) {
+static short dropProcess(PacketNode *head, PacketNode* tail, short *delay) {
     int dropped = 0;
     while (head->next != tail) {
         PacketNode *pac = head->next;
@@ -68,6 +68,9 @@ static short dropProcess(PacketNode *head, PacketNode* tail) {
             head = head->next;
         }
     }
+
+    // We don't mind when we're next scheduled.
+    *delay = 1000;
 
     return dropped > 0;
 }

@@ -65,7 +65,7 @@ static void dupCloseDown(PacketNode *head, PacketNode *tail) {
     LOG("dup disabled");
 }
 
-static short dupProcess(PacketNode *head, PacketNode *tail) {
+static short dupProcess(PacketNode *head, PacketNode *tail, short *delay) {
     short duped = FALSE;
     PacketNode *pac = head->next;
     while (pac != tail) {
@@ -81,6 +81,10 @@ static short dupProcess(PacketNode *head, PacketNode *tail) {
         }
         pac = pac->next;
     }
+
+    // We don't mind when we're next scheduled.
+    *delay = 1000;
+
     return duped;
 }
 

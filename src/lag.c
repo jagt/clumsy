@@ -83,7 +83,7 @@ static void lagCloseDown(PacketNode *head, PacketNode *tail) {
     endTimePeriod();
 }
 
-static short lagProcess(PacketNode *head, PacketNode *tail) {
+static short lagProcess(PacketNode *head, PacketNode *tail, short *delay) {
     DWORD currentTime = timeGetTime();
     PacketNode *pac = tail->prev;
     // pick up all packets and fill in the current time
@@ -98,6 +98,7 @@ static short lagProcess(PacketNode *head, PacketNode *tail) {
     }
 
     // try sending overdue packets from buffer tail
+    *delay = 1000;
     while (!isBufEmpty()) {
         PacketNode *pac = bufTail->prev;
         if (currentTime > pac->timestamp + lagTime) {
@@ -106,6 +107,7 @@ static short lagProcess(PacketNode *head, PacketNode *tail) {
             LOG("Send lagged packets.");
         } else {
             LOG("Sent some lagged packets, still have %d in buf", bufSize);
+            *delay = pac->timestamp + lagTime - currentTime;
             break;
         }
     }

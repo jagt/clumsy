@@ -13,10 +13,10 @@ static Ihandle *inboundCheckbox, *outboundCheckbox, *chanceInput, *frameInput, *
 static volatile short throttleEnabled = 0,
     throttleInbound = 1, throttleOutbound = 1,
     chance = 1000, // [0-10000]
-    // time frame in ms, when a throttle start the packets within the time 
+    // time frame in ms, when a throttle start the packets within the time
     // will be queued and sent altogether when time is over
     throttleFrame = TIME_DEFAULT,
-    dropThrottled = 0; 
+    dropThrottled = 0;
 
 static PacketNode throttleHeadNode = {0}, throttleTailNode = {0};
 static PacketNode *bufHead = &throttleHeadNode, *bufTail = &throttleTailNode;
@@ -113,7 +113,7 @@ static void throttleCloseDown(PacketNode *head, PacketNode *tail) {
     endTimePeriod();
 }
 
-static short throttleProcess(PacketNode *head, PacketNode *tail) {
+static short throttleProcess(PacketNode *head, PacketNode *tail, short *delay) {
     short throttled = FALSE;
     UNREFERENCED_PARAMETER(head);
     if (!throttleStartTick) {
@@ -151,6 +151,9 @@ THROTTLE_START:
             }
         }
     }
+
+    // We don't mind when we're next scheduled.
+    *delay = 1000;
 
     return throttled;
 }

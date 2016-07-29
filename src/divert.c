@@ -10,11 +10,13 @@
 // FIXME does this need to be larger then the time to process the list?
 #define CLOCK_WAITMS 40
 #define QUEUE_LEN 2 << 10
-#define QUEUE_TIME 2 << 9 
+#define QUEUE_TIME 2 << 9
+
+static short loopDelay = CLOCK_WAITMS;
 
 static HANDLE divertHandle;
 static volatile short stopLooping;
-static HANDLE loopThread, clockThread, mutex;
+static HANDLE loopThread, clockThread, mutex, event;
 
 static DWORD divertReadLoop(LPVOID arg);
 static DWORD divertClockLoop(LPVOID arg);
@@ -113,6 +115,11 @@ int divertStart(const char *filter, char buf[]) {
         sprintf(buf, "Failed to create mutex (%lu)", GetLastError());
         return FALSE;
     }
+    event = CreateEvent(NULL, FALSE, FALSE, NULL);
+    if (event == NULL) {
+        sprintf(buf, "Failed to create event (%lu)", GetLastError());
+        return FALSE;
+    }
 
     loopThread = CreateThread(NULL, 1, (LPTHREAD_START_ROUTINE)divertReadLoop, NULL, 0, NULL);
     if (loopThread == NULL) {
@@ -208,6 +215,7 @@ static void divertConsumeStep() {
     DWORD startTick = GetTickCount(), dt;
 #endif
     int ix, cnt;
+    short delay;
     // use lastEnabled to keep track of module starting up and closing down
     for (ix = 0; ix < MODULE_CNT; ++ix) {
         Module *module = modules[ix];
@@ -216,7 +224,8 @@ static void divertConsumeStep() {
                 module->startUp();
                 module->lastEnabled = 1;
             }
-            if (module->process(head, tail)) {
+            if (module->process(head, tail, &delay)) {
+                loopDelay = min(loopDelay, delay);
                 InterlockedIncrement16(&(module->processTriggered));
             }
         } else {
@@ -237,15 +246,18 @@ static void divertConsumeStep() {
 
 // periodically try to consume packets to keep the network responsive and not blocked by recv
 static DWORD divertClockLoop(LPVOID arg) {
-    DWORD startTick, stepTick, waitResult;
+    DWORD waitResult;
     int ix;
 
     UNREFERENCED_PARAMETER(arg);
 
     for(;;) {
-        // use acquire as wait for yielding thread
-        startTick = GetTickCount();
-        waitResult = WaitForSingleObject(mutex, CLOCK_WAITMS);
+        // Wait to be woken up, either by a packet becoming available to process or by timeout.
+        WaitForSingleObject(event, loopDelay);
+        loopDelay = CLOCK_WAITMS;
+
+        // Acquire mutex to perform processing.
+        waitResult = WaitForSingleObject(mutex, INFINITE);
         switch(waitResult) {
             case WAIT_OBJECT_0:
                 /***************** enter critical region ************************/
@@ -256,16 +268,10 @@ static DWORD divertClockLoop(LPVOID arg) {
                     LOG("Fatal: Failed to release mutex (%lu)", GetLastError());
                     ABORT();
                 }
-                // if didn't spent enough time, we sleep on it
-                stepTick = GetTickCount() - startTick;
-                if (stepTick < CLOCK_WAITMS) {
-                    Sleep(CLOCK_WAITMS - stepTick);
-                }
                 break;
             case WAIT_TIMEOUT:
-                // read loop is processing, so we can skip this run
+                // shouldn't happen on an INFINITE wait
                 LOG("!!! Skipping one run");
-                Sleep(CLOCK_WAITMS);
                 break;
             case WAIT_ABANDONED:
                 LOG("Acquired abandoned mutex");
@@ -296,7 +302,7 @@ static DWORD divertClockLoop(LPVOID arg) {
                     Module *module = modules[ix];
                     if (*(module->enabledFlag)) {
                         module->closeDown(head, tail);
-                    } 
+                    }
                 }
                 LOG("Send all packets upon closing");
                 lastSendCount = sendAllListPackets();
@@ -329,8 +335,6 @@ static DWORD divertReadLoop(LPVOID arg) {
     UNREFERENCED_PARAMETER(arg);
 
     for(;;) {
-        // each step must fully consume the list
-        assert(isListEmpty()); // FIXME has failed this assert before. don't know why
         if (!WinDivertRecv(divertHandle, packetBuf, MAX_PACKETSIZE, &addrBuf, &readLen)) {
             DWORD lastError = GetLastError();
             if (lastError == ERROR_INVALID_HANDLE || lastError == ERROR_OPERATION_ABORTED) {
@@ -343,10 +347,10 @@ static DWORD divertReadLoop(LPVOID arg) {
         }
         if (readLen > MAX_PACKETSIZE) {
             // don't know how this can happen
-            LOG("Internal Error: DivertRecv truncated recv packet."); 
+            LOG("Internal Error: DivertRecv truncated recv packet.");
         }
 
-        //dumpPacket(packetBuf, readLen, &addrBuf);  
+        //dumpPacket(packetBuf, readLen, &addrBuf);
 
         waitResult = WaitForSingleObject(mutex, INFINITE);
         switch(waitResult) {
@@ -363,7 +367,9 @@ static DWORD divertReadLoop(LPVOID arg) {
                 // create node and put it into the list
                 pnode = createNode(packetBuf, readLen, &addrBuf);
                 appendNode(pnode);
-                divertConsumeStep();
+
+                // notify that this has happened
+                SetEvent(event);
                 /***************** leave critical region ************************/
                 if (!ReleaseMutex(mutex)) {
                     LOG("Fatal: Failed to release mutex (%lu)", GetLastError());

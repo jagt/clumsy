@@ -83,7 +83,7 @@ static INLINE_FUNCTION void tamper_buf(char *buf, UINT len) {
     }
 }
 
-static short tamperProcess(PacketNode *head, PacketNode *tail) {
+static short tamperProcess(PacketNode *head, PacketNode *tail, short *delay) {
     short tampered = FALSE;
     PacketNode *pac = head->next;
     while (pac != tail) {
@@ -92,7 +92,7 @@ static short tamperProcess(PacketNode *head, PacketNode *tail) {
             char *data = NULL;
             UINT dataLen = 0;
             if (WinDivertHelperParsePacket(pac->packet, pac->packetLen, NULL, NULL, NULL,
-                NULL, NULL, NULL, (PVOID*)&data, &dataLen) 
+                NULL, NULL, NULL, (PVOID*)&data, &dataLen)
                 && data != NULL && dataLen != 0) {
                 // try to tamper the central part of the packet,
                 // since common packets put their checksum at head or tail
@@ -117,6 +117,10 @@ static short tamperProcess(PacketNode *head, PacketNode *tail) {
         }
         pac = pac->next;
     }
+
+    // We don't mind when we're next scheduled.
+    *delay = 1000;
+
     return tampered;
 }
 
