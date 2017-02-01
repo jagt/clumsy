@@ -1,5 +1,7 @@
 # clumsy
 
+[![Join the chat at https://gitter.im/jagt/clumsy](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jagt/clumsy?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 __clumsy makes your network condition on Windows significantly worse, but in a managed and interactive manner.__
 
 Leveraging the awesome [WinDivert](http://reqrypt.org/windivert.html), clumsy stops living network packets and capture them, lag/drop/tamper/.. the packets on demand, then send them away. Whether you want to track down weird bugs related to broken network, or evaluate your application on poor connections, clumsy will come in handy:
