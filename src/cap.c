@@ -4,26 +4,37 @@
 #include "common.h"
 #define NAME "cap"
 #define CAP_MIN "0.1"
-#define CAP_MAX "320.0" // TODO CAP_MAX actually can't be larger than 2**15...
+#define CAP_MAX "2000000000.0"
 #define KEEP_AT_MOST 5000
+#define BUFFER_MAX_KB "100000"
+#define BUFFER_MIN_KB "1"
 
-static Ihandle *inboundCheckbox, *outboundCheckbox, *kpsInput;
+#define ALLOW_SET_BUFFER_SIZE 0
+
+static Ihandle *inboundCheckbox, *outboundCheckbox, *kpsInput, *kbBufSzInput;
 
 static volatile short capEnabled = 0,
-    capInbound = 1, capOutbound = 1,
-    kps = (short)(32 / FIXED_EPSILON); // kb / second
+    capInbound = 1, capOutbound = 1;
+static volatile long
+    kps = (long)(32 / FIXED_EPSILON),
+	kbBufSz = 200; // kb / second
 
 static PacketNode capHeadNode = {0}, capTailNode = {0};
 static PacketNode *bufHead = &capHeadNode, *bufTail = &capTailNode;
 static int bufSize = 0;
+static int bufSizeBytes = 0;
 static DWORD capLastTick = 0;
 
 static Ihandle* capSetupUI() {
     Ihandle *capControlsBox = IupHbox(
         inboundCheckbox = IupToggle("Inbound", NULL),
         outboundCheckbox = IupToggle("Outbound", NULL),
-        IupLabel("Bandwidth Cap(kb/s):"),
+        IupLabel("Bandwidth Cap(kB/s):"),
         kpsInput = IupText(NULL),
+#if ALLOW_SET_BUFFER_SIZE
+        IupLabel("Buffer(kB):"),
+		kbBufSzInput = IupText(NULL),
+#endif
         NULL
         );
 
@@ -34,10 +45,19 @@ static Ihandle* capSetupUI() {
 
     IupSetAttribute(kpsInput, "VISIBLECOLUMNS", "4");
     IupSetAttribute(kpsInput, "VALUE", "32.0");
-    IupSetCallback(kpsInput, "VALUECHANGED_CB", (Icallback)uiSyncFixed);
+    IupSetCallback(kpsInput, "VALUECHANGED_CB", (Icallback)uiSyncFixedInt);
     IupSetAttribute(kpsInput, SYNCED_VALUE, (char*)&kps);
     IupSetAttribute(kpsInput, FIXED_MAX, CAP_MAX);
     IupSetAttribute(kpsInput, FIXED_MIN, CAP_MIN);
+
+#if ALLOW_SET_BUFFER_SIZE
+    IupSetAttribute(kbBufSzInput, "VISIBLECOLUMNS", "4");
+    IupSetAttribute(kbBufSzInput, "VALUE", "200");
+    IupSetCallback(kbBufSzInput, "VALUECHANGED_CB", uiSyncInteger);
+    IupSetAttribute(kbBufSzInput, SYNCED_VALUE, (char*)&kbBufSz);
+    IupSetAttribute(kbBufSzInput, INTEGER_MAX, BUFFER_MAX_KB);
+    IupSetAttribute(kbBufSzInput, INTEGER_MIN, BUFFER_MIN_KB);
+#endif
 
     // enable by default to avoid confusing
     IupSetAttribute(inboundCheckbox, "VALUE", "ON");
@@ -47,6 +67,9 @@ static Ihandle* capSetupUI() {
         setFromParameter(inboundCheckbox, "VALUE", NAME"-inbound");
         setFromParameter(outboundCheckbox, "VALUE", NAME"-outbound");
         setFromParameter(kpsInput, "VALUE", NAME"-kps");
+#if ALLOW_SET_BUFFER_SIZE
+		setFromParameter(kbBufSzInput, "VALUE", NAME"-buf-sz-kb");
+#endif
     }
 
     return capControlsBox;
@@ -73,6 +96,7 @@ static void capStartUp() {
         bufHead->next = bufTail;
         bufTail->prev = bufHead;
         bufSize = 0;
+		bufSizeBytes = 0;
     } else {
         assert(isBufEmpty());
     }
@@ -95,9 +119,14 @@ static short capProcess(PacketNode *head, PacketNode *tail) {
     DWORD deltaTick = curTick - capLastTick;
     int bytesCapped = (int)(deltaTick * 0.001 * kps * FIXED_EPSILON * 1024);
     int totalBytes = 0;
-    LOG("kps val: %d, capped kps %.2f, capped at %d bytes", kps, kps * FIXED_EPSILON, bytesCapped);
-    capLastTick = curTick;
+	int capCnt = 0;
+	int droppedCnt = 0;
 
+	int maxBufSize = kps * 1024 / 4;
+
+#if ALLOW_SET_BUFFER_SIZE
+	maxBufSize = kbBufSz * 1024;
+#endif
 
     // process buffered packets
     oldLast = tail->prev;
@@ -106,15 +135,24 @@ static short capProcess(PacketNode *head, PacketNode *tail) {
         // sends at least one from buffer or it would get stuck
         pac = bufTail->prev;
         totalBytes += pac->packetLen;
-        insertAfter(popNode(pac), oldLast);
-        --bufSize;
-
-        LOG("sending out packets of %d bytes", totalBytes);
 
         if (totalBytes > bytesCapped) {
+			totalBytes -= pac->packetLen;
             break;
         }   
+
+        insertAfter(popNode(pac), oldLast);
+        --bufSize;
+		bufSizeBytes -= pac->packetLen;
+
+        LOG("sending out packets of %d bytes", totalBytes);
     }
+
+	if(tail->prev != oldLast || (tail->prev == head && isBufEmpty()))
+	{
+		LOG("kps delta: %d, val: %d, capped kps %.2f, capped at %d bytes", deltaTick, kps, kps * FIXED_EPSILON, bytesCapped);
+		capLastTick = curTick;
+	}
 
     // process live packets
     pac = oldLast;
@@ -128,32 +166,37 @@ static short capProcess(PacketNode *head, PacketNode *tail) {
         totalBytes += pac->packetLen;
 
         if (totalBytes > bytesCapped) {
-            int capCnt = 0;
             capped = TRUE;
             // buffer from pac to head 
-            while (bufSize < KEEP_AT_MOST && pac != head) {
+			if (bufSize < KEEP_AT_MOST && bufSizeBytes + pac->packetLen <= maxBufSize) {
                 pacTmp = pac->prev;
                 insertAfter(popNode(pac), bufHead);
                 ++bufSize;
+				bufSizeBytes += pac->packetLen;
                 ++capCnt;
                 pac = pacTmp;
             }
-
-            if (pac != head) {
-                LOG("! hitting cap max, dropping all remaining");
-                while (pac != head) {
-                    pacTmp = pac->prev;
-                    freeNode(pac);
-                    pac = pacTmp;
-                }
+			else
+			{
+				assert(pac != tail);
+				++capCnt;
+				++droppedCnt;
+				pacTmp = pac->prev;
+				popNode(pac);
+				freeNode(pac);
+				pac = pacTmp;
             }
-            assert(pac == head);
-            LOG("capping %d packets", capCnt);
-            break;
         } else {
             pac = pac->prev;
         }
     }
+
+	if(capped)
+	{
+		assert(pac == head);
+		LOG("capping %d packets", capCnt);
+		LOG("dropped %d packets", droppedCnt);
+	}
 
     return capped;
 }

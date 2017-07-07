@@ -8,7 +8,7 @@
 #define MSG_BUFSIZE 512
 #define FILTER_BUFSIZE 1024
 #define NAME_SIZE 16
-#define MODULE_CNT 7
+#define MODULE_CNT 8
 #define ICON_UPDATE_MS 200
 
 #define CONTROLS_HANDLE "__CONTROLS_HANDLE"
@@ -103,6 +103,7 @@ int uiSyncChance(Ihandle *ih);
 int uiSyncToggle(Ihandle *ih, int state);
 int uiSyncInteger(Ihandle *ih);
 int uiSyncFixed(Ihandle *ih);
+int uiSyncFixedInt(Ihandle *ih);
 
 
 // module
