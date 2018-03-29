@@ -28,14 +28,14 @@
         <div class="title-no-image">
         <h1>Manual</h1>
         </div>
-        <h4>Terminalogy</h4>
-        <p>Here're a list of terminalogies that would be repeatly used on this page. It's pretty easy to understand though.</p>
+        <h4>Terminology</h4>
+        <p>Here're a list of terminologies that would be repeatedly used on this page. It's pretty easy to understand though.</p>
         <ul class="textlist">
             <li><strong>Loopback packets</strong>: packets send from <i>localhost</i> (ie 127.0.0.1) to <i>localhost</i>.</li>
             <li><strong>Inbound packets</strong>: packets send <i>in</i> to your computer. It can be from somewhere else and also from your computer.</li>
             <li><strong>Outbound packets</strong>: packets send <i>out</i> from your computer.</li>
             <li><strong>Filtering</strong>: you often want to select a subset of interested network packets for clumsy to process. This is done by provide a <i>filter</i> to specify which IP, protocol, or other criterias.</li>
-            <li><strong>Capturing packets</strong>: clumsy needs to intercept the packets from your application so it can process it. So when your applicatioon is sending/receiving a packet, clumsy would <i>capture</i> it.</li>
+            <li><strong>Capturing packets</strong>: clumsy needs to intercept the packets from your application so it can process it. So when your application is sending/receiving a packet, clumsy would <i>capture</i> it.</li>
             <li><strong>Reinjecting packets</strong>: after we captured the packets, we need to let them of again so your application can get it. The process is called <i>reinjecting</i>.</li>
         </ul>
 
@@ -70,7 +70,7 @@
         <ol class="textlist">
             <li>Filter input. The detailed syntax will be explained in next section. But it's just like bool expression in most programming language. Packets are captured based on this filter.</li>
             <li>Presets. There's a list of builtin presets for you to choose. You can skim through to see what the filters can be like. And if you've get more familar with clumsy, you can add your own filters in <i>config.txt</i> bundled along the executable.</li>
-            <li>Control button. Click this to start capturing. In a few occasions it might fail. For example if your filter isn't syntatical right. In some occasions it might fail with other errors. See Faqs for more info. Once it's started the text would be changed to "Stop". There's a small icon on the left. When there's packets captured it would green. When there's failed rejecting the icon would turn red. When this happens it's mostly due to the limitations listed above. You should change your filter accordingly.</li>
+            <li>Control button. Click this to start capturing. In a few occasions it might fail. For example if your filter isn't syntatical right. In some occasions it might fail with other errors. See Flaqs for more info. Once it's started the text would be changed to "Stop". There's a small icon on the left. When there's packets captured it would green. When there's failed rejecting the icon would turn red. When this happens it's mostly due to the limitations listed above. You should change your filter accordingly.</li>
             <li>Function control. Tick the checkbox to enable functions. There's also an icon on the left side of the controls. It would turn green when this function is working. You can tick the checkbox anytime during the whole process and it would be toggled on and off as expected.</li>
             <li>Parameters control. For each function there's some additionally control for you to tune.
             The most common ones are:
