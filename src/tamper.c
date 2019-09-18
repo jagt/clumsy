@@ -87,12 +87,12 @@ static short tamperProcess(PacketNode *head, PacketNode *tail) {
     short tampered = FALSE;
     PacketNode *pac = head->next;
     while (pac != tail) {
-        if (checkDirection(pac->addr.Direction, tamperInbound, tamperOutbound)
+        if (checkDirection(pac->addr.Outbound, tamperInbound, tamperOutbound)
             && calcChance(chance)) {
             char *data = NULL;
             UINT dataLen = 0;
-            if (WinDivertHelperParsePacket(pac->packet, pac->packetLen, NULL, NULL, NULL,
-                NULL, NULL, NULL, (PVOID*)&data, &dataLen) 
+            if (WinDivertHelperParsePacket(pac->packet, pac->packetLen, NULL, NULL, NULL, NULL,
+                NULL, NULL, NULL, (PVOID*)&data, &dataLen, NULL, NULL) 
                 && data != NULL && dataLen != 0) {
                 // try to tamper the central part of the packet,
                 // since common packets put their checksum at head or tail
@@ -109,7 +109,7 @@ static short tamperProcess(PacketNode *head, PacketNode *tail) {
                 }
                 // FIXME checksum seems to have some problem
                 if (doChecksum) {
-                    WinDivertHelperCalcChecksums(pac->packet, pac->packetLen, 0);
+                    WinDivertHelperCalcChecksums(pac->packet, pac->packetLen, NULL, 0);
                 }
                 tampered = TRUE;
             }

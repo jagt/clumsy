@@ -76,7 +76,7 @@ static short resetProcess(PacketNode *head, PacketNode *tail) {
     short reset = FALSE;
     PacketNode *pac = head->next;
     while (pac != tail) {
-        if (checkDirection(pac->addr.Direction, resetInbound, resetOutbound)
+        if (checkDirection(pac->addr.Outbound, resetInbound, resetOutbound)
             && pac->packetLen > TCP_MIN_SIZE
             && (setNextCount || calcChance(chance)))
         {
@@ -86,17 +86,20 @@ static short resetProcess(PacketNode *head, PacketNode *tail) {
                 pac->packetLen,
                 NULL,
                 NULL,
+				NULL,
                 NULL,
                 NULL,
                 &pTcpHdr,
                 NULL,
                 NULL,
-                NULL);
+                NULL,
+				NULL,
+				NULL);
 
             if (pTcpHdr != NULL) {
                 LOG("injecting reset w/ chance %.1f%%", chance/100.0);
                 pTcpHdr->Rst = 1;
-                WinDivertHelperCalcChecksums(pac->packet, pac->packetLen, 0);
+                WinDivertHelperCalcChecksums(pac->packet, pac->packetLen, NULL, 0);
 
                 reset = TRUE;
                 if (setNextCount > 0) {

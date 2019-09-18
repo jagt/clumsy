@@ -64,7 +64,18 @@
 #ifdef __MINGW32__
 #define LOG(fmt, ...) (printf("%s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__))
 #else
-#define LOG(fmt, ...) (printf(__FUNCTION__ ": " fmt "\n", ##__VA_ARGS__))
+{
+	char buf[1024];
+	va_list args;
+
+	va_start(args, pFmt);
+	vsprintf_s(buf, 1024, pFmt, args);
+	va_end(args);
+
+	OutputDebugString(buf);
+}
+
+#define LOG(fmt, ...) (VsLog(__FUNCTION__ ": " fmt "\n", ##__VA_ARGS__))
 #endif
 
 // check for assert
@@ -155,6 +166,10 @@ void divertStop();
 #define STR(x) STR_HELPER(x)
 
 short calcChance(short chance);
+
+// Darrell: Temporary replacements for the ones missing from WinDivert 2.1 (note: values swapped)
+#define WINDIVERT_DIRECTION_INBOUND 0
+#define WINDIVERT_DIRECTION_OUTBOUND 1
 
 #define BOUND_TEXT(b) ((b) == WINDIVERT_DIRECTION_INBOUND ? "IN" : "OUT")
 #define IS_INBOUND(b) ((b) == WINDIVERT_DIRECTION_INBOUND)

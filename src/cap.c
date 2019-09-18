@@ -119,7 +119,7 @@ static short capProcess(PacketNode *head, PacketNode *tail) {
     // process live packets
     pac = oldLast;
     while (pac != head) {
-        if (!checkDirection(pac->addr.Direction, capInbound, capOutbound)) {
+        if (!checkDirection(pac->addr.Outbound, capInbound, capOutbound)) {
             pac = pac->prev;
             continue;
         }

@@ -8,7 +8,7 @@ if _ACTION == 'clean' then
     os.rmdir('./obj_gmake')
 end
 
-local LIB_DIVERT_VC11 = 'external/WinDivert-1.1.7-MSVC'
+local LIB_DIVERT_VC11 = 'external/WinDivert-2.1.0-A'
 local LIB_DIVERT_MINGW = 'external/WinDivert-1.1.7-MINGW'
 local LIB_IUP_WIN32_VC11 = 'external/iup-3.16_Win32_dll11_lib'
 local LIB_IUP_WIN64_VC11 = 'external/iup-3.16_Win64_dll11_lib'
@@ -70,7 +70,7 @@ solution('clumsy')
             defines({'X64'})
             includedirs({LIB_IUP_WIN64_VC11 .. '/include'})
             libdirs({
-                LIB_DIVERT_VC11 .. '/amd64',
+                LIB_DIVERT_VC11 .. '/x64',
                 LIB_IUP_WIN64_VC11 .. ''
                 })
 
@@ -89,7 +89,7 @@ solution('clumsy')
             includedirs({LIB_DIVERT_MINGW .. '/include',
                 LIB_IUP_WIN64_MINGW .. '/include'})
             libdirs({
-                LIB_DIVERT_MINGW .. '/amd64',
+                LIB_DIVERT_MINGW .. '/x64',
                 LIB_IUP_WIN64_MINGW .. ''
                 })
 
@@ -104,7 +104,7 @@ solution('clumsy')
             local divert_lib, iup_lib
             if platform == 'vs*' then 
                 if arch == 'x64' then
-                    divert_lib = '../' .. LIB_DIVERT_VC11  .. '/amd64/'
+                    divert_lib = '../' .. LIB_DIVERT_VC11  .. '/x64/'
                     iup_lib = '../' .. LIB_IUP_WIN64_VC11 .. ''
                 else
                     divert_lib = '../' .. LIB_DIVERT_VC11 .. '/x86/'
@@ -112,7 +112,7 @@ solution('clumsy')
                 end
             elseif platform == 'gmake' then
                 if arch == 'x64' then
-                    divert_lib = '../' .. LIB_DIVERT_MINGW .. '/amd64/'
+                    divert_lib = '../' .. LIB_DIVERT_MINGW .. '/x64/'
                     iup_lib = '../' .. LIB_IUP_WIN64_MINGW .. ''
                 else
                     divert_lib = '../' .. LIB_DIVERT_MINGW .. '/x86/'
