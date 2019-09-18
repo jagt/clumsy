@@ -66,14 +66,14 @@
 #else
 static void VsLog(const char* pFmt, ...)
 {
-	char buf[1024];
-	va_list args;
+    char buf[1024];
+    va_list args;
 
-	va_start(args, pFmt);
-	vsprintf_s(buf, 1024, pFmt, args);
-	va_end(args);
+    va_start(args, pFmt);
+    vsprintf_s(buf, 1024, pFmt, args);
+    va_end(args);
 
-	OutputDebugString(buf);
+    OutputDebugString(buf);
 }
 
 #define LOG(fmt, ...) (VsLog(__FUNCTION__ ": " fmt "\n", ##__VA_ARGS__))
@@ -171,7 +171,7 @@ short calcChance(short chance);
 // inline helper for inbound outbound check
 static INLINE_FUNCTION
 BOOL checkDirection(BOOL outboundPacket, short handleInbound, short handleOutbound) {
-	return (handleInbound && !outboundPacket) || (handleOutbound && outboundPacket);
+    return (handleInbound && !outboundPacket) || (handleOutbound && outboundPacket);
 }
 
 

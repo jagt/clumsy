@@ -84,22 +84,22 @@ void loadConfig() {
             // eat up empty lines
 EAT_SPACE:  while (isspace(*current)) { ++current; }
             if (*current == '#') {
-				current = strchr(current, '\n');
+                current = strchr(current, '\n');
                 if (!current) break;
-				current = current + 1;
+                current = current + 1;
                 goto EAT_SPACE;
             }
 
             // now we can start
             last = current;
-			current = strchr(last, ':');
+            current = strchr(last, ':');
             if (!current) break;
             *current = '\0';
             filters[filtersSize].filterName = last;
-			current += 1;
+            current += 1;
             while (isspace(*current)) { ++current; } // eat potential space after :
             last = current;
-			current = strchr(last, '\n');
+            current = strchr(last, '\n');
             if (!current) break;
             filters[filtersSize].filterValue = last;
             *current = '\0';

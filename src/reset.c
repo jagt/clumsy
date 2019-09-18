@@ -86,15 +86,15 @@ static short resetProcess(PacketNode *head, PacketNode *tail) {
                 pac->packetLen,
                 NULL,
                 NULL,
-				NULL,
+                NULL,
                 NULL,
                 NULL,
                 &pTcpHdr,
                 NULL,
                 NULL,
                 NULL,
-				NULL,
-				NULL);
+                NULL,
+                NULL);
 
             if (pTcpHdr != NULL) {
                 LOG("injecting reset w/ chance %.1f%%", chance/100.0);
