@@ -64,6 +64,7 @@
 #ifdef __MINGW32__
 #define LOG(fmt, ...) (printf("%s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__))
 #else
+static void VsLog(const char* pFmt, ...)
 {
 	char buf[1024];
 	va_list args;
