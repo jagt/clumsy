@@ -34,7 +34,7 @@ solution('clumsy')
         configuration('Debug')
             flags({'ExtraWarnings', 'Symbols'})
             defines({'_DEBUG'})
-            kind("ConsoleApp")
+            kind("WindowedApp")
 
         configuration('Release')
             flags({'Optimize'})

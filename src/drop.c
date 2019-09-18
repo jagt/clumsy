@@ -61,7 +61,7 @@ static short dropProcess(PacketNode *head, PacketNode* tail) {
         if (checkDirection(pac->addr.Outbound, dropInbound, dropOutbound)
             && calcChance(chance)) {
             LOG("dropped with chance %.1f%%, direction %s",
-                chance/100.0, BOUND_TEXT(pac->addr.Outbound));
+                chance/100.0, pac->addr.Outbound ? "OUTBOUND" : "INBOUND");
             freeNode(popNode(pac));
             ++dropped;
         } else {

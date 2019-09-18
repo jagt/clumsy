@@ -168,20 +168,11 @@ void divertStop();
 
 short calcChance(short chance);
 
-// Darrell: Temporary replacements for the ones missing from WinDivert 2.1 (note: values swapped)
-#define WINDIVERT_DIRECTION_INBOUND 0
-#define WINDIVERT_DIRECTION_OUTBOUND 1
-
-#define BOUND_TEXT(b) ((b) == WINDIVERT_DIRECTION_INBOUND ? "IN" : "OUT")
-#define IS_INBOUND(b) ((b) == WINDIVERT_DIRECTION_INBOUND)
-#define IS_OUTBOUND(b) ((b) == WINDIVERT_DIRECTION_OUTBOUND)
 // inline helper for inbound outbound check
 static INLINE_FUNCTION
-BOOL checkDirection(UINT8 dir, short inbound, short outbound) {
-    return (inbound && IS_INBOUND(dir))
-                || (outbound && IS_OUTBOUND(dir));
+BOOL checkDirection(BOOL outboundPacket, short handleInbound, short handleOutbound) {
+	return (handleInbound && !outboundPacket) || (handleOutbound && outboundPacket);
 }
-
 
 
 // wraped timeBegin/EndPeriod to keep calling safe and end when exit

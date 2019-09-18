@@ -99,7 +99,7 @@ static short lagProcess(PacketNode *head, PacketNode *tail) {
 
     // try sending overdue packets from buffer tail
     while (!isBufEmpty()) {
-        PacketNode *pac = bufTail->prev;
+        pac = bufTail->prev;
         if (currentTime > pac->timestamp + lagTime) {
             insertAfter(popNode(bufTail->prev), head); // sending queue is already empty by now
             --bufSize;
