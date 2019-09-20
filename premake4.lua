@@ -9,7 +9,7 @@ if _ACTION == 'clean' then
 end
 
 local LIB_DIVERT_VC11 = 'external/WinDivert-2.1.0-A'
-local LIB_DIVERT_MINGW = 'external/WinDivert-1.1.7-MINGW'
+local LIB_DIVERT_MINGW = 'external/WinDivert-2.1.0-A'
 local LIB_IUP_WIN32_VC11 = 'external/iup-3.16_Win32_dll11_lib'
 local LIB_IUP_WIN64_VC11 = 'external/iup-3.16_Win64_dll11_lib'
 local LIB_IUP_WIN32_MINGW = 'external/iup-3.16_Win32_mingw4_lib'
@@ -34,7 +34,7 @@ solution('clumsy')
         configuration('Debug')
             flags({'ExtraWarnings', 'Symbols'})
             defines({'_DEBUG'})
-            kind("WindowedApp")
+            kind("ConsoleApp")
 
         configuration('Release')
             flags({'Optimize'})
@@ -52,6 +52,7 @@ solution('clumsy')
         configuration("vs*")
             defines({"_CRT_SECURE_NO_WARNINGS"})
             flags({'NoManifest'})
+            kind("WindowedApp") -- We don't need the console window in VS as we use OutputDebugString().
             buildoptions({'/wd"4214"'})
             includedirs({LIB_DIVERT_VC11 .. '/include'})
             objdir('obj_gmake')
