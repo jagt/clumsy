@@ -47,6 +47,31 @@ int uiSyncChance(Ihandle *ih) {
     return IUP_DEFAULT;
 }
 
+// shared callbacks
+int uiSyncInt32(Ihandle *ih) {
+    LONG *integerPointer = (LONG*)IupGetAttribute(ih, SYNCED_VALUE);
+    const int maxValue = IupGetInt(ih, INTEGER_MAX);
+    const int minValue = IupGetInt(ih, INTEGER_MIN);
+    // normalize input into [min, max]
+    int value = IupGetInt(ih, "VALUE"), newValue = value;
+    char valueBuf[8];
+    if (newValue > maxValue) {
+        newValue = maxValue;
+    } else if (newValue < minValue) {
+        newValue = minValue;
+    }
+    // test for 0 as for empty input
+    if (newValue != value && value != 0) {
+        sprintf(valueBuf, "%d", newValue);
+        IupStoreAttribute(ih, "VALUE", valueBuf);
+        // put caret at end to enable editing while normalizing
+        IupStoreAttribute(ih, "CARET", "10");
+    }
+    // sync back
+    InterlockedExchange(integerPointer, newValue);
+    return IUP_DEFAULT;
+}
+
 int uiSyncToggle(Ihandle *ih, int state) {
     short *togglePtr = (short*)IupGetAttribute(ih, SYNCED_VALUE);
     InterlockedExchange16(togglePtr, I2S(state));

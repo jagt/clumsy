@@ -16,6 +16,7 @@ Module* modules[MODULE_CNT] = {
     &oodModule,
     &tamperModule,
     &resetModule,
+	&bandwidthModule,
     //&capModule
 };
 
