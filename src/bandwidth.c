@@ -34,8 +34,10 @@ void crate_stats_delete(CRateStats *rate);
 
 void crate_stats_reset(CRateStats *rate);
 
+// call when packet arrives, count is the packet size in bytes
 void crate_stats_update(CRateStats *rate, int32_t count, uint32_t now_ts);
 
+// calculate rate
 int32_t crate_stats_calculate(CRateStats *rate, uint32_t now_ts);
 
 
@@ -106,8 +108,10 @@ static short bandwidthProcess(PacketNode *head, PacketNode* tail) {
     int dropped = 0;
 	DWORD now_ts = timeGetTime();
 	int limit = bandwidthLimit * 1024;
-	if (limit <= 0 || rateStats == NULL)
+
+	if (limit <= 0 || rateStats == NULL) {
 		return 0;
+	}
 
     while (head->next != tail) {
         PacketNode *pac = head->next;
@@ -118,7 +122,7 @@ static short bandwidthProcess(PacketNode *head, PacketNode* tail) {
 			int size = pac->packetLen;
 			if (rate + size > limit) {
 				LOG("dropped with bandwidth %dKB/s, direction %s",
-					bandwidthLimit, BOUND_TEXT(pac->addr.Direction));
+					(int)bandwidthLimit, BOUND_TEXT(pac->addr.Direction));
 				discard = 1;
 			}
 			else {
