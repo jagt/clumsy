@@ -16,21 +16,18 @@ See [this page](http://jagt.github.io/clumsy) for more info and build instructio
 
 ## Details
 
-Simulate network latency, delay, packet loss with clumsy on Windows 10:
+Simulate network latency, delay, packet loss with clumsy on Windows 7/8/10:
 
 ![](clumsy-demo.gif)
 
 
-## The Fork
+## This Fork
 
 This is a fork of the original [jagt/clumsy](https://github.com/jagt/clumsy) to add the **bandwidth limit** feature:
 
 ![](clumsy.png)
 
 The algorithm is similar to webrtc, which uses a sliding window (size = 1 second) to statistic current bandwidth.
-
-
-Though nowadays it seems everybody has high speed broadband Internet connection, it's still important to face the fact that network transportation isn't always reliable. You don't want a duplicated UDP packet to crash your application. Properly handle this usually requires adding more code in their projects, and it's not always easy nor possible. Hopefully clumsy can provide an easy and painless (though suboptimal) option to do this for busy developers.
 
 
 ## License
