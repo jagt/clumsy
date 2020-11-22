@@ -168,7 +168,7 @@ BOOL checkDirection(UINT8 dir, short inbound, short outbound) {
 
 
 
-// wraped timeBegin/EndPeriod to keep calling safe and end when exit
+// wrapped timeBegin/EndPeriod to keep calling safe and end when exit
 #define TIMER_RESOLUTION 4
 void startTimePeriod();
 void endTimePeriod();
