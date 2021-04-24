@@ -13,6 +13,23 @@ Leveraging the awesome [WinDivert](http://reqrypt.org/windivert.html), clumsy st
 
 See [this page](http://jagt.github.io/clumsy) for more info and build instructions.
 
+
+## Details
+
+Simulate network latency, delay, packet loss with clumsy on Windows 7/8/10:
+
+![](clumsy-demo.gif)
+
+
+## This Fork
+
+This is a fork of the original [jagt/clumsy](https://github.com/jagt/clumsy) to add the **bandwidth limit** feature:
+
+![](clumsy.png)
+
+The algorithm is similar to webrtc, which uses a sliding window (size = 1 second) to statistic current bandwidth.
+
+
 ## License
 
 MIT
