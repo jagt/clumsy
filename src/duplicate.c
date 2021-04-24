@@ -69,7 +69,7 @@ static short dupProcess(PacketNode *head, PacketNode *tail) {
     short duped = FALSE;
     PacketNode *pac = head->next;
     while (pac != tail) {
-        if (checkDirection(pac->addr.Direction, dupInbound, dupOutbound)
+        if (checkDirection(pac->addr.Outbound, dupInbound, dupOutbound)
             && calcChance(chance)) {
             short copies = count - 1;
             LOG("duplicating w/ chance %.1f%%, cloned additionally %d packets", chance/100.0, copies);

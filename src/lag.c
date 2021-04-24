@@ -88,7 +88,7 @@ static short lagProcess(PacketNode *head, PacketNode *tail) {
     PacketNode *pac = tail->prev;
     // pick up all packets and fill in the current time
     while (bufSize < KEEP_AT_MOST && pac != head) {
-        if (checkDirection(pac->addr.Direction, lagInbound, lagOutbound)) {
+        if (checkDirection(pac->addr.Outbound, lagInbound, lagOutbound)) {
             insertAfter(popNode(pac), bufHead)->timestamp = timeGetTime();
             ++bufSize;
             pac = tail->prev;
@@ -99,7 +99,7 @@ static short lagProcess(PacketNode *head, PacketNode *tail) {
 
     // try sending overdue packets from buffer tail
     while (!isBufEmpty()) {
-        PacketNode *pac = bufTail->prev;
+        pac = bufTail->prev;
         if (currentTime > pac->timestamp + lagTime) {
             insertAfter(popNode(bufTail->prev), head); // sending queue is already empty by now
             --bufSize;

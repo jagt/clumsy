@@ -24,49 +24,49 @@ extern PacketNode * const head;
 extern PacketNode * const tail;
 
 #ifdef _DEBUG
-PWINDIVERT_IPHDR ip_header;
-PWINDIVERT_IPV6HDR ipv6_header;
-PWINDIVERT_TCPHDR tcp_header;
-PWINDIVERT_UDPHDR udp_header;
-PWINDIVERT_ICMPHDR icmp_header;
-PWINDIVERT_ICMPV6HDR icmpv6_header;
+PWINDIVERT_IPHDR dbg_ip_header;
+PWINDIVERT_IPV6HDR dbg_ipv6_header;
+PWINDIVERT_TCPHDR dbg_tcp_header;
+PWINDIVERT_UDPHDR dbg_udp_header;
+PWINDIVERT_ICMPHDR dbg_icmp_header;
+PWINDIVERT_ICMPV6HDR dbg_icmpv6_header;
 UINT payload_len;
 void dumpPacket(char *buf, int len, PWINDIVERT_ADDRESS paddr) {
     char *protocol;
     UINT16 srcPort = 0, dstPort = 0;
 
-    WinDivertHelperParsePacket(buf, len, &ip_header, &ipv6_header,
-        &icmp_header, &icmpv6_header, &tcp_header, &udp_header,
-        NULL, &payload_len);
+    WinDivertHelperParsePacket(buf, len, &dbg_ip_header, &dbg_ipv6_header, NULL,
+        &dbg_icmp_header, &dbg_icmpv6_header, &dbg_tcp_header, &dbg_udp_header,
+        NULL, &payload_len, NULL, NULL);
     // need to cast byte order on port numbers
-    if (tcp_header != NULL) {
+    if (dbg_tcp_header != NULL) {
         protocol = "TCP ";
-        srcPort = ntohs(tcp_header->SrcPort);
-        dstPort = ntohs(tcp_header->DstPort);
-    } else if (udp_header != NULL) {
+        srcPort = ntohs(dbg_tcp_header->SrcPort);
+        dstPort = ntohs(dbg_tcp_header->DstPort);
+    } else if (dbg_udp_header != NULL) {
         protocol = "UDP ";
-        srcPort = ntohs(udp_header->SrcPort);
-        dstPort = ntohs(udp_header->DstPort);
-    } else if (icmp_header || icmpv6_header) {
+        srcPort = ntohs(dbg_udp_header->SrcPort);
+        dstPort = ntohs(dbg_udp_header->DstPort);
+    } else if (dbg_icmp_header || dbg_icmpv6_header) {
         protocol = "ICMP";
     } else {
         protocol = "???";
     }
 
-    if (ip_header != NULL) {
-        UINT8 *src_addr = (UINT8*)&ip_header->SrcAddr;
-        UINT8 *dst_addr = (UINT8*)&ip_header->DstAddr;
+    if (dbg_ip_header != NULL) {
+        UINT8 *src_addr = (UINT8*)&dbg_ip_header->SrcAddr;
+        UINT8 *dst_addr = (UINT8*)&dbg_ip_header->DstAddr;
         LOG("%s.%s: %u.%u.%u.%u:%d->%u.%u.%u.%u:%d",
             protocol,
-            paddr->Direction == WINDIVERT_DIRECTION_OUTBOUND ? "OUT " : "IN  ",
+            paddr->Outbound ? "OUT " : "IN  ",
             src_addr[0], src_addr[1], src_addr[2], src_addr[3], srcPort,
             dst_addr[0], dst_addr[1], dst_addr[2], dst_addr[3], dstPort);
-    } else if (ipv6_header != NULL) {
-        UINT16 *src_addr6 = (UINT16*)&ipv6_header->SrcAddr;
-        UINT16 *dst_addr6 = (UINT16*)&ipv6_header->DstAddr;
+    } else if (dbg_ipv6_header != NULL) {
+        UINT16 *src_addr6 = (UINT16*)&dbg_ipv6_header->SrcAddr;
+        UINT16 *dst_addr6 = (UINT16*)&dbg_ipv6_header->DstAddr;
         LOG("%s.%s: %x:%x:%x:%x:%x:%x:%x:%x:%d->%x:%x:%x:%x:%x:%x:%x:%x:%d",
             protocol,
-            paddr->Direction == WINDIVERT_DIRECTION_OUTBOUND ? "OUT " : "IN  ",
+            paddr->Outbound ? "OUT " : "IN  ",
             src_addr6[0], src_addr6[1], src_addr6[2], src_addr6[3],
             src_addr6[4], src_addr6[5], src_addr6[6], src_addr6[7], srcPort,
             dst_addr6[0], dst_addr6[1], dst_addr6[2], dst_addr6[3],
@@ -93,7 +93,7 @@ int divertStart(const char *filter, char buf[]) {
     }
     LOG("Divert opened handle.");
 
-    WinDivertSetParam(divertHandle, WINDIVERT_PARAM_QUEUE_LEN, QUEUE_LEN);
+    WinDivertSetParam(divertHandle, WINDIVERT_PARAM_QUEUE_LENGTH, QUEUE_LEN);
     WinDivertSetParam(divertHandle, WINDIVERT_PARAM_QUEUE_TIME, QUEUE_TIME);
     LOG("WinDivert internal queue Len: %d, queue time: %d", QUEUE_LEN, QUEUE_TIME);
 
@@ -151,7 +151,7 @@ static int sendAllListPackets() {
         assert(pnode != head);
         // FIXME inbound injection on any kind of packet is failing with a very high percentage
         //       need to contact windivert auther and wait for next release
-        if (!WinDivertSend(divertHandle, pnode->packet, pnode->packetLen, &(pnode->addr), &sendLen)) {
+        if (!WinDivertSend(divertHandle, pnode->packet, pnode->packetLen, &sendLen, &(pnode->addr))) {
             PWINDIVERT_ICMPHDR icmp_header;
             PWINDIVERT_ICMPV6HDR icmpv6_header;
             PWINDIVERT_IPHDR ip_header;
@@ -162,11 +162,11 @@ static int sendAllListPackets() {
             // workaround this by resend them as outbound
             // TODO not sure is this even working as can't find a way to test
             //      need to document about this
-            WinDivertHelperParsePacket(pnode->packet, pnode->packetLen, &ip_header, &ipv6_header,
-                &icmp_header, &icmpv6_header, NULL, NULL, NULL, NULL);
-            if ((icmp_header || icmpv6_header) && IS_INBOUND(pnode->addr.Direction)) {
+            WinDivertHelperParsePacket(pnode->packet, pnode->packetLen, &ip_header, &ipv6_header, NULL,
+                &icmp_header, &icmpv6_header, NULL, NULL, NULL, NULL, NULL, NULL);
+            if ((icmp_header || icmpv6_header) && !pnode->addr.Outbound) {
                 BOOL resent;
-                pnode->addr.Direction = WINDIVERT_DIRECTION_OUTBOUND;
+                pnode->addr.Outbound = TRUE;
                 if (ip_header) {
                     UINT32 tmp = ip_header->SrcAddr;
                     ip_header->SrcAddr = ip_header->DstAddr;
@@ -177,7 +177,7 @@ static int sendAllListPackets() {
                     memcpy(ipv6_header->SrcAddr, ipv6_header->DstAddr, sizeof(tmpArr));
                     memcpy(ipv6_header->DstAddr, tmpArr, sizeof(tmpArr));
                 }
-                resent = WinDivertSend(divertHandle, pnode->packet, pnode->packetLen, &(pnode->addr), &sendLen);
+                resent = WinDivertSend(divertHandle, pnode->packet, pnode->packetLen, &sendLen, &(pnode->addr));
                 LOG("Resend failed inbound ICMP packets as outbound: %s", resent ? "SUCCESS" : "FAIL");
                 InterlockedExchange16(&sendState, SEND_STATUS_SEND);
             } else {
@@ -331,7 +331,7 @@ static DWORD divertReadLoop(LPVOID arg) {
     for(;;) {
         // each step must fully consume the list
         assert(isListEmpty()); // FIXME has failed this assert before. don't know why
-        if (!WinDivertRecv(divertHandle, packetBuf, MAX_PACKETSIZE, &addrBuf, &readLen)) {
+        if (!WinDivertRecv(divertHandle, packetBuf, MAX_PACKETSIZE, &readLen, &addrBuf)) {
             DWORD lastError = GetLastError();
             if (lastError == ERROR_INVALID_HANDLE || lastError == ERROR_OPERATION_ABORTED) {
                 // treat closing handle as quit

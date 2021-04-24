@@ -131,7 +131,7 @@ THROTTLE_START:
             PacketNode *pac = tail->prev;
             DWORD currentTick = timeGetTime();
             while (bufSize < KEEP_AT_MOST && pac != head) {
-                if (checkDirection(pac->addr.Direction, throttleInbound, throttleOutbound)) {
+                if (checkDirection(pac->addr.Outbound, throttleInbound, throttleOutbound)) {
                     insertAfter(popNode(pac), bufHead);
                     ++bufSize;
                     pac = tail->prev;

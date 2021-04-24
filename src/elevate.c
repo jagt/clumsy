@@ -3,6 +3,7 @@
 // from the example CppSelfElevate
 // http://code.msdn.microsoft.com/windowsdesktop/CppUACSelfElevation-981c0160
 #include <Windows.h>
+#include <VersionHelpers.h>
 #include "common.h"
 
 // 
@@ -103,12 +104,7 @@ BOOL IsElevated( ) {
 BOOL tryElevate(HWND hWnd, BOOL silent) {
     // Check the current process's "run as administrator" status.
     BOOL fIsRunAsAdmin;
-    OSVERSIONINFO osver = {sizeof(osver)}; // MUST initialize with the size or GetVersionEx fails
-    if (!GetVersionEx(&osver)) {
-        if (!silent) MessageBox(hWnd, (LPCSTR)"Failed to get os version. clumsy only supports Windows Vista or above.",
-            (LPCSTR)"Aborting", MB_OK);
-        return TRUE;
-    } else if (osver.dwMajorVersion < 6) {
+    if (!IsWindowsVistaOrGreater()) {
         if (!silent) MessageBox(hWnd, (LPCSTR)"Unsupported Windows version. clumsy only supports Windows Vista or above.",
             (LPCSTR)"Aborting", MB_OK);
         return TRUE;

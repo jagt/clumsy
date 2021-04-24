@@ -69,7 +69,7 @@ void loadConfig() {
     f = fopen(path, "r");
     if (f) {
         size_t len;
-        char *p, *last;
+        char *current, *last;
         len = fread(configBuf, sizeof(char), CONFIG_BUF_SIZE, f);
         if (len == CONFIG_BUF_SIZE) {
             LOG("Config file is larger than %d bytes, get truncated.", CONFIG_BUF_SIZE);
@@ -80,32 +80,32 @@ void loadConfig() {
 
         // parse out the kv pairs. isn't quite safe
         filtersSize = 0;
-        last = p = configBuf;
+        last = current = configBuf;
         do {
             // eat up empty lines
-EAT_SPACE:  while (isspace(*p)) { ++p; }
-            if (*p == '#') {
-                p = strchr(p, '\n');
-                if (!p) break;
-                p = p + 1;
+EAT_SPACE:  while (isspace(*current)) { ++current; }
+            if (*current == '#') {
+                current = strchr(current, '\n');
+                if (!current) break;
+                current = current + 1;
                 goto EAT_SPACE;
             }
 
             // now we can start
-            last = p;
-            p = strchr(last, ':');
-            if (!p) break;
-            *p = '\0';
+            last = current;
+            current = strchr(last, ':');
+            if (!current) break;
+            *current = '\0';
             filters[filtersSize].filterName = last;
-            p += 1;
-            while (isspace(*p)) { ++p; } // eat potential space after :
-            last = p;
-            p = strchr(last, '\n');
-            if (!p) break;
+            current += 1;
+            while (isspace(*current)) { ++current; } // eat potential space after :
+            last = current;
+            current = strchr(last, '\n');
+            if (!current) break;
             filters[filtersSize].filterValue = last;
-            *p = '\0';
-            if (*(p-1) == '\r') *(p-1) = 0;
-            last = p = p + 1;
+            *current = '\0';
+            if (*(current-1) == '\r') *(current-1) = 0;
+            last = current = current + 1;
             ++filtersSize;
         } while (last && last - configBuf < CONFIG_BUF_SIZE);
         LOG("Loaded %u records.", filtersSize);

@@ -64,7 +64,19 @@
 #ifdef __MINGW32__
 #define LOG(fmt, ...) (printf("%s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__))
 #else
-#define LOG(fmt, ...) (printf(__FUNCTION__ ": " fmt "\n", ##__VA_ARGS__))
+static void VsLog(const char* pFmt, ...)
+{
+    char buf[1024];
+    va_list args;
+
+    va_start(args, pFmt);
+    vsprintf_s(buf, 1024, pFmt, args);
+    va_end(args);
+
+    OutputDebugString(buf);
+}
+
+#define LOG(fmt, ...) (VsLog(__FUNCTION__ ": " fmt "\n", ##__VA_ARGS__))
 #endif
 
 // check for assert
@@ -158,16 +170,11 @@ void divertStop();
 
 short calcChance(short chance);
 
-#define BOUND_TEXT(b) ((b) == WINDIVERT_DIRECTION_INBOUND ? "IN" : "OUT")
-#define IS_INBOUND(b) ((b) == WINDIVERT_DIRECTION_INBOUND)
-#define IS_OUTBOUND(b) ((b) == WINDIVERT_DIRECTION_OUTBOUND)
 // inline helper for inbound outbound check
 static INLINE_FUNCTION
-BOOL checkDirection(UINT8 dir, short inbound, short outbound) {
-    return (inbound && IS_INBOUND(dir))
-                || (outbound && IS_OUTBOUND(dir));
+BOOL checkDirection(BOOL outboundPacket, short handleInbound, short handleOutbound) {
+    return (handleInbound && !outboundPacket) || (handleOutbound && outboundPacket);
 }
-
 
 
 // wraped timeBegin/EndPeriod to keep calling safe and end when exit
