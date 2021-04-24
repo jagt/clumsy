@@ -21,15 +21,6 @@ Simulate network latency, delay, packet loss with clumsy on Windows 7/8/10:
 ![](clumsy-demo.gif)
 
 
-## This Fork
-
-This is a fork of the original [jagt/clumsy](https://github.com/jagt/clumsy) to add the **bandwidth limit** feature:
-
-![](clumsy.png)
-
-The algorithm is similar to webrtc, which uses a sliding window (size = 1 second) to statistic current bandwidth.
-
-
 ## License
 
 MIT
