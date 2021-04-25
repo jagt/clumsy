@@ -3,4 +3,4 @@ build
 *.swp
 etc/clumsy.aps
 obj_vs
-obj_gmake
+obj_ninja

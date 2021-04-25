@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <direct.h>
 #include <time.h>
 #include <Windows.h>
 #include "iup.h"

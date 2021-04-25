@@ -1,21 +1,19 @@
-// bandwidthping packet module
+// bandwidth cap module
 #include <stdlib.h>
 #include <Windows.h>
 #include <stdint.h>
 
 #include "iup.h"
 #include "common.h"
-#define NAME "bandwidth"
 
+#define NAME "bandwidth"
 #define BANDWIDTH_MIN  "0"
 #define BANDWIDTH_MAX  "99999"
-
 
 //---------------------------------------------------------------------
 // rate stats
 //---------------------------------------------------------------------
-typedef struct _CRateStats
-{
+typedef struct {
 	int32_t initialized;
 	uint32_t oldest_index;
 	uint32_t oldest_ts;
@@ -25,7 +23,7 @@ typedef struct _CRateStats
 	float scale;
 	uint32_t *array_sum;
 	uint32_t *array_sample;
-}	CRateStats;
+} CRateStats;
 
 
 CRateStats* crate_stats_new(int window_size, float scale);
@@ -117,12 +115,12 @@ static short bandwidthProcess(PacketNode *head, PacketNode* tail) {
         PacketNode *pac = head->next;
 		int discard = 0;
         // chance in range of [0, 10000]
-        if (checkDirection(pac->addr.Direction, bandwidthInbound, bandwidthOutbound)) {
+        if (checkDirection(pac->addr.Outbound, bandwidthInbound, bandwidthOutbound)) {
 			int rate = crate_stats_calculate(rateStats, now_ts);
 			int size = pac->packetLen;
 			if (rate + size > limit) {
 				LOG("dropped with bandwidth %dKB/s, direction %s",
-					(int)bandwidthLimit, BOUND_TEXT(pac->addr.Direction));
+					(int)bandwidthLimit, pac->addr.Outbound ? "OUTBOUND" : "INBOUND");
 				discard = 1;
 			}
 			else {
@@ -290,7 +288,7 @@ int32_t crate_stats_calculate(CRateStats *rate, uint32_t now_ts)
 	}
 
 	r = ((((float)rate->accumulated_count) * rate->scale) / 
-				rate->window_size) + 0.5;
+				rate->window_size) + 0.5f;
 
 	return (int32_t)r;
 }
