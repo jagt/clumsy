@@ -9,6 +9,7 @@
 #define NAME "bandwidth"
 #define BANDWIDTH_MIN  "0"
 #define BANDWIDTH_MAX  "99999"
+#define BANDWIDTH_DEFAULT 10
 
 //---------------------------------------------------------------------
 // rate stats
@@ -47,7 +48,7 @@ static Ihandle *inboundCheckbox, *outboundCheckbox, *bandwidthInput;
 static volatile short bandwidthEnabled = 0,
     bandwidthInbound = 1, bandwidthOutbound = 1;
 
-static volatile LONG bandwidthLimit = 0; 
+static volatile LONG bandwidthLimit = BANDWIDTH_DEFAULT; 
 static CRateStats *rateStats = NULL;
 
 
@@ -61,7 +62,7 @@ static Ihandle* bandwidthSetupUI() {
     );
 
     IupSetAttribute(bandwidthInput, "VISIBLECOLUMNS", "4");
-    IupSetAttribute(bandwidthInput, "VALUE", "0");
+    IupSetAttribute(bandwidthInput, "VALUE", STR(BANDWIDTH_DEFAULT));
     IupSetCallback(bandwidthInput, "VALUECHANGED_CB", uiSyncInt32);
     IupSetAttribute(bandwidthInput, SYNCED_VALUE, (char*)&bandwidthLimit);
     IupSetAttribute(bandwidthInput, INTEGER_MAX, BANDWIDTH_MAX);
@@ -107,7 +108,8 @@ static short bandwidthProcess(PacketNode *head, PacketNode* tail) {
 	DWORD now_ts = timeGetTime();
 	int limit = bandwidthLimit * 1024;
 
-	if (limit <= 0 || rateStats == NULL) {
+	//	allow 0 limit which should drop all
+	if (limit < 0 || rateStats == NULL) {
 		return 0;
 	}
 

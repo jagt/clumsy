@@ -145,7 +145,6 @@ extern Module oodModule;
 extern Module dupModule;
 extern Module tamperModule;
 extern Module resetModule;
-extern Module capModule;
 extern Module bandwidthModule;
 extern Module* modules[MODULE_CNT]; // all modules in a list
 
