@@ -2,18 +2,20 @@
 -- known working version
 -- https://github.com/bkaradzic/bx/blob/51f25ba638b9cb35eb2ac078f842a4bed0746d56/tools/bin/windows/genie.exe
 
+MINGW_ACTION = 'gmake'
+
 if _ACTION == 'clean' then
     os.rmdir('./build')
     os.rmdir('./bin')
     os.rmdir('./obj_vs')
-    os.rmdir('./obj_ninja')
+    os.rmdir('./obj_' .. MINGW_ACTION)
 end
 
-if _ACTION == 'ninja' then
+if _ACTION == MINGW_ACTION then
     -- need a msys2 with clang
-    premake.gcc.cc   = 'C:/msys64/mingw64/bin/clang'
-    premake.gcc.cxx  = 'C:/msys64/mingw64/bin/clang++'
-    premake.gcc.ar   = 'C:/msys64/mingw64/bin/llvm-ar'
+    premake.gcc.cc   = 'clang'
+    premake.gcc.cxx  = 'clang++'
+    premake.gcc.ar   = 'llvm-ar'
     premake.llvm = true
 end
 
@@ -38,7 +40,7 @@ solution('clumsy')
         links({'WinDivert', 'iup', 'comctl32', 'Winmm', 'ws2_32'}) 
         if string.match(_ACTION, '^vs') then -- only vs can include rc file in solution
             files({'./etc/clumsy.rc'})
-        elseif _ACTION == 'ninja' then
+        elseif _ACTION == MINGW_ACTION then
             files({'./etc/clumsy.rc'})
         end
 
@@ -53,11 +55,13 @@ solution('clumsy')
             defines({'NDEBUG'})
             kind("WindowedApp")
 
-        configuration("ninja")
+        configuration(MINGW_ACTION)
             links({'kernel32', 'gdi32', 'comdlg32', 'uuid', 'ole32'}) -- additional libs
-            buildoptions({'-Wno-missing-braces', '--std=c99'}) -- suppress a bug in gcc warns about {0} initialization
-            --linkoptions({'--std=c90'})
-            -- notice that tdm-gcc use static runtime by default
+            buildoptions({
+                '-Wno-missing-braces',
+                '-Wno-missing-field-initializers',
+                '--std=c99'
+            }) 
             objdir('obj_ninja')
 
         configuration("vs*")
@@ -88,7 +92,7 @@ solution('clumsy')
                 LIB_IUP_WIN64_VC11 .. ''
                 })
 
-        configuration({'x32', 'ninja'})
+        configuration({'x32', MINGW_ACTION})
             defines({'X32'}) -- defines would be passed to resource compiler for whatever reason
             includedirs({LIB_DIVERT_MINGW .. '/include',
                 LIB_IUP_WIN32_MINGW .. '/include'})
@@ -98,7 +102,7 @@ solution('clumsy')
                 })
             resoptions({'-O coff', '-F pe-i386'}) -- mingw64 defaults to x64
 
-        configuration({'x64', 'ninja'})
+        configuration({'x64', MINGW_ACTION})
             defines({'X64'})
             includedirs({LIB_DIVERT_MINGW .. '/include',
                 LIB_IUP_WIN64_MINGW .. '/include'})
@@ -124,7 +128,7 @@ solution('clumsy')
                     divert_lib = ROOT ..'/' .. LIB_DIVERT_VC11 .. '/x86/'
                     iup_lib = ROOT ..'/' .. LIB_IUP_WIN32_VC11 .. ''
                 end
-            elseif platform == 'ninja' then
+            elseif platform == MINGW_ACTION then
                 if arch == 'x64' then
                     divert_lib = ROOT .. '/' .. LIB_DIVERT_MINGW .. '/x64/'
                     iup_lib = ROOT .. '/' .. LIB_IUP_WIN64_MINGW .. ''
@@ -143,7 +147,7 @@ solution('clumsy')
                         "robocopy " .. ROOT .. "/etc/ "   .. subdir .. ' config.txt >> robolog.txt',
                         "exit /B 0"
                     })
-                elseif platform == 'ninja' then 
+                elseif platform == MINGW_ACTION then 
                     postbuildcommands({
                         -- robocopy returns non 0 will fail make
                         'cp ' .. divert_lib .. "WinDivert* " .. subdir,
@@ -156,8 +160,8 @@ solution('clumsy')
         set_bin('vs*', 'Debug', "x64")
         set_bin('vs*', 'Release', "x32")
         set_bin('vs*', 'Release', "x64")
-        set_bin('ninja', 'Debug', "x32")
-        set_bin('ninja', 'Debug', "x64")
-        set_bin('ninja', 'Release', "x32")
-        set_bin('ninja', 'Release', "x64")
+        set_bin(MINGW_ACTION, 'Debug', "x32")
+        set_bin(MINGW_ACTION, 'Debug', "x64")
+        set_bin(MINGW_ACTION, 'Release', "x32")
+        set_bin(MINGW_ACTION, 'Release', "x64")
 
