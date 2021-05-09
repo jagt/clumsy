@@ -9,6 +9,8 @@ import argparse
 from time import sleep
 from sys import argv, exit
 
+NCAT_EXE = r'C:\Bin\nmap-7.91\ncat'
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='ncat num sender')
     parser.add_argument('host', type=str)
@@ -18,17 +20,17 @@ if __name__ == '__main__':
     parser.add_argument('--tcp', help='use tcp instead of udp', action='store_true')
     args = parser.parse_args()
 
-    cmd = ['ncat', '-u', '-C', args.host, args.port]
+    cmd = [NCAT_EXE, '-u', '-C', args.host, args.port]
     if args.tcp:
         cmd.remove('-u')
     ncat = subprocess.Popen(cmd, stdin=subprocess.PIPE)
 
     cnt = 1
     while True: # send till die
-        ncat.stdin.write('%s\r\n' % ('-' * (1 + (cnt % 8))))
-        #ncat.stdin.write('%d\r\n' % (cnt % 100))
+        ncat.stdin.write( ('%s\r\n' % ('-' * (1 + (cnt % 8)))).encode() ) 
+        ncat.stdin.flush()
         cnt += 1
-        print cnt
+        print(cnt)
         if not args.nosleep:
             sleep(args.sleep/1000.0)
 

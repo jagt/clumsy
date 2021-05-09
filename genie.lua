@@ -62,7 +62,7 @@ solution('clumsy')
                 '-Wno-missing-field-initializers',
                 '--std=c99'
             }) 
-            objdir('obj_ninja')
+            objdir('obj_'..MINGW_ACTION)
 
         configuration("vs*")
             defines({"_CRT_SECURE_NO_WARNINGS"})
