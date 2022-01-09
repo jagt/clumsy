@@ -1,7 +1,9 @@
-bin
-build
-*.swp
+bin/
+build/
+tmp/
+zig-cache/
 etc/clumsy.aps
+*.swp
 obj_vs
 obj_ninja
 obj_gmake
