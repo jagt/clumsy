@@ -3,33 +3,48 @@ const Builder = std.build.Builder;
 const Pkg = std.build.Pkg;
 const Step = std.build.Step;
 const debug = std.debug;
+const Allocator = std.mem.Allocator;
 
+const ClumsyArch = enum { x86, x64 };
+const ClumsyConf = enum { Debug, Release };
 
 pub fn build(b: *std.build.Builder) void {
-    b.installFile("external/WinDivert-2.2.0-A/x64/WinDivert.dll", "bin/WinDivert.dll");
-    b.installFile("external/WinDivert-2.2.0-A/x64/WinDivert64.sys", "bin/WinDivert64.sys");
+    const arch = b.option(ClumsyArch, "arch", "x86, x64") orelse .x64;
+    const conf = b.option(ClumsyConf, "conf", "Debug, Release") orelse .Debug;
 
-    const exe = b.addExecutable("clumsy", null);
+    debug.print("building: {s} {s}\n", .{arch, conf});
 
-    //  switch to rc.exe?? at least it's not so fucking stupid
-    // const abs_rc = std.fs.cwd().realpathAlloc(b.allocator);
+    //  TODO check `rc` is on path, warn about VCVars
 
+    //  path format helper
+    const fmt = struct {
+        allocator: Allocator,
+        _arch: ClumsyArch,
+        _conf: ClumsyConf,
 
-    //  TODO setup candidate for windres/rc.exe from a few places
-    //       windres need to be working in its directory
-    //  TODO mkdir p
-    // const cmd = b.addSystemCommand(&[_][]const u8{
-    //     "C:/msys64/mingw64/bin/llvm-windres.exe",
-    //      "etc/clumsy.rc",
-    //     "-O",
-    //     "coff",
-    //     "-o",
-    //     "tmp/x64/release/clumsy_res_x64.obj",
-    //     "-DNDEBUG",
-    //     "-DX64",
-    // });
-    // cmd.cwd = "C:/msys64/mingw64/bin";
+        //  zig format doesn't allow unused argument
+        pub fn archConf(self: *const @This(), comptime fmt: []const u8) []u8 {
+            return std.fmt.allocPrint(self.allocator, fmt, .{ .arch = @tagName(self._arch), .conf = @tagName(self._conf)}) catch unreachable;
+        }
 
+        pub fn arch(self: *const @This(), comptime fmt: []const u8) []u8 {
+            return std.fmt.allocPrint(self.allocator, fmt, .{ .arch = @tagName(self._arch) }) catch unreachable;
+        }
+
+        pub fn conf(self: *const @This(), comptime fmt: []const u8) []u8 {
+            return std.fmt.allocPrint(self.allocator, fmt, .{ .conf = @tagName(self._conf) }) catch unreachable;
+        }
+    }{ .allocator = b.allocator, ._arch = arch, ._conf = conf };
+
+    const tmpPath = fmt.archConf("tmp/{[arch]s}/{[conf]s}");
+    b.makePath(tmpPath) catch @panic("unable to create tmp directory");
+
+    b.installFile(fmt.arch("external/WinDivert-2.2.0-A/{[arch]s}/WinDivert.dll"), "bin/WinDivert.dll");
+    b.installFile(fmt.arch("external/WinDivert-2.2.0-A/{[arch]s}/WinDivert64.sys"), "bin/WinDivert64.sys");
+    b.installFile("etc/config.txt", "bin/config.txt");
+    b.installFile("LICENSE", "bin/License.txt");
+
+    const resObjPath = fmt.archConf("tmp/{[arch]s}/{[conf]s}/clumsy_res.obj");
     const cmd = b.addSystemCommand(&[_][]const u8{
         "rc",
         "/nologo",
@@ -39,13 +54,14 @@ pub fn build(b: *std.build.Builder) void {
         "X64",
         "/r",
         "/fo",
-        "tmp/x64/release/clumsy_res_x64.obj",
+        resObjPath,
         "etc/clumsy.rc",
     });
 
+    const exe = b.addExecutable("clumsy", null);
     exe.step.dependOn(&cmd.step);
 
-    exe.addObjectFile("tmp/x64/release/clumsy_res_x64.obj");
+    exe.addObjectFile(resObjPath);
 
     exe.addCSourceFile("src/bandwidth.c", &[_][]const u8{""});
     exe.addCSourceFile("src/divert.c", &[_][]const u8{""});
