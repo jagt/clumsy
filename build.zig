@@ -14,8 +14,6 @@ pub fn build(b: *std.build.Builder) void {
 
     debug.print("building: {s} {s}\n", .{arch, conf});
 
-    //  TODO check `rc` is on path, warn about VCVars
-
     //  path format helper
     const fmt = struct {
         allocator: Allocator,
@@ -37,6 +35,7 @@ pub fn build(b: *std.build.Builder) void {
     }{ .allocator = b.allocator, ._arch = arch, ._conf = conf };
 
     const tmpPath = fmt.archConf("tmp/{[arch]s}/{[conf]s}");
+
     b.makePath(tmpPath) catch @panic("unable to create tmp directory");
 
     b.installFile(fmt.arch("external/WinDivert-2.2.0-A/{[arch]s}/WinDivert.dll"), "bin/WinDivert.dll");
@@ -45,8 +44,28 @@ pub fn build(b: *std.build.Builder) void {
     b.installFile("LICENSE", "bin/License.txt");
 
     const resObjPath = fmt.archConf("tmp/{[arch]s}/{[conf]s}/clumsy_res.obj");
-    const cmd = b.addSystemCommand(&[_][]const u8{
+
+    //  fix up `PATH` 
+    if (b.env_map.get("PATH") == null)
+    {
+        var foundPath = false;
+        var it = b.env_map.iterator();
+        while (it.next()) |kv| {
+            if (std.ascii.eqlIgnoreCase(kv.key_ptr.*, "PATH")) {
+                foundPath = true;
+                b.env_map.put("PATH", kv.value_ptr.*) catch unreachable;
+            }
+        }
+        if (!foundPath) @panic("no `PATH` in env");
+    }
+
+    //  check `rc` is on path, warn about VCVars
+    const rcExe = b.findProgram(&[_][]const u8{
         "rc",
+    }, &[_][]const u8{}) catch @panic("unable to find `rc.exe`. make sure you've run VCVars.bat");
+
+    const cmd = b.addSystemCommand(&[_][]const u8{
+        rcExe,
         "/nologo",
         "/d",
         "NDEBUG",
