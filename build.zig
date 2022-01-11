@@ -4,6 +4,7 @@ const Pkg = std.build.Pkg;
 const Step = std.build.Step;
 const debug = std.debug;
 const Allocator = std.mem.Allocator;
+const CrossTarget = std.zig.CrossTarget;
 
 const ClumsyArch = enum { x86, x64 };
 const ClumsyConf = enum { Debug, Release };
@@ -11,66 +12,46 @@ const ClumsyConf = enum { Debug, Release };
 pub fn build(b: *std.build.Builder) void {
     const arch = b.option(ClumsyArch, "arch", "x86, x64") orelse .x64;
     const conf = b.option(ClumsyConf, "conf", "Debug, Release") orelse .Debug;
+    const windowsKitBinRoot = b.option([]const u8, "windowsKitBinRoot", "Windows SDK Bin root") orelse "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0";
 
-    debug.print("building: {s} {s}\n", .{arch, conf});
+    const archTag = @tagName(arch);
+    const confTag = @tagName(conf);
 
-    //  path format helper
-    const fmt = struct {
-        allocator: Allocator,
-        _arch: ClumsyArch,
-        _conf: ClumsyConf,
+    debug.print("- arch: {s}, conf: {s}, windowsKitBinRoot: {s}\n", .{@tagName(arch), @tagName(conf), windowsKitBinRoot});
+    _ = std.fs.realpathAlloc(b.allocator, windowsKitBinRoot) catch @panic("windowsKitBinRoot not found");
 
-        //  zig format doesn't allow unused argument
-        pub fn archConf(self: *const @This(), comptime fmt: []const u8) []u8 {
-            return std.fmt.allocPrint(self.allocator, fmt, .{ .arch = @tagName(self._arch), .conf = @tagName(self._conf)}) catch unreachable;
-        }
-
-        pub fn arch(self: *const @This(), comptime fmt: []const u8) []u8 {
-            return std.fmt.allocPrint(self.allocator, fmt, .{ .arch = @tagName(self._arch) }) catch unreachable;
-        }
-
-        pub fn conf(self: *const @This(), comptime fmt: []const u8) []u8 {
-            return std.fmt.allocPrint(self.allocator, fmt, .{ .conf = @tagName(self._conf) }) catch unreachable;
-        }
-    }{ .allocator = b.allocator, ._arch = arch, ._conf = conf };
-
-    const tmpPath = fmt.archConf("tmp/{[arch]s}/{[conf]s}");
+    const tmpPath = b.fmt("tmp/{s}_{s}", .{archTag, confTag});
 
     b.makePath(tmpPath) catch @panic("unable to create tmp directory");
 
-    b.installFile(fmt.arch("external/WinDivert-2.2.0-A/{[arch]s}/WinDivert.dll"), "bin/WinDivert.dll");
-    b.installFile(fmt.arch("external/WinDivert-2.2.0-A/{[arch]s}/WinDivert64.sys"), "bin/WinDivert64.sys");
+    b.installFile(b.fmt("external/WinDivert-2.2.0-A/{s}/WinDivert.dll", .{archTag}), "bin/WinDivert.dll");
+    switch (arch) {
+        .x64 => b.installFile(b.fmt("external/WinDivert-2.2.0-A/{s}/WinDivert64.sys", .{archTag}), "bin/WinDivert64.sys"),
+        .x86 => b.installFile(b.fmt("external/WinDivert-2.2.0-A/{s}/WinDivert32.sys", .{archTag}), "bin/WinDivert32.sys"),
+    }
+
     b.installFile("etc/config.txt", "bin/config.txt");
     b.installFile("LICENSE", "bin/License.txt");
 
-    const resObjPath = fmt.archConf("tmp/{[arch]s}/{[conf]s}/clumsy_res.obj");
-
-    //  fix up `PATH` 
-    if (b.env_map.get("PATH") == null)
-    {
-        var foundPath = false;
-        var it = b.env_map.iterator();
-        while (it.next()) |kv| {
-            if (std.ascii.eqlIgnoreCase(kv.key_ptr.*, "PATH")) {
-                foundPath = true;
-                b.env_map.put("PATH", kv.value_ptr.*) catch unreachable;
-            }
-        }
-        if (!foundPath) @panic("no `PATH` in env");
-    }
+    const resObjPath = b.fmt("tmp/{s}_{s}/clumsy_res.obj", .{archTag, confTag});
 
     //  check `rc` is on path, warn about VCVars
-    const rcExe = b.findProgram(&[_][]const u8{
+    const rcExe = b.findProgram(&.{
         "rc",
-    }, &[_][]const u8{}) catch @panic("unable to find `rc.exe`. make sure you've run VCVars.bat");
+    }, &.{
+        b.pathJoin(&.{windowsKitBinRoot, @tagName(arch)}),
+    }) catch @panic("unable to find `rc.exe`, check your windowsKitBinRoot");
 
-    const cmd = b.addSystemCommand(&[_][]const u8{
+    const cmd = b.addSystemCommand(&.{
         rcExe,
         "/nologo",
         "/d",
         "NDEBUG",
         "/d",
-        "X64",
+        switch (arch) {
+            .x64 => "X64",
+            .x86 => "X86",
+        },
         "/r",
         "/fo",
         resObjPath,
@@ -78,34 +59,58 @@ pub fn build(b: *std.build.Builder) void {
     });
 
     const exe = b.addExecutable("clumsy", null);
+
+    switch (conf) {
+        .Debug => {
+            exe.setBuildMode(.Debug);
+        },
+        .Release => {
+            exe.setBuildMode(.ReleaseFast);
+        },
+    }
+    const triple  = switch (arch) {
+        .x64 => "x86_64-windows-gnu",
+        .x86 => "i386-windows-gnu",
+    };
+
+    const selectedTarget = CrossTarget.parse(.{
+        .arch_os_abi = triple,
+    }) catch unreachable;
+
+    exe.setTarget(selectedTarget);
+
     exe.step.dependOn(&cmd.step);
-
     exe.addObjectFile(resObjPath);
+    exe.addCSourceFile("src/bandwidth.c", &.{""});
+    exe.addCSourceFile("src/divert.c", &.{""});
+    exe.addCSourceFile("src/drop.c", &.{""});
+    exe.addCSourceFile("src/duplicate.c", &.{""});
+    exe.addCSourceFile("src/elevate.c", &.{""});
+    exe.addCSourceFile("src/lag.c", &.{""});
+    exe.addCSourceFile("src/main.c", &.{""});
+    exe.addCSourceFile("src/ood.c", &.{""});
+    exe.addCSourceFile("src/packet.c", &.{""});
+    exe.addCSourceFile("src/reset.c", &.{""});
+    exe.addCSourceFile("src/tamper.c", &.{""});
+    exe.addCSourceFile("src/throttle.c", &.{""});
+    exe.addCSourceFile("src/utils.c", &.{""});
+    exe.addCSourceFile("src/utils.c", &.{""});
 
-    exe.addCSourceFile("src/bandwidth.c", &[_][]const u8{""});
-    exe.addCSourceFile("src/divert.c", &[_][]const u8{""});
-    exe.addCSourceFile("src/drop.c", &[_][]const u8{""});
-    exe.addCSourceFile("src/duplicate.c", &[_][]const u8{""});
-    exe.addCSourceFile("src/elevate.c", &[_][]const u8{""});
-    exe.addCSourceFile("src/lag.c", &[_][]const u8{""});
-    exe.addCSourceFile("src/main.c", &[_][]const u8{""});
-    exe.addCSourceFile("src/ood.c", &[_][]const u8{""});
-    exe.addCSourceFile("src/packet.c", &[_][]const u8{""});
-    exe.addCSourceFile("src/reset.c", &[_][]const u8{""});
-    exe.addCSourceFile("src/tamper.c", &[_][]const u8{""});
-    exe.addCSourceFile("src/throttle.c", &[_][]const u8{""});
-    exe.addCSourceFile("src/utils.c", &[_][]const u8{""});
-
-    exe.setBuildMode(b.standardReleaseOptions());
-    exe.setTarget(b.standardTargetOptions(.{}));
+    if (arch == .x86)
+        exe.addCSourceFile("etc/chkstk.s", &.{""});
 
     exe.addIncludeDir("external/WinDivert-2.2.0-A/include");
-    exe.addIncludeDir("external/iup-3.30_Win64_mingw6_lib/include");
 
-    exe.addCSourceFile("external/iup-3.30_Win64_mingw6_lib/libiup.a", &[_][]const u8{""});
+    const iupLib = switch (arch) {
+        .x64 => "external/iup-3.30_Win64_mingw6_lib",
+        .x86 => "external/iup-3.30_Win32_mingw6_lib",
+    };
+
+    exe.addIncludeDir(b.pathJoin(&.{iupLib, "include"}));
+    exe.addCSourceFile(b.pathJoin(&.{iupLib, "libiup.a"}), &.{""});
 
     exe.linkLibC();
-    exe.addLibPath("external/WinDivert-2.2.0-A/x64");
+    exe.addLibPath(b.fmt("external/WinDivert-2.2.0-A/{s}", .{archTag}));
     exe.linkSystemLibrary("WinDivert");
     exe.linkSystemLibrary("comctl32");
     exe.linkSystemLibrary("Winmm");
@@ -116,35 +121,4 @@ pub fn build(b: *std.build.Builder) void {
     exe.linkSystemLibrary("uuid");
     exe.linkSystemLibrary("ole32");
     exe.install();
-
-    const run_cmd = exe.run();
-    run_cmd.step.dependOn(b.getInstallStep());
-
-    //  `b.step` creates a new top level step
-    //  then it depends on exe.run,so running hello would trigger run
-    const hello_step = b.step("hello", "this is a hello step");
-    hello_step.dependOn(&run_cmd.step);
-
-    const clumsy_step = ClumsyStep.create(b, "wow");
-    hello_step.dependOn(&clumsy_step.step);
-
-    debug.print("builder args: {s}\n", .{b.args});
 }
-
-pub const ClumsyStep = struct {
-    step: Step,
-    builder: *Builder,
-
-    pub fn create(builder: *Builder, data: []const u8) *@This() {
-        const self = builder.allocator.create(@This()) catch unreachable;
-        self.* = . {
-            .step = Step.init(.custom, builder.fmt("clumsyStep {s}", .{data}), builder.allocator, make),
-            .builder = builder,
-        };
-        return self;
-    }
-
-    fn make(_: *Step) anyerror!void {
-        debug.print("{s}", .{"hello clumsyStep"});
-    }
-};
