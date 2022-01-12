@@ -8,39 +8,42 @@ const CrossTarget = std.zig.CrossTarget;
 
 const ClumsyArch = enum { x86, x64 };
 const ClumsyConf = enum { Debug, Release, Ship };
+const ClumsyWinDivertSign = enum { A, B, C };
 
 pub fn build(b: *std.build.Builder) void {
     const arch = b.option(ClumsyArch, "arch", "x86, x64") orelse .x64;
     const conf = b.option(ClumsyConf, "conf", "Debug, Release") orelse .Debug;
+    const windivert_sign = b.option(ClumsyWinDivertSign, "sign", "A, B, C") orelse .A;
     const windows_kit_bin_root = b.option([]const u8, "windows_kit_bin_root", "Windows SDK Bin root") orelse "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0";
 
     const arch_tag = @tagName(arch);
     const conf_tag = @tagName(conf);
+    const sign_tag = @tagName(windivert_sign);
+    const windivert_dir = b.fmt("WinDivert-2.2.0-{s}", .{sign_tag});
 
-    debug.print("- arch: {s}, conf: {s}\n", .{@tagName(arch), @tagName(conf)});
+    debug.print("- arch: {s}, conf: {s}, sign: {s}\n", .{@tagName(arch), @tagName(conf), @tagName(windivert_sign)});
     debug.print("- windows_kit_bin_root: {s}\n", .{windows_kit_bin_root});
     _ = std.fs.realpathAlloc(b.allocator, windows_kit_bin_root) catch @panic("windows_kit_bin_root not found");
 
-    const tuple = b.fmt("{s}_{s}", .{arch_tag, conf_tag});
-    b.exe_dir = b.fmt("{s}/{s}", .{b.install_path, tuple});
+    const prefix = b.fmt("{s}_{s}_{s}", .{arch_tag, conf_tag, sign_tag});
+    b.exe_dir = b.fmt("{s}/{s}", .{b.install_path, prefix});
 
     debug.print("- out: {s}\n", .{b.exe_dir});
 
-    const tmp_path = b.fmt("tmp/{s}", .{tuple});
-
+    const tmp_path = b.fmt("tmp/{s}", .{prefix});
     b.makePath(tmp_path) catch @panic("unable to create tmp directory");
 
-    b.installFile(b.fmt("external/WinDivert-2.2.0-A/{s}/WinDivert.dll", .{arch_tag}), b.fmt("{s}/WinDivert.dll", .{tuple}));
+    b.installFile(b.fmt("external/{s}/{s}/WinDivert.dll", .{windivert_dir, arch_tag}), b.fmt("{s}/WinDivert.dll", .{prefix}));
     switch (arch) {
-        .x64 => b.installFile(b.fmt("external/WinDivert-2.2.0-A/{s}/WinDivert64.sys", .{arch_tag}), b.fmt("{s}/WinDivert64.sys", .{tuple})),
-        .x86 => b.installFile(b.fmt("external/WinDivert-2.2.0-A/{s}/WinDivert32.sys", .{arch_tag}), b.fmt("{s}/WinDivert32.sys", .{tuple})),
+        .x64 => b.installFile(b.fmt("external/{s}/{s}/WinDivert64.sys", .{windivert_dir, arch_tag}), b.fmt("{s}/WinDivert64.sys", .{prefix})),
+        .x86 => b.installFile(b.fmt("external/{s}/{s}/WinDivert32.sys", .{windivert_dir, arch_tag}), b.fmt("{s}/WinDivert32.sys", .{prefix})),
     }
 
-    b.installFile("etc/config.txt", b.fmt("{s}/config.txt", .{tuple}));
+    b.installFile("etc/config.txt", b.fmt("{s}/config.txt", .{prefix}));
     if (conf == .Ship)
-        b.installFile("LICENSE", b.fmt("{s}/License.txt", .{tuple}));
+        b.installFile("LICENSE", b.fmt("{s}/License.txt", .{prefix}));
 
-    const res_obj_path = b.fmt("tmp/{s}/clumsy_res.obj", .{tuple});
+    const res_obj_path = b.fmt("{s}/clumsy_res.obj", .{tmp_path});
 
     const rc_exe = b.findProgram(&.{
         "rc",
@@ -64,7 +67,6 @@ pub fn build(b: *std.build.Builder) void {
         res_obj_path,
         "etc/clumsy.rc",
     });
-    cmd.print = true;
 
     const exe = b.addExecutable("clumsy", null);
 
@@ -112,7 +114,7 @@ pub fn build(b: *std.build.Builder) void {
     if (arch == .x86)
         exe.addCSourceFile("etc/chkstk.s", &.{""});
 
-    exe.addIncludeDir("external/WinDivert-2.2.0-A/include");
+    exe.addIncludeDir(b.fmt("external/{s}/include", .{windivert_dir}));
 
     const iupLib = switch (arch) {
         .x64 => "external/iup-3.30_Win64_mingw6_lib",
@@ -123,7 +125,7 @@ pub fn build(b: *std.build.Builder) void {
     exe.addCSourceFile(b.pathJoin(&.{iupLib, "libiup.a"}), &.{""});
 
     exe.linkLibC();
-    exe.addLibPath(b.fmt("external/WinDivert-2.2.0-A/{s}", .{arch_tag}));
+    exe.addLibPath(b.fmt("external/{s}/{s}", .{windivert_dir, arch_tag}));
     exe.linkSystemLibrary("WinDivert");
     exe.linkSystemLibrary("comctl32");
     exe.linkSystemLibrary("Winmm");
