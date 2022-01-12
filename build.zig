@@ -7,49 +7,49 @@ const Allocator = std.mem.Allocator;
 const CrossTarget = std.zig.CrossTarget;
 
 const ClumsyArch = enum { x86, x64 };
-const ClumsyConf = enum { Debug, Release };
+const ClumsyConf = enum { Debug, Release, Ship };
 
 pub fn build(b: *std.build.Builder) void {
     const arch = b.option(ClumsyArch, "arch", "x86, x64") orelse .x64;
     const conf = b.option(ClumsyConf, "conf", "Debug, Release") orelse .Debug;
-    const windowsKitBinRoot = b.option([]const u8, "windowsKitBinRoot", "Windows SDK Bin root") orelse "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0";
+    const windows_kit_bin_root = b.option([]const u8, "windows_kit_bin_root", "Windows SDK Bin root") orelse "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0";
 
-    const archTag = @tagName(arch);
-    const confTag = @tagName(conf);
+    const arch_tag = @tagName(arch);
+    const conf_tag = @tagName(conf);
 
     debug.print("- arch: {s}, conf: {s}\n", .{@tagName(arch), @tagName(conf)});
-    debug.print("- windowsKitBinRoot: {s}\n", .{windowsKitBinRoot});
-    _ = std.fs.realpathAlloc(b.allocator, windowsKitBinRoot) catch @panic("windowsKitBinRoot not found");
+    debug.print("- windows_kit_bin_root: {s}\n", .{windows_kit_bin_root});
+    _ = std.fs.realpathAlloc(b.allocator, windows_kit_bin_root) catch @panic("windows_kit_bin_root not found");
 
-    const tuple = b.fmt("{s}_{s}", .{archTag, confTag});
+    const tuple = b.fmt("{s}_{s}", .{arch_tag, conf_tag});
     b.exe_dir = b.fmt("{s}/{s}", .{b.install_path, tuple});
 
     debug.print("- out: {s}\n", .{b.exe_dir});
 
-    const tmpPath = b.fmt("tmp/{s}", .{tuple});
+    const tmp_path = b.fmt("tmp/{s}", .{tuple});
 
-    b.makePath(tmpPath) catch @panic("unable to create tmp directory");
+    b.makePath(tmp_path) catch @panic("unable to create tmp directory");
 
-    b.installFile(b.fmt("external/WinDivert-2.2.0-A/{s}/WinDivert.dll", .{archTag}), b.fmt("{s}/WinDivert.dll", .{tuple}));
+    b.installFile(b.fmt("external/WinDivert-2.2.0-A/{s}/WinDivert.dll", .{arch_tag}), b.fmt("{s}/WinDivert.dll", .{tuple}));
     switch (arch) {
-        .x64 => b.installFile(b.fmt("external/WinDivert-2.2.0-A/{s}/WinDivert64.sys", .{archTag}), b.fmt("{s}/WinDivert64.sys", .{tuple})),
-        .x86 => b.installFile(b.fmt("external/WinDivert-2.2.0-A/{s}/WinDivert32.sys", .{archTag}), b.fmt("{s}/WinDivert32.sys", .{tuple})),
+        .x64 => b.installFile(b.fmt("external/WinDivert-2.2.0-A/{s}/WinDivert64.sys", .{arch_tag}), b.fmt("{s}/WinDivert64.sys", .{tuple})),
+        .x86 => b.installFile(b.fmt("external/WinDivert-2.2.0-A/{s}/WinDivert32.sys", .{arch_tag}), b.fmt("{s}/WinDivert32.sys", .{tuple})),
     }
 
     b.installFile("etc/config.txt", b.fmt("{s}/config.txt", .{tuple}));
-    b.installFile("LICENSE", b.fmt("{s}/License.txt", .{tuple}));
+    if (conf == .Ship)
+        b.installFile("LICENSE", b.fmt("{s}/License.txt", .{tuple}));
 
-    const resObjPath = b.fmt("tmp/{s}/clumsy_res.obj", .{tuple});
+    const res_obj_path = b.fmt("tmp/{s}/clumsy_res.obj", .{tuple});
 
-    //  check `rc` is on path, warn about VCVars
-    const rcExe = b.findProgram(&.{
+    const rc_exe = b.findProgram(&.{
         "rc",
     }, &.{
-        b.pathJoin(&.{windowsKitBinRoot, @tagName(arch)}),
-    }) catch @panic("unable to find `rc.exe`, check your windowsKitBinRoot");
+        b.pathJoin(&.{windows_kit_bin_root, @tagName(arch)}),
+    }) catch @panic("unable to find `rc.exe`, check your windows_kit_bin_root");
 
     const cmd = b.addSystemCommand(&.{
-        rcExe,
+        rc_exe,
         "/nologo",
         "/d",
         "NDEBUG",
@@ -60,7 +60,7 @@ pub fn build(b: *std.build.Builder) void {
         },
         "/r",
         "/fo",
-        resObjPath,
+        res_obj_path,
         "etc/clumsy.rc",
     });
 
@@ -69,9 +69,15 @@ pub fn build(b: *std.build.Builder) void {
     switch (conf) {
         .Debug => {
             exe.setBuildMode(.Debug);
+            exe.subsystem = .Console;
         },
         .Release => {
+            exe.setBuildMode(.ReleaseSafe);
+            exe.subsystem = .Windows;
+        },
+        .Ship => {
             exe.setBuildMode(.ReleaseFast);
+            exe.subsystem = .Windows;
         },
     }
     const triple  = switch (arch) {
@@ -79,14 +85,13 @@ pub fn build(b: *std.build.Builder) void {
         .x86 => "i386-windows-gnu",
     };
 
-    const selectedTarget = CrossTarget.parse(.{
+    const target = CrossTarget.parse(.{
         .arch_os_abi = triple,
     }) catch unreachable;
-
-    exe.setTarget(selectedTarget);
+    exe.setTarget(target);
 
     exe.step.dependOn(&cmd.step);
-    exe.addObjectFile(resObjPath);
+    exe.addObjectFile(res_obj_path);
     exe.addCSourceFile("src/bandwidth.c", &.{""});
     exe.addCSourceFile("src/divert.c", &.{""});
     exe.addCSourceFile("src/drop.c", &.{""});
@@ -116,7 +121,7 @@ pub fn build(b: *std.build.Builder) void {
     exe.addCSourceFile(b.pathJoin(&.{iupLib, "libiup.a"}), &.{""});
 
     exe.linkLibC();
-    exe.addLibPath(b.fmt("external/WinDivert-2.2.0-A/{s}", .{archTag}));
+    exe.addLibPath(b.fmt("external/WinDivert-2.2.0-A/{s}", .{arch_tag}));
     exe.linkSystemLibrary("WinDivert");
     exe.linkSystemLibrary("comctl32");
     exe.linkSystemLibrary("Winmm");
@@ -126,5 +131,43 @@ pub fn build(b: *std.build.Builder) void {
     exe.linkSystemLibrary("comdlg32");
     exe.linkSystemLibrary("uuid");
     exe.linkSystemLibrary("ole32");
-    exe.install();
+
+    const exe_install_step = b.addInstallArtifact(exe);  
+    if (conf == .Ship)
+    {
+        const remove_pdb_step = RemoveOutFile.create(b, "clumsy.pdb");
+        remove_pdb_step.step.dependOn(&exe_install_step.step);
+        b.getInstallStep().dependOn(&remove_pdb_step.step);
+    }
+    else
+    {
+        b.getInstallStep().dependOn(&exe_install_step.step);
+    }
+
+    const clean_all = b.step("clean", "purge zig-cache and zig-out");
+    clean_all.dependOn(&b.addRemoveDirTree(b.install_path).step);
+    //  TODO can't clean cache atm since build.exe is in it
+    // clean_all.dependOn(&b.addRemoveDirTree("zig-cache").step);
 }
+
+pub const RemoveOutFile = struct {
+    step: Step,
+    builder: *Builder,
+    rel_path: []const u8,
+
+    pub fn create(builder: *Builder, rel_path: []const u8) *@This() {
+        const self = builder.allocator.create(@This()) catch unreachable;
+        self.* = . {
+            .step = Step.init(.custom, builder.fmt("RemoveOutFile {s}", .{rel_path}), builder.allocator, make),
+            .builder = builder,
+            .rel_path = rel_path,
+        };
+        return self;
+    }
+
+    fn make(step: *Step) anyerror!void {
+        const self = @fieldParentPtr(RemoveOutFile, "step", step);
+        const out_dir = try std.fs.openDirAbsolute(self.builder.exe_dir, .{});
+        try out_dir.deleteFile(self.rel_path);
+    }
+};
