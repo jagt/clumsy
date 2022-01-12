@@ -17,23 +17,29 @@ pub fn build(b: *std.build.Builder) void {
     const archTag = @tagName(arch);
     const confTag = @tagName(conf);
 
-    debug.print("- arch: {s}, conf: {s}, windowsKitBinRoot: {s}\n", .{@tagName(arch), @tagName(conf), windowsKitBinRoot});
+    debug.print("- arch: {s}, conf: {s}\n", .{@tagName(arch), @tagName(conf)});
+    debug.print("- windowsKitBinRoot: {s}\n", .{windowsKitBinRoot});
     _ = std.fs.realpathAlloc(b.allocator, windowsKitBinRoot) catch @panic("windowsKitBinRoot not found");
 
-    const tmpPath = b.fmt("tmp/{s}_{s}", .{archTag, confTag});
+    const tuple = b.fmt("{s}_{s}", .{archTag, confTag});
+    b.exe_dir = b.fmt("{s}/{s}", .{b.install_path, tuple});
+
+    debug.print("- out: {s}\n", .{b.exe_dir});
+
+    const tmpPath = b.fmt("tmp/{s}", .{tuple});
 
     b.makePath(tmpPath) catch @panic("unable to create tmp directory");
 
-    b.installFile(b.fmt("external/WinDivert-2.2.0-A/{s}/WinDivert.dll", .{archTag}), "bin/WinDivert.dll");
+    b.installFile(b.fmt("external/WinDivert-2.2.0-A/{s}/WinDivert.dll", .{archTag}), b.fmt("{s}/WinDivert.dll", .{tuple}));
     switch (arch) {
-        .x64 => b.installFile(b.fmt("external/WinDivert-2.2.0-A/{s}/WinDivert64.sys", .{archTag}), "bin/WinDivert64.sys"),
-        .x86 => b.installFile(b.fmt("external/WinDivert-2.2.0-A/{s}/WinDivert32.sys", .{archTag}), "bin/WinDivert32.sys"),
+        .x64 => b.installFile(b.fmt("external/WinDivert-2.2.0-A/{s}/WinDivert64.sys", .{archTag}), b.fmt("{s}/WinDivert64.sys", .{tuple})),
+        .x86 => b.installFile(b.fmt("external/WinDivert-2.2.0-A/{s}/WinDivert32.sys", .{archTag}), b.fmt("{s}/WinDivert32.sys", .{tuple})),
     }
 
-    b.installFile("etc/config.txt", "bin/config.txt");
-    b.installFile("LICENSE", "bin/License.txt");
+    b.installFile("etc/config.txt", b.fmt("{s}/config.txt", .{tuple}));
+    b.installFile("LICENSE", b.fmt("{s}/License.txt", .{tuple}));
 
-    const resObjPath = b.fmt("tmp/{s}_{s}/clumsy_res.obj", .{archTag, confTag});
+    const resObjPath = b.fmt("tmp/{s}/clumsy_res.obj", .{tuple});
 
     //  check `rc` is on path, warn about VCVars
     const rcExe = b.findProgram(&.{
