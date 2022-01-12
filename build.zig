@@ -48,21 +48,23 @@ pub fn build(b: *std.build.Builder) void {
         b.pathJoin(&.{windows_kit_bin_root, @tagName(arch)}),
     }) catch @panic("unable to find `rc.exe`, check your windows_kit_bin_root");
 
+    const archFlag = switch (arch) {
+        .x86 => "X86",
+        .x64 => "X64",
+    };
     const cmd = b.addSystemCommand(&.{
         rc_exe,
         "/nologo",
         "/d",
         "NDEBUG",
         "/d",
-        switch (arch) {
-            .x64 => "X64",
-            .x86 => "X86",
-        },
+        archFlag,
         "/r",
         "/fo",
         res_obj_path,
         "etc/clumsy.rc",
     });
+    cmd.print = true;
 
     const exe = b.addExecutable("clumsy", null);
 
