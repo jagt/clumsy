@@ -1,0 +1,3215 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>WinDivert 2.2 Documentation</title>
+    <meta charset="UTF-8"/>
+</head>
+<body>
+<h1>WinDivert 2.2: Windows Packet Divert</h1>
+<h2>Table of Contents</h2>
+<ul>
+<li><a href="#introduction">1. Introduction</a></li>
+<li><a href="#building">2. Building</a>
+<ul>
+<li><a href="#driver_signing">2.1 Driver Signing</a></li>
+</ul>
+</li>
+<li><a href="#installing">3. Installing</a></li>
+<li><a href="#uninstalling">4. Uninstalling</a></li>
+<li><a href="#programming_api">5. Programming API</a>
+<ul>
+<li><a href="#divert_layers">5.1 WINDIVERT_LAYER</a></li>
+<li><a href="#divert_events">5.2 WINDIVERT_EVENT</a></li>
+<li><a href="#divert_address">5.3 WINDIVERT_ADDRESS</a></li>
+<li><a href="#divert_open">5.4 WinDivertOpen</a></li>
+<li><a href="#divert_recv">5.5 WinDivertRecv</a></li>
+<li><a href="#divert_recv_ex">5.6 WinDivertRecvEx</a></li>
+<li><a href="#divert_send">5.7 WinDivertSend</a></li>
+<li><a href="#divert_send_ex">5.8 WinDivertSendEx</a></li>
+<li><a href="#divert_shutdown">5.9 WinDivertShutdown</a></li>
+<li><a href="#divert_close">5.19 WinDivertClose</a></li>
+<li><a href="#divert_set_param">5.11 WinDivertSetParam</a></li>
+<li><a href="#divert_get_param">5.12 WinDivertGetParam</a></li>
+</ul>
+</li>
+<li><a href="#helper_programming_api">6. Helper Programming API</a>
+<ul>
+<li><a href="#divert_iphdr">6.1 WINDIVERT_IPHDR</a></li>
+<li><a href="#divert_ipv6hdr">6.2 WINDIVERT_IPV6HDR</a></li>
+<li><a href="#divert_icmphdr">6.3 WINDIVERT_ICMPHDR</a></li>
+<li><a href="#divert_icmpv6hdr">6.4 WINDIVERT_ICMPV6HDR</a></li>
+<li><a href="#divert_tcphdr">6.5 WINDIVERT_TCPHDR</a></li>
+<li><a href="#divert_udphdr">6.6 WINDIVERT_UDPHDR</a></li>
+<li><a href="#divert_helper_parse_packet">6.7 WinDivertHelperParsePacket</a></li>
+<li><a href="#divert_helper_hash_packet">6.8 WinDivertHelperHashPacket</a></li>
+<li><a href="#divert_helper_parse_ipv4_address">6.9 WinDivertHelperParseIPv4Address</a></li>
+<li><a href="#divert_helper_parse_ipv6_address">6.10 WinDivertHelperParseIPv6Address</a></li>
+<li><a href="#divert_helper_format_ipv4_address">6.11 WinDivertHelperFormatIPv4Address</a></li>
+<li><a href="#divert_helper_format_ipv6_address">6.12 WinDivertHelperFormatIPv6Address</a></li>
+<li><a href="#divert_helper_calc_checksums">6.13 WinDivertHelperCalcChecksums</a></li>
+<li><a href="#divert_helper_dec_ttl">6.14 WinDivertHelperDecrementTTL</a></li>
+<li><a href="#divert_helper_compile_filter">6.15 WinDivertHelperCompileFilter</a></li>
+<li><a href="#divert_helper_eval_filter">6.16 WinDivertHelperEvalFilter</a></li>
+<li><a href="#divert_helper_format_filter">6.17 WinDivertHelperFormatFilter</a></li>
+<li><a href="#divert_helper_ntoh">6.18 WinDivertHelperNtoh*</a></li>
+<li><a href="#divert_helper_hton">6.19 WinDivertHelperHton*</a></li>
+</ul>
+</li>
+<li><a href="#filter_language">7. Filter Language</a>
+<ul>
+<li><a href="#filter_examples">7.1 Filter Examples</a></li>
+<li><a href="#filter_usage">7.2 Filter Usage</a></li>
+</ul>
+</li>
+<li><a href="#performance">8. Performance</a></li>
+<li><a href="#samples">9. Samples</a></li>
+<li><a href="#known_issues">10. Known Issues</a></li>
+<li><a href="#license">11. License</a></li>
+</ul>
+
+<hr>
+<a name="introduction"><h2>1. Introduction</h2></a>
+<p>
+WinDivert is a powerful user-mode 
+capture/sniffing/modification/blocking/re-injection package for
+Windows 7, Windows 8 and Windows 10.
+WinDivert can be used to implement user-mode packet filters, packet sniffers,
+firewalls, NAT, VPNs, tunneling applications, etc., without the need to
+write kernel-mode code.
+</p>
+<p>
+The main features of the WinDivert are:
+</p>
+<ul>
+<li> User-mode packet capture, sniffing, dropping, filtering, modification,
+     re-injection, etc.</li>
+<li> Simple, high-level, programming API.</li>
+<li> Fully documented with sample programs.</li>
+<li> Full IPv6 support.</li>
+<li> Full loopback (localhost) support.</li>
+<li> A modern WDF/WFP driver implementation.</li>
+<li> Open source; Licensed under GNU Lesser General Public License (LGPL)
+     version 3.
+     See the <a href="#license">License</a> for more information.</li>
+</ul>
+<p>
+WinDivert provides similar functionality to
+<code>divert</code> sockets from FreeBSD/MacOS, <code>NETLINK</code> sockets
+from Linux.
+</p>
+
+<hr>
+<a name="building"><h2>2. Building</h2></a>
+<p>
+Note that pre-built WinDivert binary distributions are available from the
+<a href="https://reqrypt.org/windivert.html">WinDivert website</a>.
+Most users do not need to build their own version of WinDivert from source.
+</p>
+<p>
+The source code for WinDivert is available for download at:
+</p>
+<blockquote>
+<a href="https://github.com/basil00/Divert">
+    https://github.com/basil00/Divert</a>
+</blockquote>
+<p>
+To build the WinDivert drivers from source:
+</p>
+<ol>
+<li> Download and install <a href="http://www.microsoft.com/whdc/devtools/wdk/default.mspx">
+Windows Driver Kit 7.1.0</a>.</li>
+<li> Open a <i>x86 Free Build Environment</i> console.</li>
+<li> In the WinDivert package root directory, run the command:
+<pre>
+wddk-build.bat
+</pre>
+This will build the <code>install\WDDK\i386\WinDivert32.sys</code> driver.</li>
+<li> Next, open a <i>x64 Free Build Environment</i> console.</li>
+<li> Re-run the <code>wddk-build.bat</code> command to build the
+<code>install\WDDK\amd64\WinDivert64.sys</code> driver.</li>
+</ol>
+<p>
+To build the WinDivert user-mode library (<code>WinDivert.dll</code>) and sample
+programs:
+</p>
+<ol>
+<li> First, build the WinDivert drivers by running the
+<code>wddk-build.bat</code> command described above.</li>
+<li> In Linux (with the MinGW cross-compilers installed) and in the
+WinDivert package root directory, run the command:
+<pre>
+sh mingw-build.sh
+</pre>
+This will the user-mode library and sample programs which will be placed
+in the <code>install\MINGW</code> subdirectory.</li>
+</ol>
+<p>
+The generated <code>WinDivert.dll</code>/<code>WinDivert.lib</code> files
+should be compatible with all major compilers, including both MinGW and
+Visual Studio.
+</p>
+
+<a name="driver_signing"><h3>2.1 Driver Signing</h3></a>
+<p>
+If you built your own 
+<code>WinDivert32.sys</code>/<code>WinDivert64.sys</code> drivers,
+they must be digitally signed before they can be used.
+See <a href="http://msdn.microsoft.com/en-us/windows/hardware/gg487317.aspx">Driver Signing Requirements for Windows</a>
+for more information.
+</p>
+<p>
+Note that the pre-built <code>WinDivert32.sys</code>/<code>WinDivert64.sys</code>
+drivers from the official WinDivert distribution are already digitally signed.
+</p>
+
+<hr>
+<a name="installing"><h2>3. Installing</h2></a>
+<p>
+WinDivert does not require any special installation.
+Depending on your target configuration, simply place the following files in
+your application's home directory:
+</p>
+<center>
+<table border="1" cellpadding="5" width="75%">
+<tr>
+<th>
+Application Type
+</th>
+<th>
+Target Windows Type
+</th>
+<th>
+Files Required
+</th>
+</tr>
+<tr>
+<td>
+32-bit
+</td>
+<td>
+32-bit Windows only
+</td>
+<td>
+<code>WinDivert.dll</code> (32-bit version) and <code>WinDivert32.sys</code>
+</td>
+</tr>
+<tr>
+<td>
+64-bit
+</td>
+<td>
+64-bit Windows only
+</td>
+<td>
+<code>WinDivert.dll</code> (64-bit version) and <code>WinDivert64.sys</code>
+</td>
+</tr>
+<tr>
+<td>
+32-bit
+</td>
+<td>
+Both 32-bit and 64-bit Windows
+</td>
+<td>
+<code>WinDivert.dll</code> (32-bit version), <code>WinDivert32.sys</code>,
+    and <code>WinDivert64.sys</code>
+</td>
+</tr>
+</table>
+</center>
+<p>
+The WinDivert driver is automatically (and silently) installed on demand
+whenever your application calls
+<a href="#divert_open"><code>WinDivertOpen()</code></a>.
+The calling application must have Administrator privileges.
+</p>
+
+<hr>
+<a name="uninstalling"><h2>4. Uninstalling</h2></a>
+<p>
+To uninstall, simply delete the <code>WinDivert.dll</code>,
+<code>WinDivert32.sys</code>, and <code>WinDivert64.sys</code> files.
+If already running, the WinDivert driver will be automatically
+uninstalled during the next machine reboot.
+The WinDivert driver can also be manually removed by (1) terminating
+all processes that are using WinDivert, and (2) issuing the following
+commands at the command prompt
+</p>
+<pre>
+    sc stop WinDivert
+    sc delete WinDivert
+</pre>
+<p>
+Alternatively, the WinDivert driver can be removed by using the
+<code>windivertctl.exe</code> <a href="#samples">sample program</a> by
+issuing the following command:
+</p>
+<pre>
+    windivertctl uninstall
+</pre>
+
+<hr>
+<a name="programming_api"><h2>5. Programming API</h2></a>
+<p>
+To use the WinDivert package, a program/application must:
+<ol>
+<li> Include the <code>windivert.h</code> header file
+<pre>
+#include "windivert.h"
+</pre></li>
+<li> Link against or dynamically load the <code>WinDivert.dll</code> dynamic link
+library.</li>
+</ol>
+
+<a name="divert_layers"><h3>5.1 WINDIVERT_LAYER</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+typedef enum
+{
+    WINDIVERT_LAYER_NETWORK = 0,
+    WINDIVERT_LAYER_NETWORK_FORWARD,
+    WINDIVERT_LAYER_FLOW,
+    WINDIVERT_LAYER_SOCKET,
+    WINDIVERT_LAYER_REFLECT,
+} <b>WINDIVERT_LAYER</b>, *<b>PWINDIVERT_LAYER</b>;
+</pre>
+</td></tr></table>
+<dl><dd>
+<b>Remarks</b><br>
+<p>
+WinDivert supports several <i>layers</i> for diverting or capturing
+network packets/events.
+Each layer has its own capabilities, such as the ability to block
+events or to inject new events, etc.
+The list of supported WinDivert layers is summarized below:
+</p>
+<center>
+<table border="1" cellpadding="5">
+<tr>
+<th>Layer</th>
+<th colspan="4">Capability</th>
+<th>Description</th>
+</tr>
+<tr>
+<th>
+</th>
+<th>
+Block?
+</th>
+<th>
+Inject?
+</th>
+<th>
+Data?
+</th>
+<th>
+PID?
+</th>
+<th>
+</th>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_NETWORK</code>
+</td>
+<td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td></td>
+<td>
+Network packets to/from the local machine.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_NETWORK_FORWARD</code>
+</td>
+<td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td></td>
+<td>
+Network packets passing through the local machine.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_FLOW</code>
+</td>
+<td></td><td></td><td></td><td>&#10004;</td>
+<td>
+Network flow established/deleted events.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_SOCKET</code>
+</td>
+<td>&#10004;</td><td></td><td></td><td>&#10004;</td>
+<td>
+Socket operation events.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_REFLECT</code>
+</td>
+<td></td><td></td><td>&#10004;</td><td>&#10004;</td>
+<td>
+WinDivert handle events.
+</td>
+</tr>
+</table>
+</center>
+<p>
+Here, the layer capabilities are:
+</p>
+<ul>
+<li> (Block?) the layer can block events/packets;</li>
+<li> (Inject?) the layer can inject new events/packets;</li>
+<li> (Data?) whether the layer returns packets/data or not; and</li>
+<li> (PID?) whether the ID for the process associated with
+     an event/packet is available at this layer, or not.
+</ul>
+<p>
+The <code>WINDIVERT_LAYER_NETWORK</code> and
+<code>WINDIVERT_LAYER_NETWORK_FORWARD</code>
+layers allow the user application to capture/block/inject network packets
+passing to/from (and through) the local machine.
+Due to technical limitations, process ID information is not available
+at these layers.
+</p>
+<p>
+The <code>WINDIVERT_LAYER_FLOW</code> layer captures information about
+network flow establishment/deletion events.
+Here, a <i>flow</i> represents either (1) a
+TCP connection, or (2) an implicit <q>flow</q> created by the first
+sent/received packet for non-TCP traffic, e.g., UDP.
+Old flows are deleted when the corresponding connection is closed (for TCP),
+or based on an activity timeout (non-TCP).
+Flow-related events can be captured, but not blocked nor injected.
+Process ID information is also available at this layer.
+Due to technical limitations, the
+<code>WINDIVERT_LAYER_FLOW</code> layer cannot capture flow events that
+occurred before the handle was opened.
+</p>
+<p>
+The <code>WINDIVERT_LAYER_SOCKET</code> layer can capture or block events
+corresponding to socket operations, such as <code>bind()</code>,
+<code>connect()</code>, <code>listen()</code>, etc., or the termination
+of socket operations, such as a TCP socket disconnection.
+Unlike the flow layer, most socket-related events can be blocked.
+However, it is not possible to inject new or modified socket events.
+Process ID information (of the process responsible for the socket operation)
+is available at this layer.
+Due to technical limitations, this layer cannot capture events that
+occurred before the handle was opened.
+</p>
+<p>
+Finally, the <code>WINDIVERT_LAYER_REFLECT</code> layer can capture events
+relating to WinDivert itself, such as when another process opens a
+new WinDivert handle, or closes an old WinDivert handle.
+WinDivert events can be captured but not injected nor blocked.
+Process ID information (of the process responsible for opening the
+WinDivert handle) is available at this layer.
+This layer also returns data in the form of an <q>object</q> representation
+of the filter string used to open the handle.
+The object representation can be converted back into a human-readable
+filter string using the
+<a href="#divert_helper_format_filter"><code>WinDivertHelperFormatFilter()</code></a>
+function.
+This layer can also capture events that occurred before the handle was opened.
+This layer cannot capture events related to other
+<code>WINDIVERT_LAYER_REFLECT</code>-layer handles.
+</p>
+</dd></dl>
+
+<a name="divert_events"><h3>5.2 WINDIVERT_EVENT</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+typedef enum
+{
+    WINDIVERT_EVENT_NETWORK_PACKET,
+    WINDIVERT_EVENT_FLOW_ESTABLISHED,
+    WINDIVERT_EVENT_FLOW_DELETED,
+    WINDIVERT_EVENT_SOCKET_BIND,
+    WINDIVERT_EVENT_SOCKET_CONNECT,
+    WINDIVERT_EVENT_SOCKET_LISTEN,
+    WINDIVERT_EVENT_SOCKET_ACCEPT,
+    WINDIVERT_EVENT_SOCKET_CLOSE,
+    WINDIVERT_EVENT_REFLECT_OPEN,
+    WINDIVERT_EVENT_REFLECT_CLOSE,
+} <b>WINDIVERT_EVENT</b>, *<b>PWINDIVERT_EVENT</b>;
+</pre>
+</td></tr></table>
+<dl><dd>
+<b>Remarks</b><br>
+<p>
+Each layer supports one or more <i>events</i> summarized below:
+</p>
+<ul>
+<li>
+<p>
+<b><code>WINDIVERT_LAYER_NETWORK</code></b> and
+<b><code>WINDIVERT_LAYER_NETWORK_FORWARD</code></b>:
+Only a single event is supported:
+</p>
+<center>
+<table border="1" cellpadding="5" width="50%">
+<tr>
+<th>Event</th>
+<th>Description</th>
+<tr>
+<td>
+<code>WINDIVERT_EVENT_NETWORK_PACKET</code>
+</td>
+<td>
+A new network packet.
+</td>
+</tr>
+</table>
+</center>
+<ul>
+</ul>
+</li>
+<li>
+<p>
+<b><code>WINDIVERT_LAYER_FLOW</code></b>:
+Two events are supported:
+</p>
+<center>
+<table border="1" cellpadding="5" width="50%">
+<tr>
+<th>Event</th>
+<th>Description</th>
+<tr>
+<td>
+<code>WINDIVERT_EVENT_FLOW_ESTABLISHED</code>
+</td>
+<td>
+A new flow is created.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_EVENT_FLOW_DELETED</code>
+</td>
+<td>
+An old flow is deleted.
+</td>
+</tr>
+</table>
+</center>
+</li>
+<li>
+<p>
+<b><code>WINDIVERT_LAYER_SOCKET</code></b>:
+The following events are supported:
+</p>
+<center>
+<table border="1" cellpadding="5" width="50%">
+<tr>
+<th>Event</th>
+<th>Description</th>
+<tr>
+<td>
+<code>WINDIVERT_EVENT_SOCKET_BIND</code>
+</td>
+<td>
+A <code>bind()</code> operation.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_EVENT_SOCKET_CONNECT</code>
+</td>
+<td>
+A <code>connect()</code> operation.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_EVENT_SOCKET_LISTEN</code>
+</td>
+<td>
+A <code>listen()</code> operation.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_EVENT_SOCKET_ACCEPT</code>
+</td>
+<td>
+An <code>accept()</code> operation.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_EVENT_SOCKET_CLOSE</code>
+</td>
+<td>
+A socket endpoint is closed.
+This corresponds to a previous binding being released, or an established
+connection being terminated.
+The event cannot be blocked.
+</table>
+</center>
+</li>
+<li>
+<p>
+<b><code>WINDIVERT_LAYER_REFLECT</code></b>:
+Two events are supported:
+</p>
+<center>
+<table border="1" cellpadding="5" width="50%">
+<tr>
+<th>Event</th>
+<th>Description</th>
+<tr>
+<td>
+<code>WINDIVERT_EVENT_REFLECT_OPEN</code>
+</td>
+<td>
+A new WinDivert handle was opened.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_EVENT_REFLECT_CLOSE</code>
+</td>
+<td>
+An old WinDivert handle was closed.
+</td>
+</tr>
+</table>
+</center>
+</li>
+</ul>
+</dd></dl>
+
+<a name="divert_address"><h3>5.3 WINDIVERT_ADDRESS</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+typedef struct
+{
+    UINT32 IfIdx;
+    UINT32 SubIfIdx;
+} <b>WINDIVERT_DATA_NETWORK</b>, *<b>PWINDIVERT_DATA_NETWORK</b>;
+
+typedef struct
+{
+    UINT64 Endpoint;
+    UINT64 ParentEndpoint;
+    UINT32 ProcessId;
+    UINT32 LocalAddr[4];
+    UINT32 RemoteAddr[4];
+    UINT16 LocalPort;
+    UINT16 RemotePort;
+    UINT8  Protocol;
+} <b>WINDIVERT_DATA_FLOW</b>, *<b>PWINDIVERT_DATA_FLOW</b>;
+
+typedef struct
+{
+    UINT64 Endpoint;
+    UINT64 ParentEndpoint;
+    UINT32 ProcessId;
+    UINT32 LocalAddr[4];
+    UINT32 RemoteAddr[4];
+    UINT16 LocalPort;
+    UINT16 RemotePort;
+    UINT8  Protocol;
+} <b>WINDIVERT_DATA_SOCKET</b>, *<b>PWINDIVERT_DATA_SOCKET</b>;
+
+typedef struct
+{
+    INT64  Timestamp;
+    UINT32 ProcessId;
+    WINDIVERT_LAYER Layer;
+    UINT64 Flags;
+    INT16  Priority;
+} <b>WINDIVERT_DATA_REFLECT</b>, *<b>PWINDIVERT_DATA_REFLECT</b>;
+
+typedef struct
+{
+    INT64  Timestamp;
+    UINT64 Layer:8;
+    UINT64 Event:8;
+    UINT64 Sniffed:1;
+    UINT64 Outbound:1;
+    UINT64 Loopback:1;
+    UINT64 Impostor:1;
+    UINT64 IPv6:1;
+    UINT64 IPChecksum:1;
+    UINT64 TCPChecksum:1;
+    UINT64 UDPChecksum:1;
+    union
+    {
+        WINDIVERT_DATA_NETWORK Network;
+        WINDIVERT_DATA_FLOW    Flow;
+        WINDIVERT_DATA_SOCKET  Socket;
+        WINDIVERT_DATA_REFLECT Reflect;
+    };
+} <b>WINDIVERT_ADDRESS</b>, *<b>PWINDIVERT_ADDRESS</b>;
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Fields</b></p>
+<ul>
+<li> <code>Timestamp</code>: A timestamp indicating when event occurred.</li>
+<li> <code>Layer</code>: The handle's layer (<code>WINDIVERT_LAYER_*</code>).</li>
+<li> <code>Event</code>: The captured event (<code>WINDIVERT_EVENT_*</code>).</li>
+<li> <code>Sniffed</code>: Set to <code>1</code> if the event was
+    <q>sniffed</q> (i.e., not blocked), <code>0</code> otherwise..</li>
+<li> <code>Outbound</code>: Set to <code>1</code> for <i>outbound</i>
+    packets/event, <code>0</code> for <i>inbound</i> or otherwise.</li>
+<li> <code>Loopback</code>: Set to <code>1</code> for loopback packets, <code>0</code>
+otherwise</li>
+<li> <code>Impostor</code>: Set to <code>1</code> for <q>impostor</q> packets,
+<code>0</code> otherwise.</li>
+<li> <code>IPv6</code>: Set to <code>1</code> for IPv6 packets/events, <code>0</code>
+otherwise</li>
+<li> <code>IPChecksum</code>: Set to <code>1</code> if the IPv4 checksum is
+valid, <code>0</code> otherwise.</li>
+<li> <code>TCPChecksum</code>: Set to <code>1</code> if the TCP checksum is
+valid, <code>0</code> otherwise.</li>
+<li> <code>UDPChecksum</code>: Set to <code>1</code> if the UDP checksum is
+valid, <code>0</code> otherwise.</li>
+<li> <code>Network.IfIdx</code>: The interface index on which the packet arrived
+    (for inbound packets), or is to be sent (for outbound packets).</li>
+<li> <code>Network.SubIfIdx</code>: The sub-interface index for <code>IfIdx</code>.</li>
+<li> <code>Flow.EndpointId</code>: The endpoint ID of the flow.</li>
+<li> <code>Flow.ParentEndpointId</code>: The parent endpoint ID of the
+     flow.</li>
+<li> <code>Flow.ProcessId</code>: The ID of the process associated with the
+     flow.</li>
+<li> <code>Flow.LocalAddr</code>, <code>Flow.RemoteAddr</code>,
+     <code>Flow.LocalPort</code>, <code>Flow.RemotePort</code>, and
+     <code>Flow.Protocol</code>: The network 5-tuple associated with the
+     flow.</li>
+<li> <code>Socket.EndpointId</code>: The endpoint ID of the socket
+     operation.</li>
+<li> <code>Socket.ParentEndpointId</code>: The parent endpoint ID of the 
+     socket operation.</li>
+<li> <code>Socket.ProcessId</code>: The ID of the process associated with the
+     socket operation.</li>
+<li> <code>Socket.LocalAddr</code>, <code>Socket.RemoteAddr</code>,
+     <code>Socket.LocalPort</code>, <code>Socket.RemotePort</code>, and
+     <code>Socket.Protocol</code>: The network 5-tuple associated with the
+     socket operation.</li>
+<li> <code>Reflect.Timestamp</code>: A timestamp indicating when the handle was 
+     opened.</li>
+<li> <code>Reflect.ProcessId</code>: The ID of the process that opened the
+     handle.</li>
+<li> <code>Reflect.Layer</code>, <code>Reflect.Flags</code>, and
+     <code>Reflect.Priority</code>: The
+     <a href="#divert_open"><code>WinDivertOpen()</code></a> parameters of
+     the opened handle.</li>
+</ul>
+<p>
+<b>Remarks</b><br>
+The <a href="#divert_address"><code>WINDIVERT_ADDRESS</code></a> structure
+represents the "address" of a captured or injected packet.
+The address includes the packet's timestamp, layer, event, flags, and
+layer-specific data.
+All fields are set by <a href="#divert_recv"><code>WinDivertRecv()</code></a>
+when the packet/event is captured.
+Only some fields are used by
+<a href="#divert_send"><code>WinDivertSend()</code></a> when a packet
+is injected.
+</p><p>
+The <code>Timestamp</code> indicates when the packet/event was first
+captured by WinDivert.
+It uses the same clock as
+<a href="https://msdn.microsoft.com/en-us/library/windows/desktop/ms644904(v=vs.85).aspx"><code>QueryPerformanceCounter()</code></a>.
+</p><p>
+The <code>Layer</code> indicates the <i>layer</i> parameter
+(<a href="#divert_layers"><code>WINDIVERT_LAYER_*</code></a>) that was passed to
+<a href="#divert_open"><code>WinDivertOpen()</code></a>.
+It is included in the address to make the structure self-contained.
+</p><p>
+The <code>Event</code> indicates the layer-specific <i>event</i>
+(<a href="#divert_events"><code>WINDIVERT_EVENT_*</code></a>) that was captured.
+</p><p>
+The <code>Outbound</code> flag is set for <i>outbound</i>
+packets/events, and is cleared
+for <i>inbound</i> or direction-less packets/events.
+</p><p>
+The <code>Loopback</code> flag is set for <i>loopback</i> packets.
+Note that Windows considers any packet originating from, and destined to, the
+current machine to be a loopback packet, so loopback packets are not
+limited to localhost addresses.
+Note that WinDivert considers loopback packets to be
+<i>outbound only</i>, and will not capture loopback packets on the
+inbound path.
+</p><p>
+The <code>Impostor</code> flag is set for <i>impostor</i> packets.
+An impostor packet is any packet injected by another driver rather than
+originating from the network or Windows TCP/IP stack.
+Impostor packets are problematic since they can cause infinite loops,
+where a packet injected by <a href="#divert_send"><code>WinDivertSend()</code></a> 
+is captured again by <a href="#divert_recv"><code>WinDivertRecv()</code></a>.
+For more information, see <a href="#divert_send"><code>WinDivertSend()</code></a>.
+</p><p>
+The <code>IPv6</code> flag is set for <i>IPv6</i> packets/events, and cleared
+for <i>IPv4</i> packets/events.
+</p><p>
+The <code>*Checksum</code> flags indicate whether the packet has valid checksums
+or not.
+When <i>IP/TCP/UDP checksum offloading</i> is enabled, it is possible that
+captured packets do not have valid checksums.
+Invalid checksums may be arbitrary values.
+</p><p>
+The <code>Network.*</code> fields are only valid at the
+<code>WINDIVERT_LAYER_NETWORK</code> and
+<code>WINDIVERT_LAYER_NETWORK_FORWARD</code> layers.
+The <code>Network.IfIdx</code>/<code>Network.SubIfIdx</code> indicate the packet's
+network adapter (a.k.a. interface) index.
+These values are ignored for <i>outbound</i> packets.
+</p><p>
+The <code>Flow.*</code> fields are only valid at the
+<code>WINDIVERT_LAYER_FLOW</code> layer.
+The <code>Flow.ProcessId</code> is the <i>ID</i> of the process that
+created the flow (for outbound), or receives the flow (for inbound).
+The
+(<code>Flow.LocalAddr</code>, <code>Flow.LocalPort</code>,
+ <code>Flow.RemoteAddr</code>, <code>Flow.RemotePort</code>, <code>Flow.Protocol</code>)
+fields form the network 5-tuple associated with the flow.
+For IPv4, the <code>Flow.LocalAddr</code> and <code>Flow.RemoteAddr</code>
+fields will be IPv4-mapped IPv6 addresses,
+e.g. the IPv4 address <code>X.Y.Z.W</code> will be represented by
+<code>::ffff:X.Y.Z.W</code>.
+</p><p>
+The <code>Socket.*</code> fields are only valid at the
+<code>WINDIVERT_LAYER_SOCKET</code> layer.
+The <code>Socket.ProcessId</code> is the <i>ID</i> of the process that executed
+the socket operation.
+The
+(<code>Socket.LocalAddr</code>, <code>Socket.LocalPort</code>,
+ <code>Socket.RemoteAddr</code>, <code>Socket.RemotePort</code>,
+ <code>Socket.Protocol</code>)
+fields form the network 5-tuple associated with the operation.
+For IPv4, the <code>Socket.LocalAddr</code> and <code>Socket.RemoteAddr</code>
+fields will be IPv4-mapped IPv6 addresses.
+The <code>WINDIVERT_EVENT_SOCKET_BIND</code> and
+<code>WINDIVERT_EVENT_SOCKET_LISTEN</code> events can occur before a
+connection attempt has been made, meaning that the
+<code>Socket.RemoteAddr</code> and <code>Socket.RemotePort</code> fields
+for these events will be zero.
+</p><p>
+The <code>Reflect.*</code> fields are only valid at the
+<code>WINDIVERT_LAYER_REFLECT</code> layer.
+The <code>Reflect.ProcessId</code> is the <i>ID</i> of the process that
+opened the WinDivert handle.
+The <code>Reflect.Timestamp</code> field is a timestamp indicating when the
+handle was opened, using
+the same clock as
+<a href="https://msdn.microsoft.com/en-us/library/windows/desktop/ms644904(v=vs.85).aspx"><code>QueryPerformanceCounter()</code></a>.
+The <code>Reflect.Layer</code>, <code>Reflect.Flags</code>, and
+    <code>Reflect.Priority</code> fields correspond to the
+<a href="#divert_open"><code>WinDivertOpen()</code></a> parameters of
+the opened handle.
+</p><p>
+Most address fields are ignored by
+<a href="#divert_send"><code>WinDivertSend()</code></a>.
+The exceptions are
+<code>Outbound</code> (for <code>WINDIVERT_LAYER_NETWORK</code> only),
+<code>Impostor</code>, <code>IPChecksum</code>, <code>TCPChecksum</code>,
+<code>UDPChecksum</code>, <code>Network.IfIdx</code> and
+<code>Network.SubIfIdx</code>.
+</p>
+</dd></dl>
+
+<a name="divert_open"><h3>5.4 WinDivertOpen</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+HANDLE <b>WinDivertOpen</b>(
+    __in const char *filter,
+    __in WINDIVERT_LAYER layer,
+    __in INT16 priority,
+    __in UINT64 flags
+);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>filter</code>: A packet filter string specified in the WinDivert
+    <a href="#filter_language">filter language</a>.</li>
+<li> <code>layer</code>: The layer.</li>
+<li> <code>priority</code>: The priority of the handle.</li>
+<li> <code>flags</code>: Additional flags.</li>
+</ul>
+<p>
+<b>Return Value</b><br>
+A valid WinDivert handle on success, or
+<code>INVALID_HANDLE_VALUE</code> if an error occurred.
+Use <code>GetLastError()</code> to get the reason for the error.
+Common errors include:
+</p>
+<center>
+<table border="1" cellpadding="5" width="75%">
+<tr>
+<th>
+Name
+</th>
+<th>
+Code
+</th>
+<th>
+Description
+</th>
+</tr>
+<tr>
+<td>
+<code>ERROR_FILE_NOT_FOUND</code>
+</td>
+<td>
+2
+</td>
+<td>
+The driver files
+<code>WinDivert32.sys</code> or <code>WinDivert64.sys</code>
+were not found.
+</td>
+</tr>
+<tr>
+<td>
+<code>ERROR_ACCESS_DENIED</code>
+</td>
+<td>
+5
+</td>
+<td>
+The calling application does not have Administrator privileges.
+</td>
+</tr>
+<tr>
+<td>
+<code>ERROR_INVALID_PARAMETER</code>
+</td>
+<td>
+87
+</td>
+<td>
+This indicates an invalid packet filter string, layer, priority, or flags.
+</td>
+</tr>
+<tr>
+<td>
+<code>ERROR_INVALID_IMAGE_HASH</code>
+</td>
+<td>
+577
+</td>
+<td>
+The <code>WinDivert32.sys</code> or <code>WinDivert64.sys</code> driver does not
+have a valid digital signature
+(see the <a href="#driver_signing">driver signing requirements</a> above).
+</td>
+</tr>
+<tr>
+<td>
+<code>ERROR_DRIVER_FAILED_PRIOR_UNLOAD</code>
+</td>
+<td>
+654
+</td>
+<td>
+An incompatible version of the WinDivert driver is currently loaded.
+</td>
+<tr>
+<td>
+<code>ERROR_SERVICE_DOES_NOT_EXIST</code>
+</td>
+<td>
+1060
+</td>
+<td>
+The handle was opened with the <code>WINDIVERT_FLAG_NO_INSTALL</code> flag and
+the WinDivert driver is not already installed.
+</td>
+</tr>
+<tr>
+<td>
+<code>ERROR_DRIVER_BLOCKED</code>
+</td>
+<td>
+1275
+</td>
+<td>
+This error occurs for various reasons, including:
+<ol>
+<li> the WinDivert driver is blocked by security software; or</li>
+<li> you are using a virtualization environment that does not support
+drivers.</li>
+</ol>
+</td>
+</tr>
+<tr>
+<td>
+<code>EPT_S_NOT_REGISTERED</code>
+</td>
+<td>
+1753
+</td>
+<td>
+This error occurs when the <i>Base Filtering Engine</i> service has been
+disabled.
+</td>
+</tr>
+</table>
+</center>
+<p>
+<b>Remarks</b><br>
+Opens a WinDivert handle for the given filter.
+Unless otherwise specified by <code>flags</code>, any packet or event that
+matches the filter will be diverted to the handle.
+Diverted packets/events can be read by the application with
+<a href="#divert_recv"><code>WinDivertRecv()</code></a>.
+</p>
+<p>
+A typical application is only interested in a subset of all network traffic
+or events.
+In this case the filter should <i>match as closely as possible</i> to
+the subset of interest.
+This avoids unnecessary overheads introduced by diverting packets to the
+user-mode application.
+See the <a href="#filter_language">filter language</a> section for more
+information.
+</p>
+<p>
+The <i>layer</i> of the WinDivert handle is determined by the <code>layer</code>
+parameter.
+See <a href="#divert_layers"><code>WINDIVERT_LAYER</code></a> for more
+information.
+Currently the following layers are supported:
+</p>
+<center>
+<table border="1" cellpadding="5" width="75%">
+<tr>
+<th>
+Layer
+</th>
+<th>
+Description
+</th>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_NETWORK = 0</code>
+</td>
+<td>
+Network packets to/from the local machine.
+This is the default layer.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_NETWORK_FORWARD</code>
+</td>
+<td>
+Network packets passing through the local machine.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_FLOW</code>
+</td>
+<td>
+Network flow established/deleted events.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_SOCKET</code>
+</td>
+<td>
+Socket operation events.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_REFLECT</code>
+</td>
+<td>
+WinDivert handle events.
+</td>
+</tr>
+</table>
+</center>
+<p>
+Different WinDivert handles can be assigned different priorities by the
+<code>priority</code> parameter.
+Packets are diverted to higher priority handles before lower priority
+handles.
+Packets injected by a handle are then diverted to the next priority handle,
+and so on, provided the packet matches the handle's filter.
+A packet is only diverted once per priority level, so handles should not
+share priority levels unless they use mutually exclusive filters.
+Otherwise it is not defined which handle will receive the packet first.
+Higher <code>priority</code> values represent higher priorities, with
+<code>WINDIVERT_PRIORITY_HIGHEST</code> being the highest priority,
+<code>0</code> the middle (and a good default) priority,
+and <code>WINDIVERT_PRIORITY_LOWEST</code> the lowest priority.
+</p>
+<p>
+Different flags affect how the opened handle behaves.
+The following flags are supported:
+</p>
+<center>
+<table border="1" cellpadding="5" width="75%">
+<tr>
+<th>
+Flag
+</th>
+<th>
+Description
+</th>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_FLAG_SNIFF</code>
+</td>
+<td>
+This flag opens the WinDivert handle in <i>packet sniffing</i> mode.
+In packet sniffing mode the original packet is not dropped-and-diverted
+(the default) but copied-and-diverted.
+This mode is useful for implementing packet sniffing tools similar to those
+applications that currently use <code>Winpcap</code>.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_FLAG_DROP</code>
+</td>
+<td>
+This flag indicates that the user application does not intend to read matching
+packets with <a href="#divert_recv"><code>WinDivertRecv()</code></a>, instead the
+packets should be silently dropped.
+This is useful for implementing simple packet filters using the
+WinDivert <a href="#filter_language">filter language</a>.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_FLAG_RECV_ONLY</code>
+</td>
+<td>
+This flags forces the handle into <q>receive only</q> mode which effectively
+disables <a href="#divert_send"><code>WinDivertSend()</code></a>.
+This means that it is possible to block/capture packets or events but not
+inject them.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_FLAG_READ_ONLY</code>
+</td>
+<td>
+An alias for <code>WINDIVERT_FLAG_RECV_ONLY</code>.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_FLAG_SEND_ONLY</code>
+</td>
+<td>
+This flags forces the handle into <q>send only</q> mode which effectively
+disables <a href="#divert_recv"><code>WinDivertRecv()</code></a>.
+This means that it is possible to inject packets or events, but not
+block/capture them.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_FLAG_WRITE_ONLY</code>
+</td>
+<td>
+An alias for <code>WINDIVERT_FLAG_SEND_ONLY</code>.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_FLAG_NO_INSTALL</code>
+</td>
+<td>
+This flags causes <code>WinDivertOpen()</code> to fail with 
+<code>ERROR_SERVICE_DOES_NOT_EXIST</code> if the WinDivert driver
+is not already installed.
+This flag is useful for querying the WinDivert state using a
+<code>WINDIVERT_LAYER_REFLECT</code> handle.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_FLAG_FRAGMENTS</code>
+</td>
+<td>
+If set, the handle will capture inbound IP fragments, but not inbound
+reassembled IP packets.
+Otherwise, if not set (the default), the handle will capture inbound
+reassembled IP packets, but not inbound IP fragments.
+This flag only affects inbound packets at the
+<code>WINDIVERT_LAYER_NETWORK</code> layer, else the flag is ignored.
+</td>
+</tr>
+</table>
+</center>
+<p>
+Note that any combination of
+<code>(WINDIVERT_FLAG_SNIFF | WINDIVERT_FLAG_DROP)</code> or
+<code>(WINDIVERT_FLAG_RECV_ONLY | WINDIVERT_FLAG_SEND_ONLY)</code> 
+are considered invalid.
+</p>
+<p>
+Some layers have mandatory flags, as listed below:
+</p>
+<center>
+<table border="1" cellpadding="5" width="75%">
+<tr>
+<th>
+Layer
+</th>
+<th>
+Required Flags
+</th>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_FLOW</code>
+</td>
+<td>
+<code>WINDIVERT_FLAG_SNIFF | WINDIVERT_FLAG_RECV_ONLY</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_SOCKET</code>
+</td>
+<td>
+<code>WINDIVERT_FLAG_RECV_ONLY</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_REFLECT</code>
+</td>
+<td>
+<code>WINDIVERT_FLAG_SNIFF | WINDIVERT_FLAG_RECV_ONLY</code>
+</td>
+</tr>
+</table>
+</center>
+</dd></dl>
+
+<a name="divert_recv"><h3>5.5 WinDivertRecv</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+BOOL <b>WinDivertRecv</b>(
+    __in HANDLE handle,
+    __out_opt PVOID pPacket,
+    __in UINT packetLen,
+    __out_opt UINT *pRecvLen,
+    __out_opt WINDIVERT_ADDRESS *pAddr
+);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>handle</code>: A valid WinDivert handle created by
+     <a href="#divert_open"><code>WinDivertOpen()</code></a>.</li>
+<li> <code>pPacket</code>: An optional buffer for the captured packet.</li>
+<li> <code>packetLen</code>: The length of the <code>pPacket</code> buffer.</li>
+<li> <code>pRecvLen</code>: The total number of bytes written to <code>pPacket</code>.
+     Can be <code>NULL</code> if this information is not required.</li>
+<li> <code>pAddr</code>: An optional buffer for the
+    <a href="#divert_address">address</a> of the captured packet/event.</li>
+</ul>
+<p>
+<b>Return Value</b><br>
+<code>TRUE</code> if a packet/event was successfully received, or <code>FALSE</code> if
+an error occurred.
+Use <code>GetLastError()</code> to get the reason for the error.
+</p><p>
+Common errors include:
+</p>
+<center>
+<table border="1" cellpadding="5" width="75%">
+<tr>
+<th>
+Name
+</th>
+<th>
+Code
+</th>
+<th>
+Description
+</th>
+</tr>
+<tr>
+<td>
+<code>ERROR_INSUFFICIENT_BUFFER</code>
+</td>
+<td>
+122
+</td>
+<td>
+The captured packet is larger than the <code>pPacket</code> buffer.
+</td>
+</tr>
+<tr>
+<td>
+<code>ERROR_NO_DATA</code>
+</td>
+<td>
+232
+</td>
+<td>
+The <code>handle</code> has been shutdown using
+<a href="#divert_shutdown"><code>WinDivertShutdown()</code></a>
+and the packet queue is empty.
+</td>
+</tr>
+</table>
+</center>
+<p>
+<b>Remarks</b><br>
+Receives a single captured packet/event matching the filter passed to
+<a href="#divert_open"><code>WinDivertOpen()</code></a>.
+The received packet/event is guaranteed to match the filter.
+</p><p>
+Only some <a href="#divert_layers">layers</a> can capture packets/data, as
+summarized below:
+</p>
+<center>
+<table border="1" cellpadding="5" width="75%">
+<tr>
+<th>
+Layer
+</th>
+<th>
+Data?
+</th>
+<th>
+Description
+</th>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_NETWORK</code>
+</td>
+<td>
+&#10004;
+</td>
+<td>
+Network packet.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_NETWORK_FORWARD</code>
+</td>
+<td>
+&#10004;
+</td>
+<td>
+Network packet.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_FLOW</code>
+</td>
+<td>
+</td>
+<td>
+-
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_SOCKET</code>
+</td>
+<td>
+</td>
+<td>
+-
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_REFLECT</code>
+</td>
+<td>
+&#10004;
+</td>
+<td>
+Filter object.
+</td>
+</tr>
+</table>
+</center>
+<p>
+For layers that do support capturing, the captured packet/data will be written
+to the <code>pPacket</code> buffer.
+If non-<code>NULL</code>, then the total number of bytes
+written to <code>pPacket</code> will be written to <code>pRecvLen</code>.
+If the <code>pPacket</code> buffer is too small, the packet will be
+truncated and the operation will fail with the
+<code>ERROR_INSUFFICIENT_BUFFER</code> error code.
+This error can be ignored if the application only intends to receive part
+of the packet, e.g., the IP headers only.
+For layers that do not capture packets/data, the <code>pPacket</code> parameter
+should be <code>NULL</code> and <code>packetLen</code> should be zero.
+</p><p>
+If non-<code>NULL</code>, the <a href="#divert_address">address</a> of the
+packet/event will be written to the <code>pAddr</code> buffer.
+</p><p>
+An application should call <a href="#divert_recv"><code>WinDivertRecv()</code></a>
+<i>as soon as possible</i>
+after a successful call to <a href="#divert_open"><code>WinDivertOpen()</code></a>.
+When a WinDivert handle is open, any packet/event that matches the filter will
+be captured and queued until handled by
+<a href="#divert_recv"><code>WinDivertRecv()</code></a>.
+Packets/events are not queued indefinitely, and if not handled in a timely
+manner, data may be lost.
+The amount of time a packet/event is queued can be controlled using the
+<a href="#divert_set_param"><code>WinDivertSetParam()</code></a> function.
+</p><p>
+Captured packets are 
+guaranteed to have correct checksums or have the corresponding
+<code>*Checksum</code> flag unset
+(see <a href="#divert_address"><code>WINDIVERT_ADDRESS</code></a>).
+</p><p>
+<a href="#divert_recv"><code>WinDivertRecv()</code></a> should not be used on any
+WinDivert handle created with the <code>WINDIVERT_FLAG_DROP</code> set.
+</p>
+</dd></dl>
+
+<a name="divert_recv_ex"><h3>5.6 WinDivertRecvEx</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+BOOL <b>WinDivertRecvEx</b>(
+    __in HANDLE handle,
+    __out VOID *pPacket,
+    __in UINT packetLen,
+    __out_opt UINT *pRecvLen,
+    __in UINT64 flags,
+    __out_opt WINDIVERT_ADDRESS *pAddr,
+    __inout_opt UINT *pAddrLen,
+    __inout_opt LPOVERLAPPED lpOverlapped
+);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>handle</code>: A valid WinDivert handle created by
+     <a href="#divert_open"><code>WinDivertOpen()</code></a>.</li>
+<li> <code>pPacket</code>: A buffer for the captured packet(s).</li>
+<li> <code>packetLen</code>: The length of the <code>pPacket</code> buffer in
+    bytes.</li>
+<li> <code>pRecvLen</code>: The total number of bytes written to <code>pPacket</code>.
+     Can be <code>NULL</code> if this information is not required.</li>
+<li> <code>flags</code>: Reserved, set to zero.</li>
+<li> <code>pAddr</code>: The
+    <a href="#divert_address"><code>WINDIVERT_ADDRESS</code></a> of the captured
+    packet(s).</li>
+<li> <code>pAddrLen</code>: Initially, a pointer to the length of the
+    <code>pAddr</code> buffer in bytes.
+    This value is updated to the total bytes written to <code>pAddr</code>.
+    If <code>NULL</code>, a fixed length of <code>sizeof(WINDIVERT_ADDRESS)</code> is
+    assumed.</li>
+<li> <code>lpOverlapped</code>: An optional pointer to a <code>OVERLAPPED</code>
+     structure.</li>
+</ul>
+<p>
+<b>Return Value</b><br>
+<code>TRUE</code> if a packet was successfully received, or <code>FALSE</code> 
+otherwise.
+Use <code>GetLastError()</code> to get the reason.
+The error code <code>ERROR_IO_PENDING</code> indicates that the overlapped
+operation has been successfully initiated and that completion will be
+indicated at a later time.
+All other codes indicate an error.
+</p><p>
+<b>Remarks</b><br>
+This function is equivalent to
+<a href="#divert_recv"><code>WinDivertRecv()</code></a> except:
+</p>
+<ul>
+<li> <i>Overlapped I/O</i> is supported via the <code>lpOverlapped</code>
+    parameter.</li>
+<li> <i>Batched I/O</i> (i.e., receiving multiple packets at once) is
+    supported.</li>
+</ul>
+<p>
+Batched I/O makes it possible to receive up to <code>WINDIVERT_BATCH_MAX</code>
+packets at once using a single operation, reducing the number of
+kernel/user-mode context switches and improving performance.
+To enable batched I/O:
+</p>
+<ol>
+<li> pass an array of more than one <code>WINDIVERT_ADDRESS</code>
+     to <code>pAddr</code>;</li>
+<li> set <code>pAddrLen</code> to be the total size (in bytes) of the
+     <code>pAddr</code> buffer; and</li>
+<li> ensure that <code>pPacket</code> points to a sufficiently large buffer 
+     capable of receiving multiple packets.</li>
+</ol>
+<p>
+For example:
+</p>
+<pre>
+    UINT8 packets[10 * MTU];        // Space for up to 10 packets
+    WINDIVERT_ADDRESS addr[10];     // Addresses for up to 10 packets
+    UINT addr_len = sizeof(addr);
+    BOOL result = WinDivertRecvEx(handle, packets, ..., addr, &amp;addr_len, ...);
+</pre>
+<p>
+upon successful completion, the value pointed to by <code>pAddrLen</code>
+is updated to the total number of address bytes actually received.
+For example, if a total of <code>5</code> packets were received, then
+the value pointed to by <code>pAddrLen</code> will be set to
+<code>(5*sizeof(WINDIVERT_ADDRESS))</code>.
+The received packets are packed contiguously (i.e., no gaps) into the
+<code>pPacket</code> buffer.
+</dd></dl>
+
+<a name="divert_send"><h3>5.7 WinDivertSend</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+BOOL <b>WinDivertSend</b>(
+    __in HANDLE handle,
+    __in const VOID *pPacket,
+    __in UINT packetLen,
+    __out_opt UINT *pSendLen,
+    __in const WINDIVERT_ADDRESS *pAddr
+);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>handle</code>: A valid WinDivert handle created by
+     <a href="#divert_open"><code>WinDivertOpen()</code></a>.</li>
+<li> <code>pPacket</code>: A buffer containing a packet to be injected.</li>
+<li> <code>packetLen</code>: The total length of the <code>pPacket</code> buffer.</li> 
+<li> <code>pSendLen</code>: The total number of bytes injected.
+     Can be <code>NULL</code> if this information is not required.</li>
+<li> <code>pAddr</code>: The
+    <a href="#divert_address">address</a> of the injected packet.</li>
+</ul>
+<p>
+<b>Return Value</b><br>
+<code>TRUE</code> if a packet was successfully injected, or <code>FALSE</code> if
+an error occurred.
+Use <code>GetLastError()</code> to get the reason for the error.
+</p><p>
+Common errors include:
+</p>
+<center>
+<table border="1" cellpadding="5" width="75%">
+<tr>
+<th>
+Name
+</th>
+<th>
+Code
+</th>
+<th>
+Description
+</th>
+</tr>
+<tr>
+<td>
+<code>ERROR_HOST_UNREACHABLE</code>
+</td>
+<td>
+1232
+</td>
+<td>
+This error occurs when an <i>impostor</i> packet (with
+<code>pAddr-&gt;Impostor</code> set to <code>1</code>) is injected and the
+<code>ip.TTL</code> or <code>ipv6.HopLimit</code> field goes to zero.
+This is a defense of <q>last resort</q> against infinite loops caused by
+impostor packets.
+</td>
+</tr>
+</table>
+</center>
+<p>
+<b>Remarks</b><br>
+Injects a packet into the network stack.
+The injected packet may be one received from
+<a href="#divert_recv"><code>WinDivertRecv()</code></a>, or a
+modified version, or a completely new packet.
+Injected packets can be captured and diverted again by other WinDivert
+handles with lower priorities.
+</p><p>
+Only the <code>WINDIVERT_LAYER_NETWORK</code> and
+<code>WINDIVERT_LAYER_NETWORK_FORWARD</code> <a href="#divert_layers">layers</a>
+support packet injection, as summarized below:
+</p>
+<center>
+<table border="1" cellpadding="5" width="40%">
+<tr>
+<th>
+Layer
+</th>
+<th>
+Inject?
+</th>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_NETWORK</code>
+</td>
+<td>
+&#10004;
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_NETWORK_FORWARD</code>
+</td>
+<td>
+&#10004;
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_FLOW</code>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_SOCKET</code>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_LAYER_REFLECT</code>
+</td>
+<td>
+</td>
+</tr>
+</table>
+</center>
+<p>
+For the <code>WINDIVERT_LAYER_NETWORK</code> layer the
+<code>pAddr-&gt;Outbound</code> value determines which direction the packet
+is injected.
+If the <code>pAddr-&gt;Outbound</code> field is <code>1</code>,
+the packet will be injected into the <i>outbound</i> path
+(i.e. a packet leaving the local machine).
+Else, if <code>pAddr-&gt;Outbound</code> is <code>0</code>,
+the packet is injected into the <i>inbound</i> path (i.e. a packet arriving
+to the local machine).
+Note that only the <code>Outbound</code> field, and <i>not</i> the IP addresses in 
+the injected packet, determines the packet's direction.
+</p><p>
+For packets injected into the <i>inbound</i> path, the
+<code>pAddr-&gt;Network.IfIdx</code> and
+<code>pAddr-&gt;Network.SubIfIdx</code> fields are assumed to contain valid
+interface numbers.
+These may be retrieved from <a href="#divert_recv"><code>WinDivertRecv()</code></a>
+(for packet modification),
+or from the <a href="http://msdn.microsoft.com/en-us/library/aa366073%28v=VS.85%29.aspx">IP Helper API</a>.
+</p><p>
+For <i>outbound</i> injected packets, the <code>IfIdx</code> and <code>SubIfIdx</code>
+fields are currently ignored and may be arbitrary values.
+Injecting an inbound packet on the outbound path <i>may</i> work (for some
+types of packets), however this should be considered "undocumented" behavior,
+and may be changed in the future.
+</p><p>
+For <i>impostor</i> packets (where <code>pAddr-&gt;Impostor</code> is set to
+<code>1</code>) WinDivert will automatically decrement the
+<code>ip.TTL</code> or <code>ipv6.HopLimit</code> fields before reinjection.
+This is to mitigate infinite loops since WinDivert cannot prevent
+impostor packets from being captured again by
+<a href="#divert_recv"><code>WinDivertRecv()</code></a>.
+</p><p>
+Injected packets must have the correct checksums or have the corresponding
+<code>pAddr-&gt;*Checksum</code> flag unset.
+A packet/address pair captured by
+<a href="#divert_recv"><code>WinDivertRecv()</code></a> is guaranteed to satisfy
+this condition, so can be reinjected unmodified without recalculating
+checksums.
+Otherwise, if a modification is necessary,
+checksums can be recalculated using the
+<a href="#divert_helper_calc_checksums"><code>WinDivertHelperCalcChecksums()</code></a>
+function.
+</p>
+</dd></dl>
+
+<a name="divert_send_ex"><h3>5.8 WinDivertSendEx</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+BOOL <b>WinDivertSendEx</b>(
+    __in HANDLE handle,
+    __in const VOID *pPacket,
+    __in UINT packetLen,
+    __out_opt UINT *pSendLen,
+    __in UINT64 flags,
+    __in const WINDIVERT_ADDRESS *pAddr,
+    __in UINT addrLen,
+    __inout_opt LPOVERLAPPED lpOverlapped
+);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>handle</code>: A valid WinDivert handle created by
+     <a href="#divert_open"><code>WinDivertOpen()</code></a>.</li>
+<li> <code>pPacket</code>: A buffer containing the packet(s) to be injected.</li>
+<li> <code>packetLen</code>: The total length of the buffer <code>pPacket</code>.</li>
+<li> <code>pSendLen</code>: The total number of bytes injected.
+     Can be <code>NULL</code> if this information is not required.</li>
+<li> <code>flags</code>: Reserved, set to zero.</li>
+<li> <code>pAddr</code>: The
+     <a href="#divert_address"><code>address(es)</code></a> of the injected
+     packet(s).</li>
+<li> <code>addrLen</code>: The total length (in bytes) of the <code>pAddr</code>
+     buffer.</li>
+<li> <code>lpOverlapped</code>: An optional pointer to a <code>OVERLAPPED</code>
+     structure.</li>
+</ul>
+<p>
+<b>Return Value</b><br>
+<code>TRUE</code> if a packet was successfully injected, or <code>FALSE</code>
+otherwise.
+Use <code>GetLastError()</code> to get the reason.
+The error code <code>ERROR_IO_PENDING</code> indicates that the overlapped
+operation has been successfully initiated and that completion will be
+indicated at a later time.
+All other codes indicate an error.
+</p><p>
+<b>Remarks</b><br>
+This function is equivalent to
+<a href="#divert_recv"><code>WinDivertSend()</code></a> except:
+</p>
+<ul>
+<li> <i>Overlapped I/O</i> is supported via the <code>lpOverlapped</code>
+    parameter.</li>
+<li> <i>Batched I/O</i> (i.e., sending multiple packets at once) is
+    supported.</li>
+</ul>
+<p>
+Batched I/O makes it possible to send up to <code>WINDIVERT_BATCH_MAX</code>
+packets at once using a single operation, reducing the number of
+kernel/user-mode context switches and improving performance.
+To use batched I/O:
+</p>
+<ol>
+<li> pack <i>N</i> packets into the <code>pPacket</code> buffer
+     (with no gaps between packets);</li>
+<li> set <code>packetLen</code> to be the total sum of the <i>N</i> packet lengths;
+     </li>
+<li> pack the corresponding <i>N</i> <code>WINDIVERT_ADDRESS</code>
+     address structures into the <code>pAddr</code> buffer; and </li>
+<li> set <code>addrLen</code> to be the total size (in bytes) of the <code>pAddr</code>
+    buffer.</li>
+</ol>
+</dd></dl>
+
+<a name="divert_shutdown"><h3>5.9 WinDivertShutdown</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+BOOL <b>WinDivertShutdown</b>(
+    __in HANDLE handle,
+    __in WINDIVERT_SHUTDOWN how);
+);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>handle</code>: A valid WinDivert handle created by
+     <a href="#divert_open"><code>WinDivertOpen()</code></a>.</li>
+<li> <code>how</code>: A <code>WINDIVERT_SHUTDOWN</code> value to indicate how
+     the handle should be shutdown.</li>
+</ul>
+<p>
+<b>Return Value</b><br>
+<code>TRUE</code> if successful, <code>FALSE</code> if an error occurred.
+Use <code>GetLastError()</code> to get the reason for the error.
+</p><p>
+<b>Remarks</b><br>
+This operation causes all or part of a WinDivert handle to be shut down.
+The possible values for <code>how</code> are:
+</p>
+<center>
+<table border="1" cellpadding="5" width="75%">
+<tr>
+<th>
+How
+</th>
+<th>
+Description
+</th>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_SHUTDOWN_RECV</code>
+</td>
+<td>
+Stop new packets being queued for
+<a href="#divert_recv"><code>WinDivertRecv()</code></a>.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_SHUTDOWN_SEND</code>
+</td>
+<td>
+Stop new packets being injected via
+<a href="#divert_send"><code>WinDivertSend()</code></a>.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_SHUTDOWN_BOTH</code>
+</td>
+<td>
+Equivalent to <code>(WINDIVERT_SHUTDOWN_RECV | WINDIVERT_SHUTDOWN_SEND)</code>.
+</td>
+</tr>
+</table>
+</center>
+<p>
+Note that previously queued packets can still be received after
+<code>WINDIVERT_SHUTDOWN_RECV</code>.
+When the packet queue is empty,
+<a href="#divert_recv"><code>WinDivertRecv()</code></a>
+will fail with <code>ERROR_NO_DATA</code>.
+</p>
+</dd></dl>
+
+<a name="divert_close"><h3>5.10 WinDivertClose</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+BOOL <b>WinDivertClose</b>(
+    __in HANDLE handle
+);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>handle</code>: A valid WinDivert handle created by
+     <a href="#divert_open"><code>WinDivertOpen()</code></a>.</li>
+</ul>
+<p>
+<b>Return Value</b><br>
+<code>TRUE</code> if successful, <code>FALSE</code> if an error occurred.
+Use <code>GetLastError()</code> to get the reason for the error.
+</p><p>
+<b>Remarks</b><br>
+Closes a WinDivert handle created by
+<a href="#divert_open"><code>WinDivertOpen()</code></a>.
+</p>
+</dd></dl>
+
+<a name="divert_set_param"><h3>5.11 WinDivertSetParam</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+BOOL <b>WinDivertSetParam</b>(
+    __in HANDLE handle,
+    __in WINDIVERT_PARAM param,
+    __in UINT64 value);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>handle</code>: A valid WinDivert handle created by
+     <a href="#divert_open"><code>WinDivertOpen()</code></a>.</li>
+<li> <code>param</code>: A WinDivert parameter name.</li>
+<li> <code>value</code>: The parameter's new value.</li>
+</ul>
+<p>
+<b>Return Value</b><br>
+<code>TRUE</code> if successful, <code>FALSE</code> if an error occurred.
+Use <code>GetLastError()</code> to get the reason for the error.
+</p><p>
+<b>Remarks</b><br>
+Sets a WinDivert parameter.
+Currently, the following WinDivert parameters are defined.
+</p>
+<center>
+<table border="1" cellpadding="5" width="75%">
+<tr>
+<th>
+Parameter
+</th>
+<th>
+Description
+</th>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_PARAM_QUEUE_LENGTH</code>
+</td>
+<td>
+Sets the maximum length of the packet queue for
+<a href="#divert_recv"><code>WinDivertRecv()</code></a>.
+The default value is <code>WINDIVERT_PARAM_QUEUE_LENGTH_DEFAULT</code>,
+the minimum is <code>WINDIVERT_PARAM_QUEUE_LENGTH_MIN</code>, and the maximum
+is <code>WINDIVERT_PARAM_QUEUE_LENGTH_MAX</code>.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_PARAM_QUEUE_TIME</code>
+</td>
+<td>
+Sets the minimum time, in milliseconds, a packet can be queued before it is
+automatically dropped.
+Packets cannot be queued indefinitely, and ideally, packets should be
+processed by the application as soon as is possible.
+Note that this sets the <i>minimum</i> time a packet can be queued before 
+it can be dropped.
+The actual time may be exceed this value.
+Currently the default value is <code>WINDIVERT_PARAM_QUEUE_TIME_DEFAULT</code>,
+the minimum is <code>WINDIVERT_PARAM_QUEUE_TIME_MIN</code>, and the
+maximum is <code>WINDIVERT_PARAM_QUEUE_TIME_MAX</code>.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_PARAM_QUEUE_SIZE</code>
+</td>
+<td>
+Sets the maximum number of bytes that can be stored in the packet queue for
+<a href="#divert_recv"><code>WinDivertRecv()</code></a>.
+Currently the default value is <code>WINDIVERT_PARAM_QUEUE_SIZE_DEFAULT</code>,
+the minimum is <code>WINDIVERT_PARAM_QUEUE_SIZE_MIN</code>,
+and the maximum is <code>WINDIVERT_PARAM_QUEUE_SIZE_MAX</code>.
+</td>
+</tr>
+</table>
+</center>
+</dd></dl>
+
+<a name="divert_get_param"><h3>5.12 WinDivertGetParam</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+BOOL <b>WinDivertGetParam</b>(
+    __in HANDLE handle,
+    __in WINDIVERT_PARAM param,
+    __out UINT64 *pValue);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>handle</code>: A valid WinDivert handle created by
+     <a href="#divert_open"><code>WinDivertOpen()</code></a>.</li>
+<li> <code>param</code>: A WinDivert parameter name.</li>
+<li> <code>value</code>: The parameter's current value.</li>
+</ul>
+<p>
+<b>Return Value</b><br>
+<code>TRUE</code> if successful, <code>FALSE</code> if an error occurred.
+Use <code>GetLastError()</code> to get the reason for the error.
+</p><p>
+<b>Remarks</b><br>
+Gets a WinDivert parameter.
+This function supports all the parameters from
+<a href="#divert_set_param"><code>WinDivertSetParam()</code></a>,
+and the following additional <q>read-only</q> parameters:
+</p>
+<center>
+<table border="1" cellpadding="5" width="75%">
+<tr>
+<th>
+Parameter
+</th>
+<th>
+Description
+</th>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_PARAM_VERSION_MAJOR</code>
+</td>
+<td>
+Returns the major version of the driver.
+</td>
+</tr>
+<tr>
+<td>
+<code>WINDIVERT_PARAM_VERSION_MINOR</code>
+</td>
+<td>
+Returns the minor version of the driver.
+</td>
+</tr>
+</table>
+</center>
+</dd></dl>
+
+<hr>
+<a name="helper_programming_api"><h2>6. Helper Programming API</h2></a>
+
+The WinDivert helper programming API is a collection of definitions
+and functions designed to make writing WinDivert applications easier.
+The use of the helper API is optional.
+
+<a name="divert_iphdr"><h3>6.1 WINDIVERT_IPHDR</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+typedef struct
+{
+    UINT8  HdrLength:4;
+    UINT8  Version:4;
+    UINT8  TOS;
+    UINT16 Length;
+    UINT16 Id;
+    UINT16 <i>...</i>;
+    UINT8  TTL;
+    UINT8  Protocol;
+    UINT16 Checksum;
+    UINT32 SrcAddr;
+    UINT32 DstAddr;
+} <b>WINDIVERT_IPHDR</b>, *<b>PWINDIVERT_IPHDR</b>;
+</pre>
+</td></tr></table>
+<dl><dd>
+<p>
+<b>Fields</b><br>
+See <a href="http://en.wikipedia.org/wiki/IPv4#Packet_structure">here</a>
+for more information.
+</p><p>
+<b>Remarks</b><br>
+IPv4 header definition.
+</p><p>
+The following fields can only be get/set using the following macro
+definitions:
+</p>
+<ul>
+<li><i>FragOff</i> with <code>WINDIVERT_IPHDR_GET_FRAGOFF(<i>hdr</i>)</code> and
+    <code>WINDIVERT_IPHDR_SET_FRAGOFF(<i>hdr</i>, <i>val</i>)</code></li>
+<li><i>MF</i> with <code>WINDIVERT_IPHDR_GET_MF(<i>hdr</i>)</code> and
+    <code>WINDIVERT_IPHDR_SET_MF(<i>hdr</i>, <i>val</i>)</code></li>
+<li><i>DF</i> with <code>WINDIVERT_IPHDR_GET_DF(<i>hdr</i>)</code> and
+    <code>WINDIVERT_IPHDR_SET_DF(<i>hdr</i>, <i>val</i>)</code></li>
+<li><i>Reserved</i> with <code>WINDIVERT_IPHDR_GET_RESERVED(<i>hdr</i>)</code> and
+    <code>WINDIVERT_IPHDR_SET_RESERVED(<i>hdr</i>, <i>val</i>)</code></li>
+</ul>
+</dl></dd>
+
+<a name="divert_ipv6hdr"><h3>6.2 WINDIVERT_IPV6HDR</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+typedef struct
+{
+    UINT32 Version:4;
+    UINT32 ...:28;
+    UINT16 Length;
+    UINT8  NextHdr;
+    UINT8  HopLimit;
+    UINT32 SrcAddr[4];
+    UINT32 DstAddr[4];
+} <b>WINDIVERT_IPV6HDR</b>, *<b>PWINDIVERT_IPV6HDR</b>;
+</pre>
+</td></tr></table>
+<dl><dd>
+<p>
+<b>Fields</b><br>
+See <a href="http://en.wikipedia.org/wiki/IPv6_packet#Fixed_header">here</a>
+for more information.
+</p><p>
+<b>Remarks</b><br>
+IPv6 header definition.
+</p><p>
+The following fields can only be get/set using the following macro
+definitions:
+</p>
+<ul>
+<li><i>TrafficClass</i> with
+    <code>WINDIVERT_IPV6HDR_GET_TRAFFICCLASS(<i>hdr</i>)</code> and
+    <code>WINDIVERT_IPV6HDR_SET_TRAFFICCLASS(<i>hdr</i>, <i>val</i>)</code></li>
+<li><i>FlowLabel</i> with <code>WINDIVERT_IPV6HDR_GET_FLOWLABEL(<i>hdr</i>)</code> and
+    <code>WINDIVERT_IPV6HDR_SET_FLOWLABEL(<i>hdr</i>, <i>val</i>)</code></li>
+</ul>
+</dl></dd>
+
+<a name="divert_icmphdr"><h3>6.3 WINDIVERT_ICMPHDR</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+typedef struct
+{
+    UINT8  Type;
+    UINT8  Code;
+    UINT16 Checksum;
+    UINT32 Body;
+} <b>WINDIVERT_ICMPHDR</b>, *<b>PWINDIVERT_ICMPHDR</b>;
+</pre>
+</td></tr></table>
+<dl><dd>
+<p>
+<b>Fields</b><br>
+See <a href="http://en.wikipedia.org/wiki/Internet_Control_Message_Protocol#ICMP_segment_structure">here</a>
+for more information.
+</p><p>
+<b>Remarks</b><br>
+ICMP header definition.
+</p>
+</dl></dd>
+
+<a name="divert_icmpv6hdr"><h3>6.4 WINDIVERT_ICMPV6HDR</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+typedef struct
+{
+    UINT8  Type;
+    UINT8  Code;
+    UINT16 Checksum;
+    UINT32 Body;
+} <b>WINDIVERT_ICMPV6HDR</b>, *<b>PWINDIVERT_ICMPV6HDR</b>;
+</pre>
+</td></tr></table>
+<dl><dd>
+<p>
+<b>Fields</b><br>
+See <a href="http://en.wikipedia.org/wiki/ICMPv6#Packet_format">here</a> for
+more information.
+</p><p>
+<b>Remarks</b><br>
+ICMPv6 header definition.
+</p>
+</dl></dd>
+
+<a name="divert_tcphdr"><h3>6.5 WINDIVERT_TCPHDR</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+typedef struct
+{
+    UINT16 SrcPort;
+    UINT16 DstPort;
+    UINT32 SeqNum;
+    UINT32 AckNum;
+    UINT16 Reserved1:4;
+    UINT16 HdrLength:4;
+    UINT16 Fin:1;
+    UINT16 Syn:1;
+    UINT16 Rst:1;
+    UINT16 Psh:1;
+    UINT16 Ack:1;
+    UINT16 Urg:1;
+    UINT16 Reserved2:2;
+    UINT16 Window;
+    UINT16 Checksum;
+    UINT16 UrgPtr;
+} <b>WINDIVERT_TCPHDR</b>, *<b>PWINDIVERT_TCPHDR</b>;
+</pre>
+</td></tr></table>
+<dl><dd>
+<p>
+<b>Fields</b><br>
+See <a href="http://en.wikipedia.org/wiki/Transmission_Control_Protocol#TCP_segment_structure">here</a>
+for more information.
+</p><p>
+<b>Remarks</b><br>
+TCP header definition.
+</p>
+</dl></dd>
+
+<a name="divert_udphdr"><h3>6.6 WINDIVERT_UDPHDR</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+typedef struct
+{
+    UINT16 SrcPort;
+    UINT16 DstPort;
+    UINT16 Length;
+    UINT16 Checksum;
+} <b>WINDIVERT_UDPHDR</b>, *<b>PWINDIVERT_UDPHDR</b>;
+</pre>
+</td></tr></table>
+<dl><dd>
+<p>
+<b>Fields</b><br>
+See <a href="http://en.wikipedia.org/wiki/User_Datagram_Protocol#Packet_structure">here</a>
+for more information.
+</p><p>
+<b>Remarks</b><br>
+UDP header definition.
+</p>
+</dl></dd>
+
+<a name="divert_helper_parse_packet"><h3>6.7 WinDivertHelperParsePacket</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+BOOL <b>WinDivertHelperParsePacket</b>(
+    __in PVOID pPacket,
+    __in UINT packetLen,
+    __out_opt PWINDIVERT_IPHDR *ppIpHdr,
+    __out_opt PWINDIVERT_IPV6HDR *ppIpv6Hdr,
+    __out_opt UINT8 *pProtocol,
+    __out_opt PWINDIVERT_ICMPHDR *ppIcmpHdr,
+    __out_opt PWINDIVERT_ICMPV6HDR *ppIcmpv6Hdr,
+    __out_opt PWINDIVERT_TCPHDR *ppTcpHdr,
+    __out_opt PWINDIVERT_UDPHDR *ppUdpHdr,
+    __out_opt PVOID *ppData,
+    __out_opt UINT *pDataLen,
+    __out_opt PVOID *ppNext,
+    __out_opt UINT *pNextLen
+);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>pPacket</code>: The packet(s) to be parsed.</li>
+<li> <code>packetLen</code>: The total length of the packet(s) <code>pPacket</code>.</li>
+<li> <code>ppIpHdr</code>: Output pointer to a <code>WINDIVERT_IPHDR</code>.</li>
+<li> <code>ppIpv6Hdr</code>: Output pointer to a <code>WINDIVERT_IPV6HDR</code>.</li>
+<li> <code>pProtocol</code>: Output transport protocol.</li>
+<li> <code>ppIcmpHdr</code>: Output pointer to a <code>WINDIVERT_ICMPHDR</code>.</li>
+<li> <code>ppIcmpv6Hdr</code>: Output pointer to a <code>WINDIVERT_ICMPV6HDR</code>.</li>
+<li> <code>ppTcpHdr</code>: Output pointer to a <code>WINDIVERT_TCPHDR</code>.</li>
+<li> <code>ppUdpHdr</code>: Output pointer to a <code>WINDIVERT_UDPHDR</code>.</li>
+<li> <code>ppData</code>: Output pointer to the packet's data/payload.</li>
+<li> <code>pDataLen</code>: Output data/payload length.</li>
+<li> <code>ppNext</code>: Output pointer to the next packet (if present).</li>
+<li> <code>pNextLen</code>: Output next packet length.</li>
+</ul>
+<p>
+<b>Return Value</b><br>
+<code>TRUE</code> if successful, <code>FALSE</code> if an error occurred.
+</p><p>
+<b>Remarks</b><br>
+Parses a raw packet or batch of packets (e.g. from <a
+href="#divert_recv"><code>WinDivertRecv()</code></a>) into the
+various packet headers and/or payloads that may or may not be present.
+</p><p>
+Each output parameter may be <code>NULL</code> or non-<code>NULL</code>.
+For non-<code>NULL</code> parameters, this function will write the pointer to
+the corresponding header/payload if it exists, or will write <code>NULL</code>
+otherwise.
+Any non-<code>NULL</code> pointer that is returned:
+</p>
+<ol>
+<li> Is a pointer into the original <code>pPacket</code> packet buffer; and</li>
+<li> There is enough space in <code>pPacket</code> to fit the header.</li>
+</ol>
+<p>
+This function does not do any verification of the header/payload contents
+beyond checking the header length and any other minimal information required
+for parsing.
+This function will always succeed provided the <code>pPacket</code> buffer
+contains at least one IPv4 or IPv6 header and the <code>packetLen</code> is
+correct.
+</p><p>
+By default this function will parse a single packet.
+However, if either <code>ppNext</code> or <code>pNextLen</code> are
+non-<code>NULL</code>, then the <code>pPacket</code> parameter can point
+to a batch (&gt;1) of packets
+(and <code>packetLen</code> can be the total length of the batch).
+In this case, the function will parse the first packet, and a pointer to the
+remaining packet(s) will be written to <code>ppNext</code>,
+and the remaining length will be written to <code>pNextLen</code>.
+This makes it convenient to loop over every packet in the batch as follows:
+</p>
+<pre>
+    while (WinDivertHelperParsePacket(pPacket, packetLen, ..., &amp;pPacket, &amp;packetLen))
+    {
+        ...
+    }
+</pre>
+</dd></dl>
+
+<a name="divert_helper_hash_packet"><h3>6.8 WinDivertHelperHashPacket</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+UINT64 <b>WinDivertHelperHashPacket</b>(
+    __in const VOID *pPacket,
+    __in UINT packetLen,
+    __in UINT64 seed = 0
+);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>pPacket</code>: The packet to be hashed.</li>
+<li> <code>packetLen</code>: The total length of the packet <code>pPacket</code>.</li>
+<li> <code>seed</code>: An optional seed value.</li>
+</ul>
+<p>
+<b>Return Value</b><br>
+A 64bit hash value.
+</p><p>
+<b>Remarks</b><br>
+Calculates a 64bit hash value of the given packet.
+Note that the hash function depends on the <i>packet's
+IP and transport headers only</i>, and not the payload of the packet.
+That said, a weak dependency on the payload will exist if the
+TCP/UDP checksums are valid.
+The hash function itself is based on the
+<a href="https://cyan4973.github.io/xxHash/">xxHash</a> algorithm
+and is <b>not</b> cryptographic.
+</p><p>
+The optional <code>seed</code> value is also incorporated into the hash.
+<p>
+</dd></dl>
+
+<a name="divert_helper_parse_ipv4_address"><h3>6.9 WinDivertHelperParseIPv4Address</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+BOOL <b>WinDivertHelperParseIPv4Address</b>(
+    __in const char *addrStr,
+    __out_opt UINT32 *pAddr
+);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>addrStr</code>: The address string.</li>
+<li> <code>pAddr</code>: Output address.</li>
+</ul>
+<p>
+<b>Return Value</b><br>
+<code>TRUE</code> if successful, <code>FALSE</code> if an error occurred.
+Use <code>GetLastError()</code> to get the reason for the error.
+</p><p>
+<b>Remarks</b><br>
+Parses an IPv4 address stored in <code>addrStr</code>.
+If <code>pAddr</code> is non-<code>NULL</code>, the result is be stored in
+host-byte-order.
+Use <a href="#divert_helper_hton"><code>WinDivertHelperHtonl()</code></a>
+to convert the result into network-byte-order.
+</p>
+</dd></dl>
+
+<a name="divert_helper_parse_ipv6_address"><h3>6.10 WinDivertHelperParseIPv6Address</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+BOOL <b>WinDivertHelperParseIPv6Address</b>(
+    __in const char *addrStr,
+    __out_opt UINT32 *pAddr
+);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>addrStr</code>: The address string.</li>
+<li> <code>pAddr</code>: Output address.</li>
+</ul>
+<p>
+<b>Return Value</b><br>
+<code>TRUE</code> if successful, <code>FALSE</code> if an error occurred.
+Use <code>GetLastError()</code> to get the reason for the error.
+</p><p>
+<b>Remarks</b><br>
+Parses an IPv6 address stored in <code>addrStr</code>.
+If <code>pAddr</code> is non-<code>NULL</code>, the buffer assumed 
+to be large enough to hold a 16-byte IPv6 address.
+The result is stored in host-byte-order.
+Use <a href="#divert_helper_hton"><code>WinDivertHelperHtonIPv6Address()</code></a>
+to convert the result into network-byte-order.
+</p>
+</dd></dl>
+
+<a name="divert_helper_format_ipv4_address"><h3>6.11 WinDivertHelperParseIPv4Address</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+BOOL <b>WinDivertHelperFormatIPv4Address</b>(
+    __in UINT32 addr,
+    __out char *buffer,
+    __in UINT bufLen
+);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>addr</code>: The IPv4 address in host-byte order.</li>
+<li> <code>buffer</code>: The buffer to store the formatted string.</li>
+<li> <code>bufLen</code>: The length of <code>buffer</code>.
+</ul>
+<p>
+<b>Return Value</b><br>
+<code>TRUE</code> if successful, <code>FALSE</code> if an error occurred.
+Use <code>GetLastError()</code> to get the reason for the error.
+</p><p>
+<b>Remarks</b><br>
+Convert an IPv4 address into a string.
+</p>
+</dd></dl>
+
+<a name="divert_helper_format_ipv6_address"><h3>6.12 WinDivertHelperParseIPv6Address</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+BOOL <b>WinDivertHelperFormatIPv6Address</b>(
+    __in const UINT32 *pAddr,
+    __out char *buffer,
+    __in UINT bufLen
+);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>pAddr</code>: The IPv6 address in host-byte order.</li>
+<li> <code>buffer</code>: The buffer to store the formatted string.</li>
+<li> <code>bufLen</code>: The length of <code>buffer</code>.
+</ul>
+<p>
+<b>Return Value</b><br>
+<code>TRUE</code> if successful, <code>FALSE</code> if an error occurred.
+Use <code>GetLastError()</code> to get the reason for the error.
+</p><p>
+<b>Remarks</b><br>
+Convert an IPv6 address into a string.
+</p>
+</dd></dl>
+
+<a name="divert_helper_calc_checksums"><h3>6.13 WinDivertHelperCalcChecksums</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+BOOL <b>WinDivertHelperCalcChecksums</b>(
+    __inout VOID *pPacket,
+    __in UINT packetLen,
+    __out_opt WINDIVERT_ADDRESS *pAddr,
+    __in UINT64 flags
+);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>pPacket</code>: The packet to be modified.</li>
+<li> <code>packetLen</code>: The total length of the packet <code>pPacket</code>.</li>
+<li> <code>pAddr</code>: Optional pointer to a
+    <a href="#divert_address"><code>WINDIVERT_ADDRESS</code></a> structure.</li>
+<li> <code>flags</code>: One or more of the following flags:
+<ul>
+<li> <code>WINDIVERT_HELPER_NO_IP_CHECKSUM</code>: Do not calculate the IPv4
+    checksum.</li>
+<li> <code>WINDIVERT_HELPER_NO_ICMP_CHECKSUM</code>: Do not calculate the ICMP
+    checksum.</li>
+<li> <code>WINDIVERT_HELPER_NO_ICMPV6_CHECKSUM</code>: Do not calculate the ICMPv6
+    checksum.</li>
+<li> <code>WINDIVERT_HELPER_NO_TCP_CHECKSUM</code>: Do not calculate the TCP
+    checksum.</li>
+<li> <code>WINDIVERT_HELPER_NO_UDP_CHECKSUM</code>: Do not calculate the UDP
+    checksum.</li>
+</ul></li>
+</ul>
+<p>
+<b>Return Value</b><br>
+<code>TRUE</code> if successful, <code>FALSE</code> if an error occurred.
+</p><p>
+<b>Remarks</b><br>
+(Re)calculates the checksum for any IPv4/ICMP/ICMPv6/TCP/UDP checksum present
+in the given packet.
+Individual checksum calculations may be disabled via the appropriate flag.
+Typically this function should be invoked on a modified packet before it is
+injected with <a href="#divert_send"><code>WinDivertSend()</code></a>.
+</p><p>
+By default this function will calculate each checksum from scratch, even if
+the existing checksum is correct.
+This may be inefficient for some applications.
+For better performance, incremental checksum calculations should be used
+instead (not provided by this API).
+</p><p>
+If <code>pAddr</code> is non-<code>NULL</code>, this function sets
+the corresponding <code>*Checksum</code> flag
+(see <a href="#divert_address"><code>WINDIVERT_ADDRESS</code></a>).
+Normally, <code>pAddr</code> should point to the address 
+passed to <a href="#divert_send"><code>WinDivertSend()</code></a> for
+packet injection.
+</p>
+</dd></dl>
+
+<a name="divert_helper_dec_ttl"><h3>6.14 WinDivertHelperDecrementTTL</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+BOOL <b>WinDivertHelperDecrementTTL</b>(
+    __inout VOID *packet,
+    __in packetLen
+);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>pPacket</code>: The packet to be modified.</li>
+<li> <code>packetLen</code>: The total length of the packet <code>pPacket</code>.</li>
+</ul>
+<p>
+<b>Return Value</b><br>
+<code>TRUE</code> if successful, <code>FALSE</code> if an error occurred.
+Returns <code>FALSE</code> if the <code>ip.TTL</code> or
+<code>ipv6.HopHimit</code> fields go to <code>0</code>.
+</p><p>
+<b>Remarks</b><br>
+Decrements the <code>ip.TTL</code> or
+<code>ipv6.HopHimit</code> field by <code>1</code>, and returns
+<code>TRUE</code> only if the result is non-zero.
+This is useful for applications where packet loops may be a problem.
+</p><p>
+For IPv4, this function will preserve the validity of the IPv4 checksum.
+That is, if the packet had a valid checksum before the operation, the
+resulting checksum will also be valid after the operation.
+This function updates the checksum field incrementally.
+</p>
+</dd></dl>
+
+<a name="divert_helper_compile_filter"><h3>6.15 WinDivertHelperCompileFilter</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+BOOL <b>WinDivertHelperCompileFilter</b>(
+    __in const char *filter,
+    __in WINDIVERT_LAYER layer,
+    __out_opt char *object,
+    __in UINT objLen,
+    __out_opt const char **errorStr,
+    __out_opt UINT *errorPos
+);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>filter</code>: The packet filter string to be checked.</li>
+<li> <code>layer</code>: The layer.</li>
+<li> <code>object</code>: The compiled filter object.</li>
+<li> <code>objLen</code>: The length of the <code>object</code> buffer.</li>
+<li> <code>errorStr</code>: The error description.</li>
+<li> <code>errorPos</code>: The error position.</li>
+</ul>
+<p>
+<b>Return Value</b><br>
+<code>TRUE</code> if the packet filter compilation is successful, <code>FALSE</code>
+otherwise.
+</p><p>
+<b>Remarks</b><br>
+Compiles the given packet filter string into a compact <q>object</q>
+representation that is optionally stored in <code>object</code> if non-NULL.
+The <q>object</q> representation is a valid null terminated C string, but is
+otherwise opaque and not meant to be human readable.
+The object representation can be passed to all WinDivert functions,
+such as <a href="#divert_open"><code>WinDivertOpen()</code></a>, in place of the
+human-readable filter string equivalent.
+</p>
+<p>
+The compilation operation will succeed if the given filter string is
+valid with respect to the
+<a href="#filter_language">filter language</a>.
+Otherwise, if the filter is invalid, then a human readable description of
+the error is
+returned by <code>errorStr</code> (if non-<code>NULL</code>), and the error's
+position is returned by <code>errorPos</code> (if non-<code>NULL</code>).
+</p><p>
+Note that all strings returned through <code>errorStr</code> are global static
+objects, and therefore do not need to be deallocated.
+<p>
+</dd></dl>
+
+<a name="divert_helper_eval_filter"><h3>6.16 WinDivertHelperEvalFilter</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+BOOL <b>WinDivertHelperEvalFilter</b>(
+    __in const char *filter,
+    __in const VOID *pPacket,
+    __in UINT packetLen,
+    __in const WINDIVERT_ADDRESS *pAddr
+);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>filter</code>: The packet filter string to be evaluated.</li>
+<li> <code>pPacket</code>: The packet.</li>
+<li> <code>packetLen</code>: The total length of the packet <code>pPacket</code>.</li>
+<li> <code>pAddr</code>: The <code>WINDIVERT_ADDRESS</code> of the packet
+    <code>pPacket</code>.</li>
+</ul>
+<p>
+<b>Return Value</b><br>
+<code>TRUE</code> if the packet matches the filter string,
+    <code>FALSE</code> otherwise.
+</p><p>
+<b>Remarks</b><br>
+Evaluates the given packet against the given packet filter string.
+This function returns <code>TRUE</code> if the packet matches, and
+returns <code>FALSE</code> otherwise.
+</p><p>
+This function also returns <code>FALSE</code> if an error occurs, in which
+case <code>GetLastError()</code> can be used to get the reason for the error.
+Otherwise, if no error occurred, <code>GetLastError()</code> will return
+<code>0</code>.
+</p><p>
+Note that this function is relatively slow since the packet filter string
+will be (re)compiled for each call.
+This overhead can be minimized by pre-compiling the filter string into the
+object representation using the
+<a href="#divert_helper_compile_filter"><code>WinDivertHelperCompileFilter()</code></a>
+function.
+<p>
+</dd></dl>
+
+<a name="divert_helper_format_filter"><h3>6.17 WinDivertHelperFormatFilter</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+BOOL <b>WinDivertHelperEvalFilter</b>(
+    __in const char *filter,
+    __in WINDIVERT_LAYER layer,
+    __out char *buffer,
+    __in UINT bufLen
+);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>filter</code>: The packet filter string to be evaluated.</li>
+<li> <code>layer</code>: The layer.</li>
+<li> <code>buffer</code>: A buffer for the formatted filter.</li>
+<li> <code>bufLen</code>: The length of <code>buffer</code>.</li>
+</ul>
+<p>
+<b>Return Value</b><br>
+<code>TRUE</code> if successful, <code>FALSE</code> if an error occurred.
+Use <code>GetLastError()</code> to get the reason for the error.
+</p><p>
+<b>Remarks</b><br>
+Formats the given filter string or object.
+This function is mainly useful for <q>decompiling</q> the filter object
+representation back into a human-readable filter string representation.
+One application is the <code>WINDIVERT_LAYER_REFLECT</code> layer,
+where the filter object associated with the reflection event is
+returned by <a href="#divert_recv"><code>WinDivertRecv()</code></a>.
+</p>
+</dd></dl>
+
+<a name="divert_helper_ntoh"><h3>6.18 WinDivertHelperNtoh*</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+UINT16 <b>WinDivertHelperNtohs</b>(
+    __in UINT16 x
+);
+UINT32 <b>WinDivertHelperNtohl</b>(
+    __in UINT32 x
+);
+UINT64 <b>WinDivertHelperNtohll</b>(
+    __in UINT64 x
+);
+void <b>WinDivertHelperNtohIPv6Address</b>(
+    __in const UINT *inAddr,
+    __out UINT *outAddr
+);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>x</code>: The input value in network byte-order.</li>
+<li> <code>inAddr</code>: The input IPv6 address in network byte-order.</li>
+<li> <code>outAddr</code>: A buffer for the output IPv6 address in host
+	byte-order.</li>
+</ul>
+<p>
+<b>Return Value</b><br>
+The output value in host byte order.
+</p><p>
+<b>Remarks</b><br>
+Converts a value/IPv6-address from network to host byte-order.
+</p>
+</dd></dl>
+
+<a name="divert_helper_hton"><h3>6.19 WinDivertHelperHton*</h3></a>
+<table border="1" cellpadding="5"><tr><td>
+<pre>
+UINT16 <b>WinDivertHelperHtons</b>(
+    __in UINT16 x
+);
+UINT32 <b>WinDivertHelperHtonl</b>(
+    __in UINT32 x
+);
+UINT64 <b>WinDivertHelperHtonll</b>(
+    __in UINT64 x
+);
+void <b>WinDivertHelperHtonIPv6Address</b>(
+    __in const UINT *inAddr,
+    __out UINT *outAddr
+);
+</pre>
+</td></tr></table>
+<dl><dd>
+<p><b>Parameters</b></p>
+<ul>
+<li> <code>x</code>: The input value in host byte-order.</li>
+<li> <code>inAddr</code>: The input IPv6 address in host byte-order.</li>
+<li> <code>outAddr</code>: A buffer for the output IPv6 address in network
+	byte-order.</li>
+</ul>
+<p>
+<b>Return Value</b><br>
+The output value in network byte order.
+</p><p>
+<b>Remarks</b><br>
+Converts a value/IPv6-address from host to network byte-order.
+</p>
+</dd></dl>
+
+<hr>
+<a name="filter_language"><h2>7. Filter Language</h2></a>
+
+<p>
+The <a href="#divert_open"><code>WinDivertOpen()</code></a> function accepts a
+string containing a <i>filter</i>.
+Only packets/events that match the filter will be blocked and/or captured.
+All other non-matching packets/events will be allowed to continue as normal.
+</p><p>
+The filter allows an application to select only a subset traffic that is of
+interest.
+For example, a HTTP blacklist filter is only interested in packets that
+might contain URLs.
+This could be achieved using the following filter.
+</p>
+<pre>
+HANDLE handle = WinDivertOpen(
+    "outbound and "
+    "tcp.PayloadLength &gt; 0 and "
+    "tcp.DstPort == 80", 0, 0, 0);
+</pre>
+<p>
+This filter selects only the subset of all traffic that is:
+</p>
+<ol>
+<li>outbound;</li>
+<li>contains a non-empty payload; and</li>
+<li>has TCP destination port 80 (i.e. HTTP web traffic).
+</ol>
+<p>
+A <i>filter</i> is a Boolean expression of the form:
+</p>
+<pre>
+        <i>FILTER</i> := true | false | <i>FILTER</i> and <i>FILTER</i> | <i>FILTER</i> or <i>FILTER</i> | (<i>FILTER</i>) | (<i>FILTER</i>? <i>FILTER</i>: <i>FILTER</i>) | <i>TEST</i>
+</pre>
+<p>
+C-style syntax <code>&amp;&amp;</code>, <code>||</code>, and <code>!</code> may also
+be used instead of <code>and</code>, <code>or</code>, and <code>not</code>, respectively.
+C-style <i>conditional operators</i> are also supported,
+where the expression <code>(A? B: C)</code> evaluates to:
+</p>
+<ul>
+<li> <code>B</code> if <code>A</code> evaluates to <code>true</code>; or</li>
+<li> <code>C</code> if <code>A</code> evaluates to <code>false</code>.
+</ul>
+<p>
+A <i>test</i> is of the following form:
+</p>
+<pre>
+        <i>TEST</i> := <i>TEST0</i> | not <i>TEST0</i>
+        <i>TEST0</i> := <i>FIELD</i> | <i>FIELD</i> op <i>VAL</i>
+</pre>
+<p>
+where <code>op</code> is one of the following:
+</p>
+<center>
+<table border="1" cellpadding="5">
+<tr><th>Operator</th><th>Description</th></tr>
+<tr><td><code>==</code> or <code>=</code></td><td>Equal</td></tr>
+<tr><td><code>!=</code></td><td>Not equal</td></tr>
+<tr><td><code>&lt;</code></td><td>Less-than</td></tr>
+<tr><td><code>&gt;</code></td><td>Greater-than</td></tr>
+<tr><td><code>&lt;=</code></td><td>Less-than-or-equal</td></tr>
+<tr><td><code>&gt;=</code></td><td>Greater-than-or-equal</td></tr>
+</table>
+</center>
+<p>
+and <code><i>VAL</i></code> is a decimal number, hexadecimal number, IPv4
+address, IPv6 address or a layer-specific macro.
+If the <q><code>op <i>VAL</i></code></q> is missing, the test is implicitly
+<q><code><i>FIELD</i> != 0</code></q>.
+</p><p>
+Finally, a <i>field</i> is some layer-specific property matching the packet
+or event.
+The possible fields are:
+</p>
+<center>
+<table border="1" cellpadding="5">
+<tr><th>Field</th><th colspan="5">Layer</th><th>Description</th></tr>
+<tr><th></th><th><code>NETWORK</code></th><th><code>FORWARD</code></th><th><code>FLOW&nbsp;&nbsp;&nbsp;</code></th><th><code>SOCKET&nbsp;</code></th><th><code>REFLECT</code></th><th></th></tr>
+<tr><td><code>zero</code></td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>The value zero</td></tr>
+<tr><td><code>timestamp</code></td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>The packet/event timestamp</td></tr>
+<tr><td><code>event</code></td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>The event</td></tr>
+<tr><td><code>outbound</code></td><td>&#10004;</td><td></td><td>&#10004;</td><td></td><td></td><td>Is outbound?</td></tr>
+<tr><td><code>inbound</code></td><td>&#10004;</td><td></td><td>&#10004;</td><td></td><td></td><td>Is inbound?</td></tr>
+<tr><td><code>ifIdx</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>Interface index</td></tr>
+<tr><td><code>subIfIdx</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>Sub-interface index</td></tr>
+<tr><td><code>loopback</code></td><td>&#10004;</td><td></td><td>&#10004;</td><td>&#10004;</td><td></td><td>Is loopback packet?</td></tr>
+<tr><td><code>impostor</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>Is impostor packet?</td></tr>
+<tr><td><code>fragment</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>Is IP fragment packet?</td></tr>
+<tr><td><code>endpointId</code></td><td></td><td></td><td>&#10004;</td><td>&#10004;</td><td></td><td>Endpoint ID</td></tr>
+<tr><td><code>parentEndpointId</code></td><td></td><td></td><td>&#10004;</td><td>&#10004;</td><td></td><td>Parent endpoint ID</td></tr>
+<tr><td><code>processId</code></td><td></td><td></td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>Process ID</td></tr>
+<tr><td><code>random8</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>8-bit random number</td></tr>
+<tr><td><code>random16</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>16-bit random number</td></tr>
+<tr><td><code>random32</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>32-bit random number</td></tr>
+<tr><td><code>layer</code></td><td></td><td></td><td></td><td></td><td>&#10004;</td><td>The handle's layer</td></tr>
+<tr><td><code>priority</code></td><td></td><td></td><td></td><td></td><td>&#10004;</td><td>The handle's priority</td></tr>
+<tr><td><code>packet[i]</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>The <code>i</code><sup>th</sup> 8-bit word of the packet</td></tr>
+<tr><td><code>packet16[i]</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>The <code>i</code><sup>th</sup> 16-bit word of the packet</td></tr>
+<tr><td><code>packet32[i]</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>The <code>i</code><sup>th</sup> 32-bit word of the packet</td></tr>
+<tr><td><code>length</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>The packet length</td></tr>
+<tr><td><code>ip</code></td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td></td><td>Is IPv4?</td></tr>
+<tr><td><code>ipv6</code></td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td></td><td>Is IPv6?</td></tr>
+<tr><td><code>icmp</code></td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td></td><td>Is ICMP?</td></tr>
+<tr><td><code>icmpv6</code></td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td></td><td>Is ICMPv6?</td></tr>
+<tr><td><code>tcp</code></td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td></td><td>Is TCP?</td></tr>
+<tr><td><code>udp</code></td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td></td><td>Is UDP?</td></tr>
+<tr><td><code>protocol</code></td><td>&#10004;</td><td></td><td>&#10004;</td><td>&#10004;</td><td></td><td>The protocol</td></tr>
+<tr><td><code>localAddr</code></td><td>&#10004;</td><td></td><td>&#10004;</td><td>&#10004;</td><td></td><td>The local address</td></tr>
+<tr><td><code>localPort</code></td><td>&#10004;</td><td></td><td>&#10004;</td><td>&#10004;</td><td></td><td>The local port</td></tr>
+<tr><td><code>remoteAddr</code></td><td>&#10004;</td><td></td><td>&#10004;</td><td>&#10004;</td><td></td><td>The remote address</td></tr>
+<tr><td><code>remotePort</code></td><td>&#10004;</td><td></td><td>&#10004;</td><td>&#10004;</td><td></td><td>The remote port</td></tr>
+<tr><td><code>ip.*</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>IPv4 fields (see <code>WINDIVERT_IPHDR</code>)</td></tr>
+<tr><td><code>ipv6.*</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>IPv6 fields (see <code>WINDIVERT_IPV6HDR</code>)</td></tr>
+<tr><td><code>icmp.*</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>ICMP fields (see <code>WINDIVERT_ICMPHDR</code>)</td></tr>
+<tr><td><code>icmpv6.*</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>ICMPV6 fields (see <code>WINDIVERT_ICMPV6HDR</code>)</td></tr>
+<tr><td><code>tcp.*</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>TCP fields (see <code>WINDIVERT_TCPHDR</code>)</td></tr>
+<tr><td><code>tcp.PayloadLength</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>The TCP payload length</td></tr>
+<tr><td><code>tcp.Payload[i]</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>The <code>i</code><sup>th</sup> 8-bit word of the TCP payload</td></tr>
+<tr><td><code>tcp.Payload16[i]</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>The <code>i</code><sup>th</sup> 16-bit word of the TCP payload</td></tr>
+<tr><td><code>tcp.Payload32[i]</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>The <code>i</code><sup>th</sup> 32-bit word of the TCP payload</td></tr>
+<tr><td><code>udp.*</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>UDP fields (see <code>WINDIVERT_UDPHDR</code>)</td></tr>
+<tr><td><code>udp.PayloadLength</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>The UDP payload length</td></tr>
+<tr><td><code>udp.Payload[i]</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>The <code>i</code><sup>th</sup> 8-bit word of the UDP payload</td></tr>
+<tr><td><code>udp.Payload16[i]</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>The <code>i</code><sup>th</sup> 16-bit word of the UDP payload</td></tr>
+<tr><td><code>udp.Payload32[i]</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td>The <code>i</code><sup>th</sup> 32-bit word of the UDP payload</td></tr>
+</table>
+</center>
+<p>
+A <i>test</i> will also fails if the field is not relevant.
+For example, the test <q><code>tcp.DstPort == 80</code></q> will fail if the
+packet does not contain a TCP header.
+</p><p>
+The <code>processId</code> field matches the ID of the process associated
+to an event.
+Due to technical limitations, this field is not supported by the
+<code>WINDIVERT_LAYER_NETWORK*</code> layers.
+That said, it is usually possible to associate process IDs to network packets 
+matching the same network 5-tuple.
+Note that a fundamental race condition exists between the <code>processId</code>
+and the termination of the corresponding process, see
+the <a href="#known_issues">know issues</a> listed below.
+</p><p>
+The <code>packet*[i]</code>, <code>tcp.Payload*[i]</code> and
+<code>udp.Payload*[i]</code> fields take an <i>index</i> parameter (<code>i</code>).
+The following indexing schemes are supported:
+</p>
+<ul>
+<li> <i>Undecorated integer</i> (e.g., <code>packet32[10]</code>):
+    evaluates to the <code>i</code><sup>th</sup> word from the start of
+    the packet/payload.
+    This is essentially C-style array indexing; </li>
+<li> <i>Negative decorated integer</i> (e.g., <code>packet32[-10]</code>):
+    evaluates to the <code>i</code><sup>th</sup> word from the <b>end</b>
+    of the packet/payload.
+    Here the index (<code>-1</code>) is the first full word that fits; and </li>
+<li> <i>Byte decorated (negative) integer</i> (e.g., <code>packet32[10b]</code>
+    or <code>packet32[-10b]</code>):
+    evaluated to the word offset by <code>i</code> bytes from the
+    start (or end) of the packet/payload.
+</ul>
+<p>
+These fields can be used to match filters against the contents of
+packets/payloads in addition to address/header information.
+Words are assumed to be in network-byte ordering.
+If the index is out-of-bounds then the corresponding <i>test</i> is
+deemed to have failed.
+</p><p>
+The <code>random*</code> fields are not really random but use a
+deterministic hash value calculated using the
+<a href="#divert_helper_hash_packet"><code>WinDivertHelperHashPacket()</code></a>
+function.
+</p><p>
+Layer-specific macros make it possible to match events
+and layers symbolically, e.g., <q><code>event == CONNECT</code></q> or
+<q><code>layer == SOCKET</code></q>.
+The possible macros are:
+</p>
+<center>
+<table border="1" cellpadding="5" width="75%">
+<tr><th>Macro</th><th colspan="5">Layer</th><th>Value</th></tr>
+<tr><th></th><th><code>NETWORK</code></th><th><code>FORWARD</code></th><th><code>FLOW&nbsp;&nbsp;&nbsp;</code></th><th><code>SOCKET&nbsp;</code></th><th><code>REFLECT</code></th><th></th></tr>
+<tr><td><code>TRUE</code></td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td><code>1</code></td></tr>
+<tr><td><code>FALSE</code></td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td><code>0</code></td></tr>
+<tr><td><code>TCP</code></td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td><code>IPPROTO_TCP</code> (<code>6</code>)</td></tr>
+<tr><td><code>UDP</code></td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td><code>IPPROTO_UDP</code> (<code>17</code>)</td></tr>
+<tr><td><code>ICMP</code></td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td><code>IPPROTO_ICMP</code> (<code>1</code>)</td></tr>
+<tr><td><code>ICMPV6</code></td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td><code>IPPROTO_ICMPV6</code> (<code>58</code>)</td></tr>
+<tr><td><code>PACKET</code></td><td>&#10004;</td><td>&#10004;</td><td></td><td></td><td></td><td><code>WINDIVERT_EVENT_NETWORK_PACKET</code></td></tr>
+<tr><td><code>ESTABLISHED</code></td><td></td><td></td><td>&#10004;</td><td></td><td></td><td><code>WINDIVERT_EVENT_FLOW_ESTABLISHED</code></td></tr>
+<tr><td><code>DELETED</code></td><td></td><td></td><td>&#10004;</td><td></td><td></td><td><code>WINDIVERT_EVENT_FLOW_DELETED</code></td></tr>
+<tr><td><code>BIND</code></td><td></td><td></td><td></td><td>&#10004;</td><td></td><td><code>WINDIVERT_EVENT_SOCKET_BIND</code></td></tr>
+<tr><td><code>CONNECT</code></td><td></td><td></td><td></td><td>&#10004;</td><td></td><td><code>WINDIVERT_EVENT_SOCKET_CONNECT</code></td></tr>
+<tr><td><code>ACCEPT</code></td><td></td><td></td><td></td><td>&#10004;</td><td></td><td><code>WINDIVERT_EVENT_SOCKET_ACCEPT</code></td></tr>
+<tr><td><code>LISTEN</code></td><td></td><td></td><td></td><td>&#10004;</td><td></td><td><code>WINDIVERT_EVENT_SOCKET_LISTEN</code></td></tr>
+<tr><td><code>OPEN</code></td><td></td><td></td><td></td><td></td><td>&#10004;</td><td><code>WINDIVERT_EVENT_REFLECT_OPEN</code></td></tr>
+<tr><td><code>CLOSE</code></td><td></td><td></td><td></td><td>&#10004;</td><td>&#10004;</td><td><code>WINDIVERT_EVENT_SOCKET_CLOSE</code>
+for the <code>SOCKET</code> layer, or
+<code>WINDIVERT_EVENT_REFLECT_CLOSE</code> for the <code>REFLECT</code>
+layer.</td></tr>
+<tr><td><code>NETWORK</code></td><td></td><td></td><td></td><td></td><td>&#10004;</td><td><code>WINDIVERT_LAYER_NETWORK</code></td></tr>
+<tr><td><code>NETWORK_FORWARD</code></td><td></td><td></td><td></td><td></td><td>&#10004;</td><td><code>WINDIVERT_LAYER_NETWORK_FORWARD</code></td></tr>
+<tr><td><code>FLOW</code></td><td></td><td></td><td></td><td></td><td>&#10004;</td><td><code>WINDIVERT_LAYER_FLOW</code></td></tr>
+<tr><td><code>SOCKET</code></td><td></td><td></td><td></td><td></td><td>&#10004;</td><td><code>WINDIVERT_LAYER_SOCKET</code></td></tr>
+<tr><td><code>REFLECT</code></td><td></td><td></td><td></td><td></td><td>&#10004;</td><td><code>WINDIVERT_LAYER_REFLECT</code></td></tr>
+</table>
+</center>
+
+<a name="filter_examples"><h3>7.1 Filter Examples</h3></a>
+
+<ol>
+<li>
+Divert all outbound (non-local) web traffic:
+<pre>
+HANDLE handle = WinDivertOpen(
+        "outbound and !loopback and "
+        "(tcp.DstPort == 80 or udp.DstPort == 53)",
+        0, 0, 0
+    );
+</pre>
+</li>
+<li>
+Divert all inbound TCP SYNs:
+<pre>
+HANDLE handle = WinDivertOpen(
+        "inbound and "
+        "tcp.Syn",
+        0, 0, 0
+    );
+</pre>
+</li>
+<li>
+Divert all traffic:
+<pre>
+HANDLE handle = WinDivertOpen("true", 0, 0, 0);
+</pre>
+</li>
+<li>
+Divert no traffic:
+<pre>
+HANDLE handle = WinDivertOpen("false", 0, 0, 0);
+</pre>
+This is useful for packet injection.
+</ol>
+
+<a name="filter_usage"><h3>7.2 Filter Usage</h3></a>
+
+<p>
+The purpose of the filter is to help applications select the subset of
+all network traffic that the application is interested in.
+Ideally the filter should be
+</p>
+<ol>
+<li> As short as possible; and</li>
+<li> As selective as possible.</li>
+</ol>
+<p>
+For some applications these two objectives can conflict.
+That is, a selective filter is not short, and a short filter is not selective.
+For such applications the developer should experiment with different
+filter configurations and carefully measure the performance impact to
+find the optimal solution.
+</p>
+
+<hr>
+<a name="performance"><h2>8. Performance</h2></a>
+
+<p>
+Using WinDivert to redirect network traffic to/from a user application incurs
+performance overheads, such as copying packet data and user/kernel mode
+context switching.
+Under heavy load (&geq;1Gbps) these overheads can be significant.
+The following techniques can be used to
+reduce overheads (in order of importance):
+</p>
+<ol>
+<li><i>Selective Filter</i>: Only select the subset of network traffic
+    the user application is interested in.
+    Non-matching traffic will continue to use the default path without
+    incurring additional overheads.</li>
+<li><i>Batch Mode</i>: The
+    <a href="#divert_recv_ex">WinDivertRecvEx()</a> and
+    <a href="#divert_send_ex">WinDivertSendEx()</a> functions
+    support <i>batching</i> that allows several packets to be
+    received/sent at once.
+    This can significantly reduce the overheads relating to
+    user/kernel mode context switching.</li>
+<li><i>Multi-threading</i>: It is possible to spread packet processing
+    over multiple threads ensuring that the user application does not
+    become a bottleneck.
+    That said, sometimes spawning too many threads can degrade performance.
+    </li>
+<li><i>Small Buffers</i>: Large buffers generally incur more overhead
+    compared to smaller buffers.
+    In general, the buffer size should reflect the expected usage
+    as closely as possible.</li>
+<li><i>Simple Filters</i>: 
+    Currently WinDivert does not optimize the filter compilation, so it
+    is up to the user application to ensure the filter is simple/optimized.
+    </li>
+<li><i>Overlapped I/O</i>: This allows the user application to do
+    additional tasks at the same time as receive/send operations, which may
+    improve performance for some applications.
+    It is also possible for a single thread to initiate several
+    receive/send operations at once.
+    However, using overlapped I/O can be tricky, and it is important
+    that all buffers passed to
+    <a href="#divert_recv_ex">WinDivertRecvEx()</a> or
+    <a href="#divert_send_ex">WinDivertSendEx()</a> 
+    (including the <code>OVERLAPPED</code> structure)
+    are not modified by the user application until the operation
+    completes.</li>
+<li><i>Queue length/size/time</i>: If these values are too small then some
+    packets may be dropped under heavy load.
+    These values can be controlled using the
+    <a href="#divert_set_param">WinDivertSetParam()</a> function.</li>
+</ol>
+<p>
+The <code>passthru.exe</code> <a href="#samples">sample program</a> can
+be used to experiment with different batch sizes and thread counts.
+</p>
+
+<hr>
+<a name="samples"><h2>9. Samples</h2></a>
+
+<p>
+Some samples have been provided to demonstrate the WinDivert API.
+The sample programs are:
+</p>
+<ul>
+<li><code>webfilter.exe</code>: A simple URL blacklist filter.
+    This program monitors outbound HTTP traffic.
+    If it finds a URL request that matches the blacklist, it hijacks the
+    TCP connection, reseting the connection at the server's end, and
+    sending a simple block-page to the browser.
+    The blacklist(s) are specified at the command-line.</li>
+<li><code>netdump.exe</code>: A simple packet sniffer based on the
+    WinDivert filter language.
+    This program takes a filter specified at the command line, and prints
+    information about any packet that matches the filter.
+    This example uses WinDivert in "packet sniffing" mode, similar to
+    <code>winpcap</code>.
+    However, unlike <code>winpcap</code>, WinDivert can see local (loopback)
+    packets.
+<li><code>netfilter.exe</code>: A simple firewall based on the WinDivert
+    filter language.
+    This program takes a filter specified at the command line, and blocks
+    any packet that matches the filter.
+    It blocks TCP by sending a TCP reset, UDP by an ICMP message, and all
+    other traffic it simply drops.
+    This is similar to the Linux <code>iptables</code> command with the
+    <code>-j REJECT</code> option.</li>
+<li><code>passthru.exe</code>: A simple program that simply re-injects every
+    packet it captures.
+    This example has a configurable batch-size and thread count,
+    and so is useful for performance testing or as a starting point
+    for more interesting applications.</li>
+<li><code>streamdump.exe</code>: A simple program that demonstrates how to
+    handle streams using WinDivert.
+    The basic idea is to divert outbound TCP connections to a local proxy
+    server which can capture or manipulate the stream.</li>
+<li><code>flowtrack.exe</code>: A program that tracks all network flows
+    to and from the local machine, including information such as the ID of the
+    responsible process.
+    The <code>flowtrack</code> sample demonstrates the
+    <code>WINDIVERT_LAYER_FLOW</code> layer.</li>
+<li><code>socketdump.exe</code>: Dumps socket operations
+    (<code>bind()</code>, <code>connect()</code>, etc.) and the ID of the
+    responsible process.
+    The <code>socketdump</code> sample demonstrates the
+    <code>WINDIVERT_LAYER_SOCKET</code> layer.</li>
+<li><code>windivertctl.exe</code> allows the user to query which processes
+    are using WinDivert via the <code>list</code> or <code>watch</code>
+    commands, or to terminate all such processes using the
+    <code>kill</code> command.
+    The <code>windivertctl.exe</code> can also forcibly remove the
+    WinDivert driver using the <code>uninstall</code> command.
+    The <code>windivertctl</code> sample demonstrates the
+    <code>WINDIVERT_LAYER_REFLECT</code> layer.</li>
+</ul>
+<p>
+The samples are intended for educational purposes only, and are not
+fully-featured applications.
+</p><p>
+The following basic template for a WinDivert application using the
+<code>WINDIVERT_LAYER_NETWORK</code> layer.
+The basic idea is to open a WinDivert handle, then enter a
+capture-modify-reinject loop:
+</p>
+<pre>
+    HANDLE handle;          // WinDivert handle
+    WINDIVERT_ADDRESS addr; // Packet address
+    char packet[MAXBUF];    // Packet buffer
+    UINT packetLen;
+
+    // Open some filter
+    handle = WinDivertOpen("...", WINDIVERT_LAYER_NETWORK, 0, 0);
+    if (handle == INVALID_HANDLE_VALUE)
+    {
+        // Handle error
+        exit(1);
+    }
+
+    // Main capture-modify-inject loop:
+    while (TRUE)
+    {
+        if (!WinDivertRecv(handle, packet, sizeof(packet), &amp;packetLen, &amp;addr))
+        {
+            // Handle recv error
+            continue;
+        }
+
+        // Modify packet.
+
+        WinDivertHelperCalcChecksums(packet, packetLen, &amp;addr, 0);
+        if (!WinDivertSend(handle, packet, packetLen, NULL, &amp;addr))
+        {
+            // Handle send error
+            continue;
+        }
+    }
+</pre>
+<p>
+For applications that do not need to modify the packet, a better approach is
+to open the WinDivert handle with the <code>WINDIVERT_FLAG_SNIFF</code> flag set,
+and not re-inject the packet with
+<a href="#divert_send"><code>WinDivertSend()</code></a>.
+See the <code>netdump.exe</code> sample program for an example of this usage.
+</p>
+
+<hr>
+<a name="known_issues"><h2>10. Known Issues</h2></a>
+
+<p>
+WinDivert has some known limitations listed below:
+</p>
+<ul>
+<li><i>Injecting inbound ICMP/ICMPv6 messages</i>:
+    Calling <a href="#divert_send"><code>WinDivertSend()</code></a> will fail
+    with an error for certain types of inbound ICMP/ICMPv6 messages.
+    This is probably because the Windows TCP/IP stack does not handle
+    such messages.
+    Such errors are harmless and can be ignored.
+    </li>
+<li><i>The forward layer does not interact well with the Windows NAT</i>:
+    It is not possible to block packets pre-NAT with WinDivert.
+    As a general principle, you should not try and mix WinDivert at the
+    forward layer with the Windows NAT implementation.
+    </li>
+<li><i>Re-injecting unmodified packets can lead to infinite loops</i>:
+    If two or more Windows Filtering Platform (WFP) callout drivers
+    (including WinDivert applications) block and inject unmodified copies of
+    packets then this can lead to an infinite loop.
+    If such a loop occurs, 
+    <a href="#divert_send"><code>WinDivertSend()</code></a> will eventually fail
+    with error <code>ERROR_HOST_UNREACHABLE</code>.
+    Unfortunately, such errors are not easy to fix.
+    Some crude solutions include: (1) removing the incompatible driver, or
+    (2) ignoring all packets with <code>ip.TTL</code> or
+    <code>ipv6.HopLimit</code> less than the Windows <code>DefaultTTL</code>
+    registry value.
+    See <a href="https://github.com/basil00/Divert/issues/41">
+    GitHub issue #41</a> for more information.
+    </li>
+<li><i>WinDivert can cause the MSVC x86_64 debugger to deadlock</i>:
+    The deadlock occurs because the debugger uses local sockets.
+    Thus: the debugger pauses the WinDivert
+    application, which stops packets from being processed, which 
+    causes the debugger wait forever on input from a socket.
+    The deadlock can be avoided by ignoring loopback traffic.
+    See <a href="https://github.com/basil00/Divert/issues/26">
+    GitHub issue #26</a> for more information.
+    </li>
+<li><i>WinDivert can cause packets to be out-of-order</i>:
+    Simply running the <code>passthru.exe</code> sample program can cause
+    packets to become out-of-order.
+    This is not a bug, since there is no requirement for packets to
+    remain in-order.
+    However, this may affect other buggy software
+    (e.g. some buggy NAT implementations)
+    that incorrectly assume packets to be in-order.
+    </li>
+<li><i>A race condition exists between <q><code>addr.*.processId</code></q> and
+    process termination.</i>
+    By the time an event is received using
+    <a href="#divert_recv"><code>WinDivertRecv()</code></a>,
+    it is possible that the process responsible for the event has already
+    terminated.
+    Furthermore, it is theoretically possible that the
+    <code>processId</code> has been reassigned to an unrelated process.
+    This problem can be partly mitigated by comparing the timestamp
+    (<code>addr.Timestamp</code>) with the creation time of the process.
+    If the process is newer, then the ID has been reassigned.
+    This race condition does <b>not</b> affect the
+    <code>WINDIVERT_EVENT_REFLECT_OPEN</code> event.
+    In this special case, the <code>addr.Reflect.processId</code> is
+    guaranteed to be valid until the corresponding
+    <code>WINDIVERT_EVENT_REFLECT_CLOSE</code> event is
+    received by the user application or is dropped
+    (filter mismatch or timeout).
+	</li>
+</ul>
+
+<hr>
+<a name="license"><h2>11. License</h2></a>
+<p>
+WinDivert is dual-licensed under your choice of either the
+<a href="http://www.gnu.org/licenses/lgpl-3.0.txt">GNU Lesser General
+Public License (LGPL) Version 3</a> or the
+<a href="https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt">
+GNU General Public License (GPL) Version 2</a>.
+Please see the notices below:
+</p>
+<p>
+<b>LGPL version 3</b>:
+</p>
+<pre>
+WinDivert is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.
+</pre>
+<p>
+<b>GPL version 2</b>:
+</p>
+<pre>
+WinDivert is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program; if not, write to the Free Software Foundation, Inc.,
+51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+</pre>
+</body>
+</html>

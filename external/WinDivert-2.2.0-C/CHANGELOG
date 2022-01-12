@@ -1,0 +1,314 @@
+WinDivert 1.0.0
+    - First release of WinDivert 1.0
+WinDivert 1.0.1
+    - Fixed stack overflow bug in 32bit versions of the driver.
+WinDivert 1.0.2
+    - WinDivert now requires Administrator privileges in order to access
+      (as opposed to just install) the WinDivert device.
+WinDivert 1.0.3
+    - Fix bug(s) relating to the parsing of IPv6 addresses.
+    - DivertOpen() now returns more meaningful error codes on failure.
+    - Two new helper API functions: DivertHelperParseIPvXAddress(..), X=4,6.
+    - Renamed DivertHelperParse(..) to DivertHelperParsePacket(..).
+WinDivert 1.0.4
+    - Same as WinDivert 1.0.3 except:
+      * Released with signed drivers.
+      * MinGW compiled gcc-4.6
+      * Minor documentation changes.
+WinDivert 1.0.5
+    - Fix the DIVERT_NETWORK_FORWARD_LAYER implementation.
+    - Upgrade Visual Studio support to 2012.
+WinDivert 1.1.0-rc
+    - Re-brand "DIVERT" to "WINDIVERT" throughout the code-base.
+    - New flag:
+      * WINDIVERT_FLAG_NO_CHECKSUM: Do not guarantee that diverted packets
+        have a correct checksum.
+    - New default values and limits for various WinDivert parameters,
+      including WINDIVERT_PARAM_QUEUE_LEN, WINDIVERT_PARAM_QUEUE_TIME, and
+      the maximum filter length.
+    - New extended WinDivert functions that support asynchronous I/O:
+      * WinDivertRecvEx(..)
+      * WinDivertSendEx(..)
+    - The WinDivert driver now services reads (WinDivertRecv()) out-of-band.
+    - The WinDivert driver now protects packet data from modification by
+      other callout drivers and the user program.
+    - The WinDivert service is no longer created when the driver fails to
+      load.
+WinDivert 1.1.1
+    - Fixed a BSOD that sometimes occurs when the driver is unloaded.
+WinDivert 1.1.2-rc
+    - Renamed drivers to "WinDivert32.sys" and "WinDivert64.sys".  Both can
+      exist in the same directory, and WinDivert.dll automatically loads the
+      correct version.
+    - Deprecate both the WinDivert.inf and WdfCoInstaller*.dll files.
+WinDivert 1.1.3
+    - Fixed a bug that causes some outbound TCP packets to be lost.
+WinDivert 1.1.4
+    - Fixed a BSOD that occurs when NULL is passed as the address parameter to
+      WinDivertRecv(..) or WinDivertSend(..).
+WinDivert 1.1.5
+    - Insert WinDivert as the highest priority WFP sublayer.
+WinDivert 1.1.6
+    - WinDivert now searches for the driver files in the application's
+      directory (as opposed to the current directory).
+WinDivert 1.1.7
+    - Improved IPv6 support:
+     * Fixed incorrect IPV6 TCP/UDP checksum calculation in
+       WinDivertHelperCalcChecksums().
+     * WinDivert driver now calculates checksums for IPV6 packets.
+     * WinDivert can now handle IPV6 extension headers.
+     * Fixed WinDivertHelperParseIPv6Address().
+WinDivert 1.1.8
+    - Fix ip.TOS handling bug.
+    - Fix IPv6 comparison bug.
+WinDivert 1.2.0-rc
+    - The WinDivert filter language now supports C-style "(F1? F2: F3)"
+      expressions, where {F1,F2,F3} are themselves filter expressions.
+    - New WinDivert helper functions:
+      * WinDivertHelperCheckFilter() checks if a filter string is valid.
+      * WinDivertHelperEvalFilter() evaluates a filter on a packet.
+    - Some packets (specifically outbound or loopback packets) returned by
+      WinDivertRecv() or WinDivertRecvEx() are no longer required to have
+      correct checksums.  Absent checksum fields will be set to zero.  If need
+      be the checksums can be recovered by WinDivertHelperCalcChecksums().
+    - The WINDIVERT_FLAG_NO_CHECKSUM flag has been deprecated.
+    - The WinDivertHelperCalcChecksums() function now accepts a new
+      WINDIVERT_HELPER_NO_REPLACE flag, which indicates that non-zero checksum
+      fields should not be replaced.
+    - Support for the old WinDivert1.0 API has been removed.
+WinDivert 1.2.1
+    - Identical to WinDivert 1.2.0-rc.
+WinDivert 1.3.0
+    - Fix BSOD that sometimes occurs after abnormal user application exit.
+    - Fix BSOD that sometimes occurs when WinDivert is combined with other
+      callout drivers.
+    - WinDivertSend() has been optimized.  However, it may not detect as
+      many packet injection errors as it could before.
+WinDivert 1.4.0-rc
+    - Add a new WINDIVERT_PARAM_QUEUE_SIZE parameter that can be used to
+      control the maximum number of bytes used by the packet queue.
+    - Add a new WINDIVERT_FLAG_DEBUG flag that causes WinDivertSend() to
+      block until the packet exits the Windows TCP/IP stack.  This is slower
+      but provides better error messages, so is useful for debugging.
+    - Internally queued packets are now reinjected when WinDivertClose() is
+      called instead of being dropped.
+    - WINDIVERT_ADDRESS now includes a Timestamp field that indicates when
+      the packet was first captured by WinDivert.  The timestamp uses the
+      same clock as QueryPerformanceCounter().
+    - WINDIVERT_ADDRESS now includes a Loopback field that indicates whether
+      the packet is a loopback packet or not.
+    - The filter language has been extended to include a loopback field that
+      matches loopback packets.
+    - Loopback packets are now considered to be outbound-only.
+    - WINDIVERT_ADDRESS now includes an Impostor field which indicates that the
+      packet originated from another driver rather than from the network or
+      TCP/IP stack.
+    - WinDivertRecv() will eventually fail with ERROR_HOST_UNREACHABLE if
+      an impostor packet enters an infinite loop (see #41).
+    - The filter language has been extended to include an impostor field that 
+      matches impostor packets.
+    - WINDIVERT_ADDRESS now includes three new flags relating to checksums:
+      * PseudoIPChecksum
+      * PseudoTCPChecksum
+      * PseudoUDPChecksum
+      When set, these flags indicate that the corresponding packet uses
+      "pseudo" IP/TCP/UDP checksums instead of the default full checksums.
+      Pseudo checksums are cheaper to calculate, and can be used when the
+      network hardware supports checksum offloading.
+    - WinDivertHelperCalcChecksums() now takes an optional pointer to a
+      WINDIVERT_ADDRESS structure, and calculates pseudo checksums if the
+      corresponding Pseudo*Checksum flag is set.
+    - The WINDIVERT_HELPER_NO_REPLACE flag for WinDivertHelperCalcChecksums()
+      has been deprecated.  It is no longer necessary to calculate checksums
+      for unmodified packets.
+WinDivert 1.4.1
+    - Dual license WinDivert under LGPLv3 and GPLv2.
+WinDivert 1.4.2
+    - Add workaround for pseudo checksum issue (see #134).
+WinDivert 1.4.3
+    - WinDivert.dll no longer depends on MSVCRT*.dll.
+WinDivert 2.0.0-rc
+    - Add 3 new layers:
+      * WINDIVERT_LAYER_FLOW for tracking network "flow" events.
+      * WINDIVERT_LAYER_SOCKET for tracking "socket" events.
+      * WINDIVERT_LAYER_REFLECT for tracking WinDivert events.
+    - WINDIVERT_ADDRESS has been re-factored as follows:
+      * addr.Layer: The WINDIVERT_LAYER_* value for the handle.
+      * addr.Event: A WINDIVERT_EVENT_* value representing the event (see
+        below).
+      * addr.Sniffed: Indicates that the event was sniffed.
+      * addr.Outbound: Replaces addr.Direction.
+      * addr.IPv6: Indicates an IPv6 packet.
+      * addr.Network.IfIdx: Replaces addr.IfIdx.
+      * addr.Network.SubIfIdx: Replaces addr.SubIfIdx.
+      * addr.Flow.EndpointId: The endpoint ID of the flow.
+      * addr.Flow.ParentEndpointId: The parent endpoint ID of the flow.
+      * addr.Flow.ProcessId: The ID of process that created the flow.
+      * addr.Flow.LocalAddr: The flow's local address.
+      * addr.Flow.RemoteAddr: The flow's remote address.
+      * addr.Flow.LocalPort: The flow's local port.
+      * addr.Flow.RemotePort: The flow's remote port.
+      * addr.Flow.Protocol: The flow's protocol.
+      * addr.Socket.EndpointId: The endpoint ID of the operation.
+      * addr.Socket.ParentEndpointId: The parent endpoint ID of the operation.
+      * addr.Socket.ProcessId: The ID of process that created the socket.
+      * addr.Socket.LocalAddr: The socket's local address.
+      * addr.Socket.RemoteAddr: The socket's remote address.
+      * addr.Socket.LocalPort: The socket's local port.
+      * addr.Socket.RemotePort: The socket's remote port.
+      * addr.Socket.Protocol: The socket's protocol.
+      * addr.Reflect.ProcessId: The ID of process that created opened the
+        handle.
+      * addr.Reflect.Timestamp: The timestamp of the handle.
+      * addr.Reflect.Layer: The layer of the handle.
+      * addr.Reflect.Flags: The flags of the handle.
+      * addr.Reflect.Priority: The priority of the handle.
+    - The addr.Event field can take the following values:
+      * WINDIVERT_EVENT_NETWORK_PACKET: (NETWORK/NETWORK_FORWARD layers) a new
+        packet was diverted.
+      * WINDIVERT_EVENT_FLOW_ESTABLISHED: (FLOW layer) a new flow is
+        established.
+      * WINDIVERT_EVENT_FLOW_DELETED: (FLOW layer) an existing flow is
+        deleted.
+      * WINDIVERT_EVENT_SOCKET_BIND: (SOCKET layer) a socket bind()
+        operation occurred.
+      * WINDIVERT_EVENT_SOCKET_CONNECT: (SOCKET layer) a socket connect()
+        operation occurred.
+      * WINDIVERT_EVENT_SOCKET_LISTEN: (SOCKET layer) a socket listen()
+        operation occurred.
+      * WINDIVERT_EVENT_SOCKET_ACCEPT: (SOCKET layer) a socket accept()
+        operation occurred.
+      * WINDIVERT_EVENT_SOCKET_CLOSE: (SOCKET layer) a socket endpoint is
+        closed.
+      * WINDIVERT_EVENT_REFLECT_OPEN: (REFLECT layer) a WinDivertOpen()
+        operation occurred.
+      * WINDIVERT_EVENT_REFLECT_CLOSE: (REFLECT layer) a WinDivertClose()
+        operation occurred.
+    - The WinDivert filter language has been expanded with new fields:
+      * event: The event value.
+      * timestamp: The event timestamp.
+      * endpointId: (FLOW/SOCKET layers) the endpoint ID.
+      * parentEndpointId: (FLOW/SOCKET layers) the parent endpoint ID.
+      * processId: (FLOW/SOCKET/REFLECT layers) the process ID.
+      * localAddr: (NETWORK/NETWORK_FORWARD/FLOW/SOCKET layers) the local
+        address.
+      * localPort: (NETWORK/NETWORK_FORWARD/FLOW/SOCKET layers) the local
+        port.
+      * remoteAddr: (NETWORK/NETWORK_FORWARD/FLOW/SOCKET layers) the remote
+        address.
+      * remotePort: (NETWORK/NETWORK_FORWARD/FLOW/SOCKET layers) the remote
+        port.
+      * protocol: (NETWORK/NETWORK_FORWARD/FLOW/SOCKET layers) the protocol.
+      * priority: (REFLECT layer) the handle's priority.
+      * layer: (REFLECT layer) the handle's layer.
+      * random8: (NETWORK/NETWORK_FORWARD layers) an 8-bit pseudo random
+        number.
+      * random16: (NETWORK/NETWORK_FORWARD layers) a 16-bit pseudo random
+        number.
+      * random32: (NETWORK/NETWORK_FORWARD layers) a 32-bit pseudo random
+        number.
+      * length: (NETWORK/NETWORK_FORWARD layers) the packet length.
+      * zero: The value "0".
+    - The WinDivert filter language can now address packet/payload data for
+      the NETWORK/NETWORK_FORWARD layers:
+      * packet[i]: the ith packet byte.
+      * packet16[i]: the ith packet 16bit word.
+      * packet32[i]: the ith packet 32bit word.
+      * tcp.payload[i]: the ith TCP payload byte.
+      * tcp.payload16[i]: the ith TCP 16bit word.
+      * tcp.payload32[i]: the ith TCP 32bit word.
+      * udp.payload[i]: the ith UDP payload byte.
+      * udp.payload16[i]: the ith UDP 16bit word.
+      * udp.payload32[i]: the ith UDP 32bit word.
+      The index (i) can be:
+      * An ordinary integer representing word addressing.
+      * A 'b' decorated integer representing byte-level addressing.
+      Furthermore, the index can be:
+      * Positive, representing addressing from the start of the
+        packet/payload.
+      * Negative, representing addressing from the end of the packet/payload.
+    - The WinDivert filter language now supports several symbolic values:
+      * PACKET: (NETWORK/NETWORK_FORWARD layers) equal to
+        WINDIVERT_EVENT_NETWORK_PACKET
+      * ESTABLISHED: (FLOW layer) equal to WINDIVERT_EVENT_FLOW_ESTABLISHED.
+      * DELETED: (FLOW LAYER) equal to WINDIVERT_EVENT_FLOW_DELETED.
+      * BIND: (SOCKET layer) equal to WINDIVERT_EVENT_SOCKET_BIND.
+      * CONNECT: (SOCKET layer) equal to WINDIVERT_EVENT_SOCKET_CONNECT.
+      * LISTEN: (SOCKET layer) equal to WINDIVERT_EVENT_SOCKET_LISTEN.
+      * ACCEPT: (SOCKET layer) equal to WINDIVERT_EVENT_SOCKET_ACCEPT.
+        WINDIVERT_LAYER_NETWORK_FORWARD.
+      * CLOSE: (SOCKET layer) equal to WINDIVERT_EVENT_SOCKET_CLOSE.
+      * OPEN: (REFLECT layer) equal to WINDIVERT_EVENT_REFLECT_OPEN.
+      * CLOSE: (REFLECT layer) equal to WINDIVERT_EVENT_REFLECT_CLOSE.
+      * NETWORK: (REFLECT layer) equal to WINDIVERT_LAYER_NETWORK.
+      * NETWORK_FORWARD: (REFLECT layer) equal to
+      * FLOW: (REFLECT layer) equal to WINDIVERT_LAYER_FLOW.
+      * SOCKET: (REFLECT layer) equal to WINDIVERT_LAYER_SOCKET.
+      * REFLECT: (REFLECT layer) equal to WINDIVERT_LAYER_REFLECT.
+      * TRUE: equal to 1.
+      * FALSE: equal to 0.
+      * TCP: equal to IPPROTO_TCP (6).
+      * UDP: equal to IPPROTO_UDP (17).
+      * ICMP: equal to IPPROTO_ICMP (1).
+      * ICMPV6: equal to IPPROTO_ICMPV6 (58).
+    - WinDivertOpen() now supports several new flags:
+      * WINDIVERT_FLAG_RECV_ONLY/WINDIVERT_FLAG_READ_ONLY: The handle cannot
+        be used for send operations.
+      * WINDIVERT_FLAG_SEND_ONLY/WINDIVERT_FLAG_WRITE_ONLY: The handle cannot
+        be used for receive operations.
+      * WINDIVERT_FLAG_NO_INSTALL: If the WinDivert driver is not already
+        installed/loaded, then WinDivertOpen() will fail with an error.
+    - WinDivertRecvEx()/WinDivertSendEx() now support a "batch" mode that
+      allows more than one packet to be received/sent at once.  The number
+      of packets is determined by a new pAddrLen/addrLen parameter.
+    - Add a new WinDivertShutdown() function that supports the following
+      modes:
+      * WINDIVERT_SHUTDOWN_RECV: Disable the queuing new packets.
+      * WINDIVERT_SHUTDOWN_SEND: Disable the sending of new packets.
+      * WINDIVERT_SHUTDOWN_BOTH: Equivalent to
+        (WINDIVERT_SHUTDOWN_RECV | WINDIVERT_SHUTDOWN_SEND).
+    - Add new "read-only" WinDivert parameters:
+      * WINDIVERT_PARAM_VERSION_MAJOR: Driver version (major).
+      * WINDIVERT_PARAM_VERSION_MINOR: Driver version (minor).
+    - Add a new WinDivertHelperHashPacket() helper function that calculates
+      a 64bit hash value of a packet.
+    - Add new WinDivertHelperFormatIPv4Address() and
+      WinDivertHelperFormatIPv6Address() helper functions that format
+      IPv4 and IPv6 addresses respectively.
+    - Replace WinDivertHelperCheckFilter() with a new
+      WinDivertHelperCompileFilter() helper function.  The latter can also be
+      used to compile a human-readable filter string into a more compact
+      "object" format.  The object format can be used in place of the
+      human readable format for all WinDivert operations.
+    - Add a new WinDivertHelperFormatFilter() helper function that formats a
+      filter string into a normalized form.  It also can be used to
+      "de-compile" the object format into a human readable form.
+    - Add a new WinDivertHelperDecrementTTL() function that decrements the
+      ip.TTL/ipv6.HopLimit field of a packet.
+    - Add new WinDivertHelperNto*()/WinDivertHelperHton*() helper functions
+      for swapping from network to host byte ordering, and vice versa.
+    - WinDivertOpen() priorities now are ascending, meaning that higher
+      values correspond to higher priorities.
+    - The last two arguments for WinDivertRecv() and WinDivertSend() have been
+      swapped.
+WinDivert 2.0.1-rc
+    - Fix WFP callout install optimization bug.
+    - Fix WinDivertHelperNtohIpv6Address/WinDivertHelperHtonIpv6Address bug.
+    - Rename the following functions for consistency:
+      * WinDivertHelperNtohIpv6Address -> WinDivertHelperNtohIPv6Address
+      * WinDivertHelperHtonIpv6Address -> WinDivertHelperHtonIPv6Address
+WinDivert 2.1.0
+    - WinDivertOpen() now supports a new flag:
+      * WINDIVERT_FLAG_FRAGMENTS: If set, the handle will capture inbound IP
+        fragments, but not inbound reassembled IP packets.  Otherwise, if not
+        set (the default), the handle will capture inbound reassembled IP
+        packets, but not inbound IP fragments.  This flag only affects
+        inbound packets at the NETWORK layer.
+    - Filter fields inbound/outbound are now supported at the SOCKET layer.
+    - Fix BSOD caused by packets with missing or incomplete transport
+      headers (introduced in 2.0.0).
+    - Fix missing Flow.EndpointId and Flow.ParentEndpointId for IPv6 flows.
+WinDivert 2.2.0
+    - Implement new packet parser that correctly handles IP fragments.
+    - Add a new "fragment" filter field that matches IP fragments.
+    - (Un)Loading the WinDivert driver will cause a system event to be logged.
