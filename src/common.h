@@ -128,7 +128,7 @@ typedef struct {
     short *enabledFlag; // volatile short flag to determine enabled or not
     Ihandle* (*setupUIFunc)(); // return hbox as controls group
     void (*startUp)(); // called when starting up the module
-    void (*closeDown)(PacketNode *head, PacketNode *tail); // called when starting up the module
+    void (*closeDown)(PacketNode *head, PacketNode *tail); // called when close down the module
     short (*process)(PacketNode *head, PacketNode *tail);
     /*
      * Flags used during program excution. Need to be re initialized on each run
