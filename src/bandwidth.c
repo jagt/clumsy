@@ -10,6 +10,9 @@
 #define BANDWIDTH_MIN  "0"
 #define BANDWIDTH_MAX  "99999"
 #define BANDWIDTH_DEFAULT 10
+#define QUEUESIZE_MIN  "0"
+#define QUEUESIZE_MAX  "99999"
+#define QUEUESIZE_DEFAULT 10
 
 //---------------------------------------------------------------------
 // rate stats
@@ -26,6 +29,9 @@ typedef struct {
 	uint32_t *array_sample;
 } CRateStats;
 
+static PacketNode queueHeadNode = {0}, queueTailNode = {0};
+static PacketNode *queueHead = &queueHeadNode, *queueTail = &queueTailNode;
+static int queueSizeInBytes = 0;
 
 CRateStats* crate_stats_new(int window_size, float scale);
 
@@ -43,17 +49,25 @@ int32_t crate_stats_calculate(CRateStats *rate, uint32_t now_ts);
 //---------------------------------------------------------------------
 // configuration
 //---------------------------------------------------------------------
-static Ihandle *inboundCheckbox, *outboundCheckbox, *bandwidthInput;
+static Ihandle *inboundCheckbox, *outboundCheckbox, *bandwidthInput, *queueSizeInput;
 
 static volatile short bandwidthEnabled = 0,
     bandwidthInbound = 1, bandwidthOutbound = 1;
+static volatile short maxQueueSizeInKBytes = 0;
 
 static volatile LONG bandwidthLimit = BANDWIDTH_DEFAULT; 
 static CRateStats *rateStats = NULL;
 
+static INLINE_FUNCTION short isQueueEmpty() {
+    short ret = queueHead->next == queueTail;
+    if (ret) assert(queueSizeInBytes == 0);
+    return ret;
+}
 
 static Ihandle* bandwidthSetupUI() {
     Ihandle *bandwidthControlsBox = IupHbox(
+        IupLabel("Queuesize(KB):"),
+        queueSizeInput = IupText(NULL),
         inboundCheckbox = IupToggle("Inbound", NULL),
         outboundCheckbox = IupToggle("Outbound", NULL),
         IupLabel("Limit(KB/s):"),
@@ -71,6 +85,12 @@ static Ihandle* bandwidthSetupUI() {
     IupSetAttribute(inboundCheckbox, SYNCED_VALUE, (char*)&bandwidthInbound);
     IupSetCallback(outboundCheckbox, "ACTION", (Icallback)uiSyncToggle);
     IupSetAttribute(outboundCheckbox, SYNCED_VALUE, (char*)&bandwidthOutbound);
+    IupSetAttribute(queueSizeInput, "VISIBLECOLUMNS", "3");
+    IupSetAttribute(queueSizeInput, "VALUE", STR(QUEUESIZE_DEFAULT));
+    IupSetCallback(queueSizeInput, "VALUECHANGED_CB", uiSyncInt32);
+    IupSetAttribute(queueSizeInput, SYNCED_VALUE, (char*)&maxQueueSizeInKBytes);
+    IupSetAttribute(queueSizeInput, INTEGER_MAX, QUEUESIZE_MAX);
+    IupSetAttribute(queueSizeInput, INTEGER_MIN, QUEUESIZE_MIN);
 
     // enable by default to avoid confusing
     IupSetAttribute(inboundCheckbox, "VALUE", "ON");
@@ -86,14 +106,33 @@ static Ihandle* bandwidthSetupUI() {
 }
 
 static void bandwidthStartUp() {
+	if (queueHead->next == NULL && queueTail->next == NULL) {
+        queueHead->next = queueTail;
+        queueTail->prev = queueHead;
+        queueSizeInBytes = 0;
+    } else {
+        assert(isQueueEmpty());
+    }
+
 	if (rateStats) crate_stats_delete(rateStats);
 	rateStats = crate_stats_new(1000, 1000);
+    startTimePeriod();
     LOG("bandwidth enabled");
 }
 
 static void bandwidthCloseDown(PacketNode *head, PacketNode *tail) {
+    PacketNode *oldLast = tail->prev;
     UNREFERENCED_PARAMETER(head);
-    UNREFERENCED_PARAMETER(tail);
+    // flush all buffered packets
+    int packetCnt = 0;
+    while(!isQueueEmpty()) {
+        queueSizeInBytes -= queueTail->prev->packetLen;
+        insertAfter(popNode(queueTail->prev), oldLast);
+        ++packetCnt;
+    }
+    LOG("Closing down bandwidth, flushing %d packets", packetCnt);
+    endTimePeriod();
+
 	if (rateStats) crate_stats_delete(rateStats);
 	rateStats = NULL;
     LOG("bandwidth disabled");
@@ -104,40 +143,51 @@ static void bandwidthCloseDown(PacketNode *head, PacketNode *tail) {
 // process
 //---------------------------------------------------------------------
 static short bandwidthProcess(PacketNode *head, PacketNode* tail) {
-    int dropped = 0;
-	DWORD now_ts = timeGetTime();
-	int limit = bandwidthLimit * 1024;
+    int limit = bandwidthLimit * 1024;
 
 	//	allow 0 limit which should drop all
 	if (limit < 0 || rateStats == NULL) {
 		return 0;
 	}
 
-    while (head->next != tail) {
-        PacketNode *pac = head->next;
-		int discard = 0;
-        // chance in range of [0, 10000]
+    PacketNode *pac = tail->prev;
+    while (pac != head) {
         if (checkDirection(pac->addr.Outbound, bandwidthInbound, bandwidthOutbound)) {
-			int rate = crate_stats_calculate(rateStats, now_ts);
-			int size = pac->packetLen;
-			if (rate + size > limit) {
-				LOG("dropped with bandwidth %dKB/s, direction %s",
-					(int)bandwidthLimit, pac->addr.Outbound ? "OUTBOUND" : "INBOUND");
-				discard = 1;
-			}
-			else {
-				crate_stats_update(rateStats, size, now_ts);
-			}
-		}
-		if (discard) {
-            freeNode(popNode(pac));
-            ++dropped;
+            queueSizeInBytes += pac->packetLen;
+            insertAfter(popNode(pac), queueHead);
+            pac = tail->prev;
         } else {
-            head = head->next;
+            pac = pac->prev;
         }
     }
 
-    return dropped > 0;
+    DWORD now_ts = timeGetTime();
+
+    while (!isQueueEmpty()) {
+        pac = queueTail->prev;
+        // chance in range of [0, 10000]
+        int rate = crate_stats_calculate(rateStats, now_ts);
+        int size = pac->packetLen;
+        if (rate + size > limit) {
+            break;
+        } else {
+            crate_stats_update(rateStats, size, now_ts);
+        }
+        queueSizeInBytes -= queueTail->prev->packetLen;
+        insertAfter(popNode(queueTail->prev), head);
+    }
+
+    int dropped = 0;
+    while (queueSizeInBytes > maxQueueSizeInKBytes * 1024 && !isQueueEmpty()) {
+        pac = queueHead->next;
+        LOG("dropped with bandwidth %dKB/s, direction %s",
+            (int)bandwidthLimit, pac->addr.Outbound ? "OUTBOUND" : "INBOUND");
+        queueSizeInBytes -= pac->packetLen;
+        freeNode(popNode(pac));
+        ++dropped;
+    }
+
+    return dropped > 0 || !isQueueEmpty();
 }
 
 
