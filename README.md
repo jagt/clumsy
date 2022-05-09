@@ -20,6 +20,8 @@ Simulate network latency, delay, packet loss with clumsy on Windows 7/8/10:
 
 ![](clumsy-demo.gif)
 
+## Bandwidth with tail dropping queue
+Add a simple tail dropping queue for bandwidth limiting function. The queue size is configurable.
 
 ## License
 
