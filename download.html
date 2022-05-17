@@ -47,6 +47,30 @@
 
         <h4>Build</h4>
 
+        <h4>0.3 Zig Build</h4>
+
+        With 0.3 we've also setup clumsy to be built with <a href="https://ziglang.org">Zig</a> and it's how we build the shipping binaries.
+
+        <ol>
+            <li>Download a copy of <a href="https://ziglang.org/download/#release-0.9.1">zig 0.9.1 here</a></li>
+            <li>Open <code>build.zig</code> and check that Windows SDK path is correct on your machine.<br> It's hardcoded as <code>C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0</code></li>
+            <li>Then you can run the commands below to build:
+
+                <p>
+                <pre>
+# build shipping binaries
+zig build -Dconf=Ship -Darch=x64 -Dsign=A
+zig build -Dconf=Ship -Darch=x64 -Dsign=B
+zig build -Dconf=Ship -Darch=x64 -Dsign=C
+zig build -Dconf=Ship -Darch=x86 -Dsign=A
+zig build -Dconf=Ship -Darch=x86 -Dsign=B
+zig build -Dconf=Ship -Darch=x86 -Dsign=C 
+                </pre>
+                </p>
+
+            </li>
+        </ol>
+
         <h4>0.3 Build</h4>
 
         <p>
