@@ -9,10 +9,10 @@
 #define NAME "bandwidth"
 #define BANDWIDTH_MIN  "0"
 #define BANDWIDTH_MAX  "99999"
-#define BANDWIDTH_DEFAULT 10
+#define BANDWIDTH_DEFAULT 100
 #define QUEUESIZE_MIN  "0"
 #define QUEUESIZE_MAX  "99999"
-#define QUEUESIZE_DEFAULT 10
+#define QUEUESIZE_DEFAULT 100
 
 //---------------------------------------------------------------------
 // rate stats
@@ -145,8 +145,7 @@ static void bandwidthCloseDown(PacketNode *head, PacketNode *tail) {
 static short bandwidthProcess(PacketNode *head, PacketNode* tail) {
     int limit = bandwidthLimit * 1024;
 
-	//	allow 0 limit which should drop all
-	if (limit < 0 || rateStats == NULL) {
+	if (rateStats == NULL) {
 		return 0;
 	}
 
@@ -173,8 +172,8 @@ static short bandwidthProcess(PacketNode *head, PacketNode* tail) {
         } else {
             crate_stats_update(rateStats, size, now_ts);
         }
-        queueSizeInBytes -= queueTail->prev->packetLen;
-        insertAfter(popNode(queueTail->prev), head);
+        queueSizeInBytes -= pac->packetLen;
+        insertAfter(popNode(pac), head);
     }
 
     int dropped = 0;
@@ -186,6 +185,8 @@ static short bandwidthProcess(PacketNode *head, PacketNode* tail) {
         freeNode(popNode(pac));
         ++dropped;
     }
+
+    assert(queueSizeInBytes >= 0);
 
     return dropped > 0 || !isQueueEmpty();
 }
