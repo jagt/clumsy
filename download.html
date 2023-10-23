@@ -32,12 +32,11 @@
         <h4>Releases</h4>
         <p><strong>Notice: clumsy only support Windows Vista, Windows 7 and above. 64bit Windows users are strongly recommanded to download the 64bit build.</strong></p>
 
-        <p>0.3 RC4 - See <a href="https://github.com/jagt/clumsy/releases/tag/0.3rc4">here</a></p>
-
-        <p>0.2 - Updated WinDivert to 1.1.7.</p>
+        <p>0.3</p>
         <ul class="textlist">
-            <li>32bit: <a href="https://github.com/jagt/clumsy/releases/download/0.2/clumsy-0.2-win32.zip">clumsy-0.2-win32.zip</a> (MD5:9aab0d257661a4f75831a7186254725b)</li>
-            <li>64bit: <a href="https://github.com/jagt/clumsy/releases/download/0.2/clumsy-0.2-win64.zip">clumsy-0.2-win64.zip</a> (MD5:c5117edad320930d14d18c1cac2a4ccd)</li>
+            <li>32bit: <a href="https://github.com/jagt/clumsy/releases/download/0.3/clumsy-0.3-win32-a.zip">clumsy-0.3-win32-a.zip</a></li>
+            <li>64bit: <a href="https://github.com/jagt/clumsy/releases/download/0.3/clumsy-0.3-win64-a.zip">clumsy-0.3-win64-a.zip</a></li>
+            <il>See other binaries <a href="https://github.com/jagt/clumsy/releases/tag/0.3">here</a>.</il>
         </ul>
 
         <h4>Install</h4>
@@ -47,9 +46,9 @@
 
         <h4>Build</h4>
 
-        <h4>0.3 Zig Build</h4>
+        <h4>0.3</h4>
 
-        With 0.3 we've also setup clumsy to be built with <a href="https://ziglang.org">Zig</a> and it's how we build the shipping binaries.
+        With 0.3 we've setup clumsy to be built with <a href="https://ziglang.org">Zig</a> and it's how we build the shipping binaries.
 
         <ol>
             <li>Download a copy of <a href="https://ziglang.org/download/#release-0.9.1">zig 0.9.1 here</a></li>
@@ -70,84 +69,6 @@ zig build -Dconf=Ship -Darch=x86 -Dsign=C
 
             </li>
         </ol>
-
-        <h4>0.3 Build</h4>
-
-        <p>
-            <p>
-                Prerequisites
-                <ul>
-                    <li>git</li>
-                    <li><a href="https://github.com/bkaradzic/bx/blob/51f25ba638b9cb35eb2ac078f842a4bed0746d56/tools/bin/windows/genie.exe">genie</a> - for build generation</li>
-                    <li>Visual Studio 2019 - for debug builds and devlopment</li>
-                    <li><a href="https://www.msys2.org/">MSYS2</a> - for release builds</li>
-                </ul>
-            </p>
-
-            <p>
-                For development we'll generate VS2019 solutions with genie and it should just work:
-
-            <pre>
-git clone https://github.com/jagt/clumsy.git 
-cd clumsy
-genie vs2019
-            </pre>
-
-            <p>
-                Then open generated solution under <code>build</code> folder.
-            </p>
-
-            <p>
-                For building binaries that ship to users we choose to use the MSYS2 toolchain. After installation you'll need to install clang for 32/64 builds in the MSYS2 console.
-            </p>
-
-            <pre>
-pacman -Syu
-pacman -S make mingw-w64-x86_64-clang mingw-w64-i686-clang
-            </pre>
-
-            <p>
-                Say we have MSYS2 installed at <code>C:\msys2</code>. We'll need to setup correct path for 32/64bit builds seperately:
-            </p>
-
-            <pre>
-git clone https://github.com/jagt/clumsy.git 
-cd clumsy
-genie gmake
-
-set PATH=C:/msys64/mingw64/bin;C:/msys64/usr/bin/                
-make -C build config=release64
-
-set PATH=C:/msys64/mingw32/bin;C:/msys64/usr/bin/
-make -C build config=release32
-            </pre>
-
-        </p>
-
-        <p>It should produce builds that has minimal dependencies and works everywhere.</p>
-
-        <h4>0.2 Build</h4>
-
-        <p>
-            If you have Visual Studio 2012 or TDM-GCC 4.8.1 installed then building is rather easy. Currently no other environment is supported.
-        </p>
-        <p>
-            Clone the <a href="https://github.com/jagt/clumsy">repository</a>. Then you'll need <a href="http://industriousone.com/premake/download">premake 4.4-beta5</a> to build the solution or makefiles. premake currently can only generate VS2010 solution file. Open it in VS2012 and choose upgrade works fine. All external dependencies are included in the repo, so it should build out of the box.
-            <pre>
-git clone https://github.com/jagt/clumsy.git 
-premake4 vs2010
-premake4 gmake
-            </pre>
-        </p>
-        <p>
-            If you choose to build using VS2012, remember the runtime <strong>MUST</strong> be dynamically linked. This is due to provided library binaries are using dynamic runtime. This means if you want to distribute your builds, the user needs to install <a href="http://www.microsoft.com/en-us/download/details.aspx?id=30679">VS2012 runtime</a>. It is recommended to use the awesome <a href="http://tdm-gcc.tdragon.net/">TDM64-GCC 4.8.1</a> to build the project. It would generate binaries without other dependencies execpt those are included here. This is also how the provided clumsy binaries above are built.
-            <pre>
-mingw32-make -C build CC=gcc config=debug32
-mingw32-make -C build CC=gcc config=debug64
-mingw32-make -C build CC=gcc config=release32
-mingw32-make -C build CC=gcc config=release64
-            </pre>
-        </p>
 
         <h4>Acknowledgements</h4>
         <p>
