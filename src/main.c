@@ -331,13 +331,6 @@ static int uiOnDialogShow(Ihandle *ih, int state) {
     SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM)icon);
     SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LPARAM)icon);
 
-    exit = checkIsRunning();
-    if (exit) {
-        MessageBox(hWnd, (LPCSTR)"Theres' already an instance of clumsy running.",
-            (LPCSTR)"Aborting", MB_OK);
-        return IUP_CLOSE;
-    }
-
 #ifdef _WIN32
     exit = check32RunningOn64(hWnd);
     if (exit) {
@@ -347,14 +340,25 @@ static int uiOnDialogShow(Ihandle *ih, int state) {
 
     // try elevate and decides whether to exit
     exit = tryElevate(hWnd, parameterized);
+    if (exit) {
+        return IUP_CLOSE;
+    }
 
-    if (!exit && parameterized) {
+    if (parameterized) {
         setFromParameter(filterText, "VALUE", "filter");
         LOG("is parameterized, start filtering upon execution.");
         uiStartCb(filterButton);
     }
+    
 
-    return exit ? IUP_CLOSE : IUP_DEFAULT;
+    exit = checkIsRunning();
+    if (exit) {
+        MessageBox(hWnd, (LPCSTR)"Theres' already an instance of clumsy running.",
+            (LPCSTR)"Aborting", MB_OK);
+        return IUP_CLOSE;
+    }
+
+    return IUP_DEFAULT;
 }
 
 static int uiStartCb(Ihandle *ih) {
