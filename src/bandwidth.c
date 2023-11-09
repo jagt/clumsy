@@ -29,9 +29,16 @@ typedef struct {
 	uint32_t *array_sample;
 } CRateStats;
 
-static PacketNode queueHeadNode = {0}, queueTailNode = {0};
-static PacketNode *queueHead = &queueHeadNode, *queueTail = &queueTailNode;
-static int queueSizeInBytes = 0;
+typedef struct {
+    PacketNode queueHeadNode;
+    PacketNode queueTailNode;
+    PacketNode *queueHead;
+    PacketNode *queueTail;
+    int queueSizeInBytes;
+    CRateStats *rateStats;
+} CRateLimiter;
+
+static CRateLimiter inboundRateLimiter = {0}, outboundRateLimiter = {0};
 
 CRateStats* crate_stats_new(int window_size, float scale);
 
@@ -56,11 +63,10 @@ static volatile short bandwidthEnabled = 0,
 static volatile short maxQueueSizeInKBytes = 0;
 
 static volatile LONG bandwidthLimit = BANDWIDTH_DEFAULT; 
-static CRateStats *rateStats = NULL;
 
-static INLINE_FUNCTION short isQueueEmpty() {
-    short ret = queueHead->next == queueTail;
-    if (ret) assert(queueSizeInBytes == 0);
+static INLINE_FUNCTION short isQueueEmpty(CRateLimiter *rateLimiter) {
+    short ret = rateLimiter->queueHead->next == rateLimiter->queueTail;
+    if (ret) assert(rateLimiter->queueSizeInBytes == 0);
     return ret;
 }
 
@@ -105,36 +111,55 @@ static Ihandle* bandwidthSetupUI() {
     return bandwidthControlsBox;
 }
 
-static void bandwidthStartUp() {
-	if (queueHead->next == NULL && queueTail->next == NULL) {
-        queueHead->next = queueTail;
-        queueTail->prev = queueHead;
-        queueSizeInBytes = 0;
+static void initRateLimiter(CRateLimiter *rateLimiter) {
+    rateLimiter->queueHead = &rateLimiter->queueHeadNode;
+    rateLimiter->queueTail = &rateLimiter->queueTailNode;
+
+    if (rateLimiter->queueHead->next == NULL && rateLimiter->queueTail->next == NULL) {
+        rateLimiter->queueHead->next = rateLimiter->queueTail;
+        rateLimiter->queueTail->prev = rateLimiter->queueHead;
+        rateLimiter->queueSizeInBytes = 0;
     } else {
-        assert(isQueueEmpty());
+        assert(isQueueEmpty(rateLimiter));
     }
 
-	if (rateStats) crate_stats_delete(rateStats);
-	rateStats = crate_stats_new(1000, 1000);
+	if (rateLimiter->rateStats) crate_stats_delete(rateLimiter->rateStats);
+	rateLimiter->rateStats = crate_stats_new(1000, 1000);
+}
+
+static int uninitRateLimiter(CRateLimiter *rateLimiter, PacketNode *head, PacketNode *tail) {
+    PacketNode *oldLast = tail->prev;
+    UNREFERENCED_PARAMETER(head);
+    // flush all buffered packets
+    int packetCnt = 0;
+    while(!isQueueEmpty(rateLimiter)) {
+        rateLimiter->queueSizeInBytes -= rateLimiter->queueTail->prev->packetLen;
+        insertAfter(popNode(rateLimiter->queueTail->prev), oldLast);
+        ++packetCnt;
+    }
+
+    if (rateLimiter->rateStats) {
+        crate_stats_delete(rateLimiter->rateStats);
+        rateLimiter->rateStats = NULL;
+    }
+
+    return packetCnt;
+}
+
+static void bandwidthStartUp() {
+	initRateLimiter(&inboundRateLimiter);
+    initRateLimiter(&outboundRateLimiter);
     startTimePeriod();
     LOG("bandwidth enabled");
 }
 
 static void bandwidthCloseDown(PacketNode *head, PacketNode *tail) {
-    PacketNode *oldLast = tail->prev;
-    UNREFERENCED_PARAMETER(head);
-    // flush all buffered packets
     int packetCnt = 0;
-    while(!isQueueEmpty()) {
-        queueSizeInBytes -= queueTail->prev->packetLen;
-        insertAfter(popNode(queueTail->prev), oldLast);
-        ++packetCnt;
-    }
-    LOG("Closing down bandwidth, flushing %d packets", packetCnt);
+    packetCnt = uninitRateLimiter(&inboundRateLimiter, head, tail);
+    LOG("Closing down bandwidth, flushing inbound %d packets", packetCnt);
+    packetCnt = uninitRateLimiter(&outboundRateLimiter, head, tail);
+    LOG("Closing down bandwidth, flushing outbound %d packets", packetCnt);
     endTimePeriod();
-
-	if (rateStats) crate_stats_delete(rateStats);
-	rateStats = NULL;
     LOG("bandwidth disabled");
 }
 
@@ -142,53 +167,66 @@ static void bandwidthCloseDown(PacketNode *head, PacketNode *tail) {
 //---------------------------------------------------------------------
 // process
 //---------------------------------------------------------------------
-static short bandwidthProcess(PacketNode *head, PacketNode* tail) {
+static int rateLimiterProcess(CRateLimiter *rateLimiter, PacketNode *head, PacketNode* tail) {
+    PacketNode *pac;
+    DWORD now_ts = timeGetTime();
     int limit = bandwidthLimit * 1024;
 
-	if (rateStats == NULL) {
+    while (!isQueueEmpty(rateLimiter)) {
+        pac = rateLimiter->queueTail->prev;
+        // chance in range of [0, 10000]
+        int rate = crate_stats_calculate(rateLimiter->rateStats, now_ts);
+        int size = pac->packetLen;
+        if (rate + size > limit) {
+            break;
+        } else {
+            crate_stats_update(rateLimiter->rateStats, size, now_ts);
+        }
+        rateLimiter->queueSizeInBytes -= pac->packetLen;
+        insertAfter(popNode(pac), head);
+    }
+
+    int dropped = 0;
+    while (rateLimiter->queueSizeInBytes > maxQueueSizeInKBytes * 1024 && !isQueueEmpty(rateLimiter)) {
+        pac = rateLimiter->queueHead->next;
+        LOG("dropped with bandwidth %dKB/s, direction %s",
+            (int)bandwidthLimit, pac->addr.Outbound ? "OUTBOUND" : "INBOUND");
+        rateLimiter->queueSizeInBytes -= pac->packetLen;
+        freeNode(popNode(pac));
+        ++dropped;
+    }
+
+    assert(rateLimiter->queueSizeInBytes >= 0);
+
+    return dropped;
+}
+
+static short bandwidthProcess(PacketNode *head, PacketNode* tail) {
+	if (inboundRateLimiter.rateStats == NULL || outboundRateLimiter.rateStats == NULL) {
 		return 0;
 	}
 
     PacketNode *pac = tail->prev;
     while (pac != head) {
         if (checkDirection(pac->addr.Outbound, bandwidthInbound, bandwidthOutbound)) {
-            queueSizeInBytes += pac->packetLen;
-            insertAfter(popNode(pac), queueHead);
+            if (pac->addr.Outbound) {
+                outboundRateLimiter.queueSizeInBytes += pac->packetLen;
+                insertAfter(popNode(pac), outboundRateLimiter.queueHead);
+            } else {
+                inboundRateLimiter.queueSizeInBytes += pac->packetLen;
+                insertAfter(popNode(pac), inboundRateLimiter.queueHead);
+            }
             pac = tail->prev;
         } else {
             pac = pac->prev;
         }
     }
 
-    DWORD now_ts = timeGetTime();
+    int dropped;
+    dropped = rateLimiterProcess(&inboundRateLimiter, head, tail);
+    dropped += rateLimiterProcess(&outboundRateLimiter, head, tail);
 
-    while (!isQueueEmpty()) {
-        pac = queueTail->prev;
-        // chance in range of [0, 10000]
-        int rate = crate_stats_calculate(rateStats, now_ts);
-        int size = pac->packetLen;
-        if (rate + size > limit) {
-            break;
-        } else {
-            crate_stats_update(rateStats, size, now_ts);
-        }
-        queueSizeInBytes -= pac->packetLen;
-        insertAfter(popNode(pac), head);
-    }
-
-    int dropped = 0;
-    while (queueSizeInBytes > maxQueueSizeInKBytes * 1024 && !isQueueEmpty()) {
-        pac = queueHead->next;
-        LOG("dropped with bandwidth %dKB/s, direction %s",
-            (int)bandwidthLimit, pac->addr.Outbound ? "OUTBOUND" : "INBOUND");
-        queueSizeInBytes -= pac->packetLen;
-        freeNode(popNode(pac));
-        ++dropped;
-    }
-
-    assert(queueSizeInBytes >= 0);
-
-    return dropped > 0 || !isQueueEmpty();
+    return dropped > 0 || !isQueueEmpty(&inboundRateLimiter) || !isQueueEmpty(&outboundRateLimiter);
 }
 
 
