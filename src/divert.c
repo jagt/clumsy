@@ -8,12 +8,13 @@
 #define MAX_PACKETSIZE 0xFFFF
 #define READ_TIME_PER_STEP 3
 // FIXME does this need to be larger then the time to process the list?
-#define CLOCK_WAITMS 40
+#define CLOCK_WAITMS 5
 #define QUEUE_LEN 2 << 10
 #define QUEUE_TIME 2 << 9 
 
 static HANDLE divertHandle;
 static volatile short stopLooping;
+static volatile DWORD lastScheduleTime = 0;
 static HANDLE loopThread, clockThread, mutex;
 
 static DWORD divertReadLoop(LPVOID arg);
@@ -237,7 +238,7 @@ static void divertConsumeStep() {
 
 // periodically try to consume packets to keep the network responsive and not blocked by recv
 static DWORD divertClockLoop(LPVOID arg) {
-    DWORD startTick, stepTick, waitResult;
+    DWORD startTick, waitResult;
     int ix;
 
     UNREFERENCED_PARAMETER(arg);
@@ -245,36 +246,36 @@ static DWORD divertClockLoop(LPVOID arg) {
     for(;;) {
         // use acquire as wait for yielding thread
         startTick = GetTickCount();
-        waitResult = WaitForSingleObject(mutex, CLOCK_WAITMS);
-        switch(waitResult) {
-            case WAIT_OBJECT_0:
-                /***************** enter critical region ************************/
-                divertConsumeStep();
-                /***************** leave critical region ************************/
-                if (!ReleaseMutex(mutex)) {
+        if (lastScheduleTime + CLOCK_WAITMS <= startTick) {
+            waitResult = WaitForSingleObject(mutex, CLOCK_WAITMS);
+            switch(waitResult) {
+                case WAIT_OBJECT_0:
+                    /***************** enter critical region ************************/
+                    divertConsumeStep();
+                    /***************** leave critical region ************************/
+                    if (!ReleaseMutex(mutex)) {
+                        InterlockedIncrement16(&stopLooping);
+                        LOG("Fatal: Failed to release mutex (%lu)", GetLastError());
+                        ABORT();
+                    }
+                    lastScheduleTime = GetTickCount();
+                    break;
+                case WAIT_TIMEOUT:
+                    // read loop is processing, so we can skip this run
+                    LOG("!!! Skipping one run");
+                    Sleep(CLOCK_WAITMS);
+                    break;
+                case WAIT_ABANDONED:
+                    LOG("Acquired abandoned mutex");
                     InterlockedIncrement16(&stopLooping);
-                    LOG("Fatal: Failed to release mutex (%lu)", GetLastError());
-                    ABORT();
-                }
-                // if didn't spent enough time, we sleep on it
-                stepTick = GetTickCount() - startTick;
-                if (stepTick < CLOCK_WAITMS) {
-                    Sleep(CLOCK_WAITMS - stepTick);
-                }
-                break;
-            case WAIT_TIMEOUT:
-                // read loop is processing, so we can skip this run
-                LOG("!!! Skipping one run");
-                Sleep(CLOCK_WAITMS);
-                break;
-            case WAIT_ABANDONED:
-                LOG("Acquired abandoned mutex");
-                InterlockedIncrement16(&stopLooping);
-                break;
-            case WAIT_FAILED:
-                LOG("Acquire failed (%lu)", GetLastError());
-                InterlockedIncrement16(&stopLooping);
-                break;
+                    break;
+                case WAIT_FAILED:
+                    LOG("Acquire failed (%lu)", GetLastError());
+                    InterlockedIncrement16(&stopLooping);
+                    break;
+            }
+        } else {
+            Sleep(CLOCK_WAITMS - (startTick - lastScheduleTime));
         }
 
         // need to get the lock here
@@ -364,6 +365,7 @@ static DWORD divertReadLoop(LPVOID arg) {
                 pnode = createNode(packetBuf, readLen, &addrBuf);
                 appendNode(pnode);
                 divertConsumeStep();
+                lastScheduleTime = GetTickCount();
                 /***************** leave critical region ************************/
                 if (!ReleaseMutex(mutex)) {
                     LOG("Fatal: Failed to release mutex (%lu)", GetLastError());
