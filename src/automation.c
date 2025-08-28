@@ -36,8 +36,6 @@ typedef struct {
     DWORD interval; // repeat interval in seconds
 } AutomationScript;
 
-// UI elements that should be hidden when automation is disabled
-static Ihandle *automationControlsBox;
 static Ihandle *enabledCheckbox, *scriptList, *loadScriptButton;
 static Ihandle *scriptEditor, *saveScriptButton, *runScriptButton;
 static Ihandle *repeatCheckbox, *intervalInput;
@@ -53,46 +51,6 @@ static int scriptCount = 0;
 static HANDLE scriptThread = NULL;
 static volatile BOOL scriptRunning = FALSE;
 static volatile BOOL stopScript = FALSE;
-
-// Automation enabled callback
-static int automationEnabledCallback(Ihandle *ih, int state) {
-    UNREFERENCED_PARAMETER(state);
-    int enabled = IupGetInt(ih, "VALUE");
-    
-    // Show/hide automation controls based on enabled state
-    if (enabled) {
-        IupSetAttribute(scriptList, "VISIBLE", "YES");
-        IupSetAttribute(loadScriptButton, "VISIBLE", "YES");
-        IupSetAttribute(saveScriptButton, "VISIBLE", "YES");
-        IupSetAttribute(scriptEditor, "VISIBLE", "YES");
-        IupSetAttribute(runScriptButton, "VISIBLE", "YES");
-        IupSetAttribute(progressBar, "VISIBLE", "YES");
-        IupSetAttribute(statusLabel, "VISIBLE", "YES");
-        IupSetAttribute(repeatCheckbox, "VISIBLE", "YES");
-        IupSetAttribute(intervalInput, "VISIBLE", "YES");
-    } else {
-        IupSetAttribute(scriptList, "VISIBLE", "NO");
-        IupSetAttribute(loadScriptButton, "VISIBLE", "NO");
-        IupSetAttribute(saveScriptButton, "VISIBLE", "NO");
-        IupSetAttribute(scriptEditor, "VISIBLE", "NO");
-        IupSetAttribute(runScriptButton, "VISIBLE", "NO");
-        IupSetAttribute(progressBar, "VISIBLE", "NO");
-        IupSetAttribute(statusLabel, "VISIBLE", "NO");
-        IupSetAttribute(repeatCheckbox, "VISIBLE", "NO");
-        IupSetAttribute(intervalInput, "VISIBLE", "NO");
-        
-        // Stop any running script when disabling
-        if (scriptRunning) {
-            stopScript = TRUE;
-        }
-    }
-    
-    // Update the parent container
-    IupRefresh(automationControlsBox);
-    
-    // Call the standard sync function
-    return uiSyncToggle(ih, state);
-}
 
 // Built-in script templates
 static const char* scriptTemplates[] = {
@@ -414,7 +372,7 @@ static int scriptListCallback(Ihandle *ih, char *text, int item, int state) {
 }
 
 static Ihandle* automationSetupUI() {
-    automationControlsBox = IupVbox(
+    Ihandle *automationControlsBox = IupVbox(
         IupHbox(
             enabledCheckbox = IupToggle("Enable Automation", NULL),
             repeatCheckbox = IupToggle("Repeat", NULL),
@@ -470,7 +428,7 @@ static Ihandle* automationSetupUI() {
     IupSetAttribute(intervalInput, INTEGER_MAX, "3600");
 
     // Setup checkboxes
-    IupSetCallback(enabledCheckbox, "ACTION", (Icallback)automationEnabledCallback);
+    IupSetCallback(enabledCheckbox, "ACTION", (Icallback)uiSyncToggle);
     IupSetAttribute(enabledCheckbox, SYNCED_VALUE, (char*)&automationEnabled);
 
     IupSetCallback(repeatCheckbox, "ACTION", (Icallback)uiSyncToggle);
@@ -500,19 +458,6 @@ static Ihandle* automationSetupUI() {
         setFromParameter(enabledCheckbox, "VALUE", NAME"-enabled");
         setFromParameter(repeatCheckbox, "VALUE", NAME"-repeat");
         setFromParameter(intervalInput, "VALUE", NAME"-interval");
-    }
-
-    // Initially hide automation controls if not enabled
-    if (!automationEnabled) {
-        IupSetAttribute(scriptList, "VISIBLE", "NO");
-        IupSetAttribute(loadScriptButton, "VISIBLE", "NO");
-        IupSetAttribute(saveScriptButton, "VISIBLE", "NO");
-        IupSetAttribute(scriptEditor, "VISIBLE", "NO");
-        IupSetAttribute(runScriptButton, "VISIBLE", "NO");
-        IupSetAttribute(progressBar, "VISIBLE", "NO");
-        IupSetAttribute(statusLabel, "VISIBLE", "NO");
-        IupSetAttribute(repeatCheckbox, "VISIBLE", "NO");
-        IupSetAttribute(intervalInput, "VISIBLE", "NO");
     }
 
     return automationControlsBox;
