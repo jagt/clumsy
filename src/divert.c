@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <memory.h>
+#include <Windows.h>
 #include <winsock2.h>
 #include <Ws2tcpip.h>
 #include "windivert.h"

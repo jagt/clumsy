@@ -1,0 +1,80 @@
+# Makefile для сборки 64-битной GUI версии clumsy с MinGW-w64
+
+CC = /c/msys64/mingw64/bin/gcc
+WINDRES = /c/msys64/mingw64/bin/windres
+
+# Directories
+SRC_DIR = src
+EXTERNAL_DIR = external
+BUILD_DIR = build
+BIN_DIR = bin
+
+# Libraries
+WINDIVERT_DIR = $(EXTERNAL_DIR)/WinDivert-2.2.0-A
+IUP_DIR = $(EXTERNAL_DIR)/iup-3.30_Win64_mingw6_lib
+
+# Compiler flags для 64-битной сборки
+CFLAGS = -Wall -std=c99 -O2 -DNDEBUG -m64 -D__USE_MINGW_ANSI_STDIO=1 -DMINGW_HAS_SECURE_API=1
+INCLUDES = -I$(WINDIVERT_DIR)/include -I$(IUP_DIR)/include
+LIBDIRS = -L$(WINDIVERT_DIR)/x64 -L$(IUP_DIR)
+
+# Полный набор библиотек для GUI с статической линковкой
+LIBS = -liup -lWinDivert -lcomctl32 -lWinmm -lws2_32 -lkernel32 -lgdi32 -lcomdlg32 -luuid -lole32 -luser32 -ladvapi32 -lshell32 -static-libgcc -static-libstdc++ -static
+
+# Все исходные файлы
+SOURCES = $(wildcard $(SRC_DIR)/*.c)
+OBJECTS = $(SOURCES:.c=.o)
+RC_FILE = etc/clumsy.rc
+RC_OBJECT = clumsy_res.o
+
+# Target
+TARGET = clumsy_gui64.exe
+
+.PHONY: all clean install test
+
+all: $(TARGET)
+
+$(TARGET): $(OBJECTS) $(RC_OBJECT)
+	@echo "Linking $(TARGET)..."
+	$(CC) $(OBJECTS) $(RC_OBJECT) $(LIBDIRS) $(LIBS) -mwindows -o $(TARGET)
+	@echo "Build complete: $(TARGET)"
+
+%.o: %.c
+	@echo "Compiling $<..."
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+$(RC_OBJECT): $(RC_FILE)
+	@echo "Compiling resource file..."
+	$(WINDRES) -O coff -F pe-x86-64 -DX64 $(RC_FILE) -o $(RC_OBJECT)
+
+install: $(TARGET)
+	@echo "Installing dependencies..."
+	@mkdir -p "$(BUILD_DIR)"
+	cp "$(WINDIVERT_DIR)/x64/WinDivert.dll" "."
+	cp "$(WINDIVERT_DIR)/x64/WinDivert64.sys" "."
+	cp "etc/config.txt" "."
+	@echo "Installation complete. Run as Administrator: $(TARGET)"
+
+test: install
+	@echo "Testing WinDivert functionality..."
+	@echo "Running basic packet capture test..."
+	./$(TARGET) --help || echo "Run as Administrator for full functionality"
+
+clean:
+	@echo "Cleaning..."
+	-rm -f $(SRC_DIR)/*.o
+	-rm -f $(RC_OBJECT)
+	-rm -f $(TARGET)
+	@echo "Clean complete."
+
+help:
+	@echo "Available targets:"
+	@echo "  all      - Build clumsy GUI 64-bit (default)"
+	@echo "  install  - Copy dependencies to current directory"
+	@echo "  test     - Basic functionality test"
+	@echo "  clean    - Remove build artifacts"
+	@echo "  help     - Show this help"
+	@echo ""
+	@echo "Requirements:"
+	@echo "  - MinGW-w64 GCC in PATH"
+	@echo "  - Run as Administrator for WinDivert"

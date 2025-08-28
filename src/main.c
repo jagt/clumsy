@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <ctype.h>
 #include <Windows.h>
 #include "iup.h"
 #include "common.h"
@@ -16,6 +17,13 @@ Module* modules[MODULE_CNT] = {
     &tamperModule,
     &resetModule,
 	&bandwidthModule,
+	&lengthModule,
+	&tlsModule,
+	&protocolModule,
+	&statsModule,
+	&profilesModule,
+	&loggingModule,
+	&automationModule,
 };
 
 volatile short sendState = SEND_STATUS_NONE;

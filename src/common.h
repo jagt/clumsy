@@ -8,7 +8,7 @@
 #define MSG_BUFSIZE 512
 #define FILTER_BUFSIZE 1024
 #define NAME_SIZE 16
-#define MODULE_CNT 8
+#define MODULE_CNT 15
 #define ICON_UPDATE_MS 200
 
 #define CONTROLS_HANDLE "__CONTROLS_HANDLE"
@@ -146,6 +146,13 @@ extern Module dupModule;
 extern Module tamperModule;
 extern Module resetModule;
 extern Module bandwidthModule;
+extern Module lengthModule;
+extern Module tlsModule;
+extern Module protocolModule;
+extern Module statsModule;
+extern Module profilesModule;
+extern Module loggingModule;
+extern Module automationModule;
 extern Module* modules[MODULE_CNT]; // all modules in a list
 
 // status for sending packets, 
