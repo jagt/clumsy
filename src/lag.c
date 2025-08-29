@@ -29,14 +29,15 @@ static INLINE_FUNCTION short isBufEmpty() {
 
 static Ihandle *lagSetupUI() {
     Ihandle *lagControlsBox = IupHbox(
-        inboundCheckbox = IupToggle("Inbound", NULL),
-        outboundCheckbox = IupToggle("Outbound", NULL),
-        IupLabel("Delay(ms):"),
+        inboundCheckbox = IupToggle("In", NULL),
+        outboundCheckbox = IupToggle("Out", NULL),
+        IupLabel("Delay:"),
         timeInput = IupText(NULL),
+        IupLabel("ms"),
         NULL
-        );
+    );
 
-    IupSetAttribute(timeInput, "VISIBLECOLUMNS", "4");
+    IupSetAttribute(timeInput, "VISIBLECOLUMNS", "3");
     IupSetAttribute(timeInput, "VALUE", STR(LAG_DEFAULT));
     IupSetCallback(timeInput, "VALUECHANGED_CB", uiSyncInteger);
     IupSetAttribute(timeInput, SYNCED_VALUE, (char*)&lagTime);
@@ -103,6 +104,8 @@ static short lagProcess(PacketNode *head, PacketNode *tail) {
         if (currentTime > pac->timestamp + lagTime) {
             insertAfter(popNode(bufTail->prev), head); // sending queue is already empty by now
             --bufSize;
+            // Log the packet action when it's sent with lag
+            logPacketAction(pac, "LAG", "lag");
             LOG("Send lagged packets.");
         } else {
             LOG("Sent some lagged packets, still have %d in buf", bufSize);

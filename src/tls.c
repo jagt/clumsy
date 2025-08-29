@@ -99,34 +99,37 @@ static BOOL isTLSPort(PWINDIVERT_TCPHDR tcpHeader) {
 static Ihandle* tlsSetupUI() {
     Ihandle *tlsControlsBox = IupVbox(
         IupHbox(
-            inboundCheckbox = IupToggle("Inbound", NULL),
-            outboundCheckbox = IupToggle("Outbound", NULL),
-            sequenceAwareCheckbox = IupToggle("Sequence Aware", NULL),
+            inboundCheckbox = IupToggle("In", NULL),
+            outboundCheckbox = IupToggle("Out", NULL),
+            sequenceAwareCheckbox = IupToggle("Seq Aware", NULL),
             NULL
         ),
         IupHbox(
-            IupLabel("Handshake Protection(%):"),
+            IupLabel("Handshake:"),
             handshakeProtectionInput = IupText(NULL),
-            IupLabel("Data Loss Rate(%):"),
+            IupLabel("%"),
+            IupLabel("Data Loss:"),
             dataLossRateInput = IupText(NULL),
+            IupLabel("%"),
             NULL
         ),
         IupHbox(
-            IupLabel("Retransmission Delay(ms):"),
+            IupLabel("Delay:"),
             retransmissionDelayInput = IupText(NULL),
+            IupLabel("ms"),
             NULL
         ),
         NULL
     );
 
     // Setup handshake protection input
-    IupSetAttribute(handshakeProtectionInput, "VISIBLECOLUMNS", "4");
+    IupSetAttribute(handshakeProtectionInput, "VISIBLECOLUMNS", "3");
     IupSetAttribute(handshakeProtectionInput, "VALUE", "95.0");
     IupSetCallback(handshakeProtectionInput, "VALUECHANGED_CB", uiSyncChance);
     IupSetAttribute(handshakeProtectionInput, SYNCED_VALUE, (char*)&handshakeProtection);
 
     // Setup data loss rate input  
-    IupSetAttribute(dataLossRateInput, "VISIBLECOLUMNS", "4");
+    IupSetAttribute(dataLossRateInput, "VISIBLECOLUMNS", "3");
     IupSetAttribute(dataLossRateInput, "VALUE", "5.0");
     IupSetCallback(dataLossRateInput, "VALUECHANGED_CB", uiSyncChance);
     IupSetAttribute(dataLossRateInput, SYNCED_VALUE, (char*)&dataLossRate);

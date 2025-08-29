@@ -8,7 +8,7 @@
 #define MSG_BUFSIZE 512
 #define FILTER_BUFSIZE 1024
 #define NAME_SIZE 16
-#define MODULE_CNT 15
+#define MODULE_CNT 10
 #define ICON_UPDATE_MS 200
 
 #define CONTROLS_HANDLE "__CONTROLS_HANDLE"
@@ -201,3 +201,8 @@ extern BOOL parameterized;
 void setFromParameter(Ihandle *ih, const char *field, const char *key);
 BOOL parseArgs(int argc, char* argv[]);
 
+// Statistics update function
+void updateStatistics(PacketNode* pac, BOOL wasDropped, BOOL wasModified);
+
+// Logging function for packet actions
+void logPacketAction(PacketNode* pac, const char* action, const char* module);

@@ -18,14 +18,15 @@ static Ihandle* dupSetupUI() {
     Ihandle *dupControlsBox = IupHbox(
         IupLabel("Count:"),
         countInput = IupText(NULL),
-        inboundCheckbox = IupToggle("Inbound", NULL),
-        outboundCheckbox = IupToggle("Outbound", NULL),
-        IupLabel("Chance(%):"),
+        inboundCheckbox = IupToggle("In", NULL),
+        outboundCheckbox = IupToggle("Out", NULL),
+        IupLabel("Chance:"),
         chanceInput = IupText(NULL),
+        IupLabel("%"),
         NULL
-        );
+    );
 
-    IupSetAttribute(chanceInput, "VISIBLECOLUMNS", "4");
+    IupSetAttribute(chanceInput, "VISIBLECOLUMNS", "3");
     IupSetAttribute(chanceInput, "VALUE", "10.0");
     IupSetCallback(chanceInput, "VALUECHANGED_CB", uiSyncChance);
     IupSetAttribute(chanceInput, SYNCED_VALUE, (char*)&chance);
@@ -34,7 +35,7 @@ static Ihandle* dupSetupUI() {
     IupSetCallback(outboundCheckbox, "ACTION", (Icallback)uiSyncToggle);
     IupSetAttribute(outboundCheckbox, SYNCED_VALUE, (char*)&dupOutbound);
     // sync count
-    IupSetAttribute(countInput, "VISIBLECOLUMNS", "3");
+    IupSetAttribute(countInput, "VISIBLECOLUMNS", "2");
     IupSetAttribute(countInput, "VALUE", STR(COPIES_COUNT));
     IupSetCallback(countInput, "VALUECHANGED_CB", (Icallback)uiSyncInteger);
     IupSetAttribute(countInput, SYNCED_VALUE, (char*)&count);
@@ -76,7 +77,11 @@ static short dupProcess(PacketNode *head, PacketNode *tail) {
             while (copies--) {
                 PacketNode *copy = createNode(pac->packet, pac->packetLen, &(pac->addr));
                 insertBefore(copy, pac); // must insertBefore or next packet is still pac
+                // Log the packet action for each duplicate
+                logPacketAction(copy, "DUPLICATE", "duplicate");
             }
+            // Log the original packet action
+            logPacketAction(pac, "DUPLICATE", "duplicate");
             duped = TRUE;
         }
         pac = pac->next;

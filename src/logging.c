@@ -43,6 +43,7 @@ static Ihandle *enabledCheckbox, *logLevelList, *logFormatList;
 static Ihandle *logFileInput, *browseButton, *maxSizeInput;
 static Ihandle *realTimeCheckbox, *autoExportCheckbox;
 static Ihandle *exportButton, *clearLogButton;
+static Ihandle *logDisplay; // Text area for displaying logs
 
 static volatile short loggingEnabled = 0;
 static volatile short logLevel = LOG_LEVEL_INFO;
@@ -56,6 +57,10 @@ static FILE* logFile = NULL;
 static CRITICAL_SECTION logMutex;
 static UINT32 packetCounter = 0;
 static UINT64 totalLogSize = 0;
+static Ihandle *logDisplay = NULL; // Reference to log display area
+
+// Forward declaration
+static void addLogToDisplay(const char* message);
 
 // Helper function to get timestamp string
 static void getTimestamp(char* buffer, size_t bufferSize) {
@@ -80,16 +85,19 @@ static const char* getProtocolName(UINT16 protocol) {
 
 // Log packet entry in specified format
 static void logPacketEntry(PacketLogEntry* entry) {
-    if (!logFile || !loggingEnabled) return;
+    if (!loggingEnabled) return;
     
     EnterCriticalSection(&logMutex);
     
     char timestamp[32];
     getTimestamp(timestamp, sizeof(timestamp));
     
+    // Format log message for UI display
+    char logMessage[512];
     switch (logFormat) {
         case LOG_FORMAT_TEXT:
-            fprintf(logFile, "[%s] ID:%u %s %s %u.%u.%u.%u:%u -> %u.%u.%u.%u:%u (%s) len:%u action:%s module:%s latency:%.2fms\n",
+            snprintf(logMessage, sizeof(logMessage), 
+                "[%s] ID:%u %s %s %u.%u.%u.%u:%u -> %u.%u.%u.%u:%u (%s) len:%u action:%s module:%s",
                 timestamp, entry->packetId,
                 entry->outbound ? "OUT" : "IN",
                 getProtocolName(entry->protocol),
@@ -98,11 +106,12 @@ static void logPacketEntry(PacketLogEntry* entry) {
                 (entry->dstIP >> 24) & 0xFF, (entry->dstIP >> 16) & 0xFF, (entry->dstIP >> 8) & 0xFF, entry->dstIP & 0xFF,
                 entry->dstPort,
                 getProtocolName(entry->protocol),
-                entry->packetLen, entry->action, entry->module, entry->latency);
+                entry->packetLen, entry->action, entry->module);
             break;
             
         case LOG_FORMAT_CSV:
-            fprintf(logFile, "%s,%u,%s,%s,%u.%u.%u.%u,%u,%u.%u.%u.%u,%u,%u,%s,%s,%.2f\n",
+            snprintf(logMessage, sizeof(logMessage),
+                "%s,%u,%s,%s,%u.%u.%u.%u,%u,%u.%u.%u.%u,%u,%u,%s,%s,%.2f",
                 timestamp, entry->packetId,
                 entry->outbound ? "OUT" : "IN",
                 getProtocolName(entry->protocol),
@@ -113,9 +122,10 @@ static void logPacketEntry(PacketLogEntry* entry) {
             break;
             
         case LOG_FORMAT_JSON:
-            fprintf(logFile, "{\"timestamp\":\"%s\",\"id\":%u,\"direction\":\"%s\",\"protocol\":\"%s\","
+            snprintf(logMessage, sizeof(logMessage),
+                "{\"timestamp\":\"%s\",\"id\":%u,\"direction\":\"%s\",\"protocol\":\"%s\","
                 "\"src_ip\":\"%u.%u.%u.%u\",\"src_port\":%u,\"dst_ip\":\"%u.%u.%u.%u\",\"dst_port\":%u,"
-                "\"length\":%u,\"action\":\"%s\",\"module\":\"%s\",\"latency\":%.2f}\n",
+                "\"length\":%u,\"action\":\"%s\",\"module\":\"%s\",\"latency\":%.2f}",
                 timestamp, entry->packetId,
                 entry->outbound ? "outbound" : "inbound",
                 getProtocolName(entry->protocol),
@@ -124,24 +134,73 @@ static void logPacketEntry(PacketLogEntry* entry) {
                 (entry->dstIP >> 24) & 0xFF, (entry->dstIP >> 16) & 0xFF, (entry->dstIP >> 8) & 0xFF, entry->dstIP & 0xFF,
                 entry->dstPort, entry->packetLen, entry->action, entry->module, entry->latency);
             break;
+            
+        default:
+            snprintf(logMessage, sizeof(logMessage), "[%s] Packet logged", timestamp);
+            break;
     }
     
-    fflush(logFile);
-    totalLogSize = ftell(logFile);
+    // Add to UI display
+    addLogToDisplay(logMessage);
     
-    // Check if log file exceeds maximum size
-    if (totalLogSize > (maxLogSizeMB * 1024 * 1024)) {
-        if (autoExport) {
-            // Create archived log file with timestamp
-            char archiveName[512];
-            snprintf(archiveName, sizeof(archiveName), "%s.%s.archive", logFilePath, timestamp);
-            fclose(logFile);
-            MoveFile(logFilePath, archiveName);
-            
-            // Create new log file
-            logFile = fopen(logFilePath, "w");
-            if (logFile && logFormat == LOG_FORMAT_CSV) {
-                fprintf(logFile, "timestamp,id,direction,protocol,src_ip,src_port,dst_ip,dst_port,length,action,module,latency\n");
+    // Also log to file if enabled
+    if (logFile) {
+        switch (logFormat) {
+            case LOG_FORMAT_TEXT:
+                fprintf(logFile, "[%s] ID:%u %s %s %u.%u.%u.%u:%u -> %u.%u.%u.%u:%u (%s) len:%u action:%s module:%s latency:%.2fms\n",
+                    timestamp, entry->packetId,
+                    entry->outbound ? "OUT" : "IN",
+                    getProtocolName(entry->protocol),
+                    (entry->srcIP >> 24) & 0xFF, (entry->srcIP >> 16) & 0xFF, (entry->srcIP >> 8) & 0xFF, entry->srcIP & 0xFF,
+                    entry->srcPort,
+                    (entry->dstIP >> 24) & 0xFF, (entry->dstIP >> 16) & 0xFF, (entry->dstIP >> 8) & 0xFF, entry->dstIP & 0xFF,
+                    entry->dstPort,
+                    getProtocolName(entry->protocol),
+                    entry->packetLen, entry->action, entry->module, entry->latency);
+                break;
+                
+            case LOG_FORMAT_CSV:
+                fprintf(logFile, "%s,%u,%s,%s,%u.%u.%u.%u,%u,%u.%u.%u.%u,%u,%u,%s,%s,%.2f\n",
+                    timestamp, entry->packetId,
+                    entry->outbound ? "OUT" : "IN",
+                    getProtocolName(entry->protocol),
+                    (entry->srcIP >> 24) & 0xFF, (entry->srcIP >> 16) & 0xFF, (entry->srcIP >> 8) & 0xFF, entry->srcIP & 0xFF,
+                    entry->srcPort,
+                    (entry->dstIP >> 24) & 0xFF, (entry->dstIP >> 16) & 0xFF, (entry->dstIP >> 8) & 0xFF, entry->dstIP & 0xFF,
+                    entry->dstPort, entry->packetLen, entry->action, entry->module, entry->latency);
+                break;
+                
+            case LOG_FORMAT_JSON:
+                fprintf(logFile, "{\"timestamp\":\"%s\",\"id\":%u,\"direction\":\"%s\",\"protocol\":\"%s\","
+                    "\"src_ip\":\"%u.%u.%u.%u\",\"src_port\":%u,\"dst_ip\":\"%u.%u.%u.%u\",\"dst_port\":%u,"
+                    "\"length\":%u,\"action\":\"%s\",\"module\":\"%s\",\"latency\":%.2f}\n",
+                    timestamp, entry->packetId,
+                    entry->outbound ? "outbound" : "inbound",
+                    getProtocolName(entry->protocol),
+                    (entry->srcIP >> 24) & 0xFF, (entry->srcIP >> 16) & 0xFF, (entry->srcIP >> 8) & 0xFF, entry->srcIP & 0xFF,
+                    entry->srcPort,
+                    (entry->dstIP >> 24) & 0xFF, (entry->dstIP >> 16) & 0xFF, (entry->dstIP >> 8) & 0xFF, entry->dstIP & 0xFF,
+                    entry->dstPort, entry->packetLen, entry->action, entry->module, entry->latency);
+                break;
+        }
+        
+        fflush(logFile);
+        totalLogSize = ftell(logFile);
+        
+        // Check if log file exceeds maximum size
+        if (totalLogSize > (maxLogSizeMB * 1024 * 1024)) {
+            if (autoExport) {
+                // Create archived log file with timestamp
+                char archiveName[512];
+                snprintf(archiveName, sizeof(archiveName), "%s.%s.archive", logFilePath, timestamp);
+                fclose(logFile);
+                MoveFile(logFilePath, archiveName);
+                
+                // Create new log file
+                logFile = fopen(logFilePath, "w");
+                if (logFile && logFormat == LOG_FORMAT_CSV) {
+                    fprintf(logFile, "timestamp,id,direction,protocol,src_ip,src_port,dst_ip,dst_port,length,action,module,latency\n");
+                }
             }
         }
     }
@@ -149,9 +208,9 @@ static void logPacketEntry(PacketLogEntry* entry) {
     LeaveCriticalSection(&logMutex);
 }
 
-// Log packet from processing pipeline
-static void logPacketFromNode(PacketNode* pac, const char* action, const char* module) {
-    if (logLevel < LOG_LEVEL_INFO) return;
+// Log packet from processing pipeline with action information
+void logPacketAction(PacketNode* pac, const char* action, const char* module) {
+    if (!loggingEnabled || logLevel < LOG_LEVEL_INFO) return;
     
     PacketLogEntry entry = {0};
     entry.timestamp = GetTickCount();
@@ -184,6 +243,11 @@ static void logPacketFromNode(PacketNode* pac, const char* action, const char* m
     }
     
     logPacketEntry(&entry);
+}
+
+// Log packet from processing pipeline (deprecated function for backward compatibility)
+static void logPacketFromNode(PacketNode* pac, const char* action, const char* module) {
+    logPacketAction(pac, action, module);
 }
 
 // Browse button callback
@@ -298,6 +362,7 @@ static Ihandle* loggingSetupUI() {
             clearLogButton = IupButton("Clear Log", NULL),
             NULL
         ),
+        logDisplay = IupText(NULL), // Add log display area
         NULL
     );
 
@@ -348,6 +413,14 @@ static Ihandle* loggingSetupUI() {
 
     IupSetCallback(autoExportCheckbox, "ACTION", (Icallback)uiSyncToggle);
     IupSetAttribute(autoExportCheckbox, SYNCED_VALUE, (char*)&autoExport);
+
+    // Setup log display area
+    IupSetAttribute(logDisplay, "MULTILINE", "YES");
+    IupSetAttribute(logDisplay, "READONLY", "YES");
+    IupSetAttribute(logDisplay, "EXPAND", "YES");
+    IupSetAttribute(logDisplay, "SIZE", "400x200");
+    IupSetAttribute(logDisplay, "FONT", "Courier, 9");
+    IupSetAttribute(logDisplay, "VALUE", "Logs will appear here...");
 
     // Setup buttons
     IupSetCallback(exportButton, "ACTION", (Icallback)exportButtonCallback);
@@ -400,10 +473,10 @@ static void loggingCloseDown(PacketNode *head, PacketNode *tail) {
 static short loggingProcess(PacketNode *head, PacketNode* tail) {
     if (!loggingEnabled || !realTimeLogging) return FALSE;
     
-    // Log all packets passing through
+    // Log all packets passing through with PASS action
     PacketNode *pac = head->next;
     while (pac != tail) {
-        logPacketFromNode(pac, "PASS", "logging");
+        logPacketAction(pac, "PASS", "main");
         pac = pac->next;
     }
     
@@ -421,3 +494,49 @@ Module loggingModule = {
     // runtime fields
     0, 0, NULL
 };
+
+// Function to add log message to UI display
+static void addLogToDisplay(const char* message) {
+    if (!logDisplay || !loggingEnabled) return;
+    
+    EnterCriticalSection(&logMutex);
+    
+    char* currentText = IupGetAttribute(logDisplay, "VALUE");
+    char newText[4096];
+    
+    // Limit the size of the log display to prevent memory issues
+    if (currentText && strlen(currentText) > 3000) {
+        // Keep only the last portion of the log
+        int len = strlen(currentText);
+        const char* truncated = currentText + len - 3000;
+        snprintf(newText, sizeof(newText), "%s\n%s", truncated, message);
+    } else if (currentText && strlen(currentText) > 0) {
+        snprintf(newText, sizeof(newText), "%s\n%s", currentText, message);
+    } else {
+        snprintf(newText, sizeof(newText), "%s", message);
+    }
+    
+    IupSetAttribute(logDisplay, "VALUE", newText);
+    IupSetAttribute(logDisplay, "CARET", "1000000"); // Scroll to bottom
+    
+    LeaveCriticalSection(&logMutex);
+}
+
+// Enhanced log function that also displays in UI
+static void logMessageToUI(const char* format, ...) {
+    char buffer[1024];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+    
+    // Add to UI display
+    addLogToDisplay(buffer);
+    
+    // Also log to file if enabled
+    if (logFile) {
+        fprintf(logFile, "%s\n", buffer);
+        fflush(logFile);
+        totalLogSize = ftell(logFile);
+    }
+}

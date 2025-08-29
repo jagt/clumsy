@@ -40,16 +40,15 @@ typedef struct {
     UINT32 byteRate;
 } NetworkStatistics;
 
-static Ihandle *enabledCheckbox, *displayModeList;
-static Ihandle *statsDisplay, *resetButton;
+static Ihandle *enabledCheckbox, *statsDisplay, *resetButton;
 
 static volatile short statsEnabled = 0;
-static volatile short displayMode = 0; // 0=Basic, 1=Detailed, 2=Protocols
+static volatile short displayMode = 1; // Always show detailed view
 static NetworkStatistics stats = {0};
 static CRITICAL_SECTION statsMutex;
 
 // Helper function to update statistics
-static void updateStatistics(PacketNode* pac, BOOL wasDropped, BOOL wasModified) {
+void updateStatistics(PacketNode* pac, BOOL wasDropped, BOOL wasModified) {
     EnterCriticalSection(&statsMutex);
     
     DWORD currentTime = GetTickCount();
@@ -113,48 +112,26 @@ static void updateStatistics(PacketNode* pac, BOOL wasDropped, BOOL wasModified)
     LeaveCriticalSection(&statsMutex);
 }
 
-// Format statistics for display
+// Format statistics for display - show all information on one panel
 static void formatStatistics(char* buffer, size_t bufferSize) {
     EnterCriticalSection(&statsMutex);
     
     DWORD runtime = (GetTickCount() - stats.startTime) / 1000; // Convert to seconds
     if (runtime == 0) runtime = 1; // Avoid division by zero
     
-    switch (displayMode) {
-        case 0: // Basic
-            snprintf(buffer, bufferSize,
-                "Runtime: %dm %ds | Packets: %I64u (↓%I64u) | Bytes: %I64u MB | Rate: %u pps",
-                (int)(runtime / 60), (int)(runtime % 60),
-                stats.totalPackets, stats.droppedPackets,
-                stats.totalBytes / (1024 * 1024),
-                stats.packetRate);
-            break;
-            
-        case 1: // Detailed
-            snprintf(buffer, bufferSize,
-                "IN: %I64u pkts (%I64u MB) | OUT: %I64u pkts (%I64u MB)\n"
-                "DROPPED: %I64u pkts (%I64u MB) | MODIFIED: %I64u pkts\n"
-                "RATE: %u pps, %u kBps | Runtime: %dm %ds",
-                stats.inboundPackets, stats.inboundBytes / (1024 * 1024),
-                stats.outboundPackets, stats.outboundBytes / (1024 * 1024),
-                stats.droppedPackets, stats.droppedBytes / (1024 * 1024),
-                stats.modifiedPackets,
-                stats.packetRate, stats.byteRate / 1024,
-                (int)(runtime / 60), (int)(runtime % 60));
-            break;
-            
-        case 2: // Protocols
-            snprintf(buffer, bufferSize,
-                "TCP: %I64u | UDP: %I64u | ICMP: %I64u | Other: %I64u\n"
-                "Total: %I64u packets (%I64u MB) in %dm %ds\n"
-                "Drop Rate: %.2f%% | Current Rate: %u pps",
-                stats.tcpPackets, stats.udpPackets, stats.icmpPackets, stats.otherPackets,
-                stats.totalPackets, stats.totalBytes / (1024 * 1024),
-                (int)(runtime / 60), (int)(runtime % 60),
-                stats.totalPackets > 0 ? (stats.droppedPackets * 100.0) / stats.totalPackets : 0.0,
-                stats.packetRate);
-            break;
-    }
+    // Show all statistics in a comprehensive format
+    snprintf(buffer, bufferSize,
+        "Runtime: %dm %ds | Total Packets: %I64u (Dropped: %I64u, Modified: %I64u)\n"
+        "Inbound: %I64u pkts (%I64u MB) | Outbound: %I64u pkts (%I64u MB)\n"
+        "Protocols - TCP: %I64u | UDP: %I64u | ICMP: %I64u | Other: %I64u\n"
+        "Current Rate: %u pps (%u kBps) | Drop Rate: %.2f%%",
+        (int)(runtime / 60), (int)(runtime % 60),
+        stats.totalPackets, stats.droppedPackets, stats.modifiedPackets,
+        stats.inboundPackets, stats.inboundBytes / (1024 * 1024),
+        stats.outboundPackets, stats.outboundBytes / (1024 * 1024),
+        stats.tcpPackets, stats.udpPackets, stats.icmpPackets, stats.otherPackets,
+        stats.packetRate, stats.byteRate / 1024,
+        stats.totalPackets > 0 ? (stats.droppedPackets * 100.0) / stats.totalPackets : 0.0);
     
     LeaveCriticalSection(&statsMutex);
 }
@@ -174,38 +151,18 @@ static int resetStatsCallback(Ihandle *ih) {
     return IUP_DEFAULT;
 }
 
-// Display mode change callback
-static int displayModeCallback(Ihandle *ih, char *text, int item, int state) {
-    UNREFERENCED_PARAMETER(ih);
-    UNREFERENCED_PARAMETER(text);
-    if (state == 1) {
-        displayMode = item - 1; // Convert from 1-based to 0-based
-        LOG("Display mode changed to: %d", displayMode);
-    }
-    return IUP_DEFAULT;
-}
+
 
 static Ihandle* statsSetupUI() {
     Ihandle *statsControlsBox = IupVbox(
         IupHbox(
             enabledCheckbox = IupToggle("Enable Statistics", NULL),
-            IupLabel("Display:"),
-            displayModeList = IupList(NULL),
             resetButton = IupButton("Reset", NULL),
             NULL
         ),
-        statsDisplay = IupLabel("Statistics will appear here..."),
+        statsDisplay = IupText(NULL),
         NULL
     );
-
-    // Setup display mode list
-    IupSetAttribute(displayModeList, "DROPDOWN", "YES");
-    IupSetAttribute(displayModeList, "VISIBLECOLUMNS", "12");
-    IupSetAttribute(displayModeList, "1", "Basic");
-    IupSetAttribute(displayModeList, "2", "Detailed");
-    IupSetAttribute(displayModeList, "3", "Protocols");
-    IupSetAttribute(displayModeList, "VALUE", "1");
-    IupSetCallback(displayModeList, "ACTION", (Icallback)displayModeCallback);
 
     // Setup reset button
     IupSetCallback(resetButton, "ACTION", (Icallback)resetStatsCallback);
@@ -215,14 +172,16 @@ static Ihandle* statsSetupUI() {
     IupSetCallback(enabledCheckbox, "ACTION", (Icallback)uiSyncToggle);
     IupSetAttribute(enabledCheckbox, SYNCED_VALUE, (char*)&statsEnabled);
 
-    // Setup display label
-    IupSetAttribute(statsDisplay, "EXPAND", "HORIZONTAL");
-    IupSetAttribute(statsDisplay, "ALIGNMENT", "ALEFT");
-    IupSetAttribute(statsDisplay, "PADDING", "4x4");
+    // Setup display text area
+    IupSetAttribute(statsDisplay, "MULTILINE", "YES");
+    IupSetAttribute(statsDisplay, "READONLY", "YES");
+    IupSetAttribute(statsDisplay, "EXPAND", "YES");
+    IupSetAttribute(statsDisplay, "SIZE", "400x200");
+    IupSetAttribute(statsDisplay, "FONT", "Courier, 9");
+    IupSetAttribute(statsDisplay, "VALUE", "Statistics will appear here...");
 
     if (parameterized) {
         setFromParameter(enabledCheckbox, "VALUE", NAME"-enabled");
-        setFromParameter(displayModeList, "VALUE", NAME"-mode");
     }
 
     return statsControlsBox;
@@ -250,11 +209,11 @@ static short statsProcess(PacketNode *head, PacketNode* tail) {
     // Update display every few iterations
     static int updateCounter = 0;
     if (++updateCounter >= 100) { // Update every 100 packets
-        char displayBuffer[512];
+        char displayBuffer[1024];
         formatStatistics(displayBuffer, sizeof(displayBuffer));
         
-        // Update UI label (note: this should be done from main thread in production)
-        IupStoreAttribute(statsDisplay, "TITLE", displayBuffer);
+        // Update UI text area
+        IupSetAttribute(statsDisplay, "VALUE", displayBuffer);
         
         updateCounter = 0;
     }
