@@ -16,7 +16,7 @@ See [this page](http://jagt.github.io/clumsy) for more info and build instructio
 
 ## Details
 
-Simulate network latency, delay, packet loss with clumsy on Windows 7/8/10:
+Simulate network latency, delay, packet loss with clumsy on Windows 7/8/10/11:
 
 ![](clumsy-demo.gif)
 
