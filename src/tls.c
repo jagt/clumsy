@@ -1,4 +1,28 @@
 // TLS-aware traffic handler module
+// 
+// This module simulates network impairments specifically for TLS/SSL encrypted traffic (HTTPS, IMAPS, etc).
+// It intelligently differentiates between:
+// - TLS HANDSHAKE packets (initial connection setup) - critical for connection establishment
+// - TLS APPLICATION DATA packets (actual encrypted content) - user data
+// 
+// WHAT IT DOES:
+// 1. Identifies TLS traffic on standard ports (443, 8443, 993, 995)
+// 2. Parses TLS record headers to determine packet type
+// 3. Applies different loss/delay strategies based on packet type
+// 
+// UI PARAMETERS:
+// - In/Out toggles: Filter traffic by direction (inbound/outbound)
+// - "Seq Aware": Enable sequence-aware retransmission delays
+// - "Handshake %": Drop probability for handshake packets (95% = protect 95%, drop 5%)
+// - "Data Loss %": Drop probability for application data packets (5% = drop 5%)
+// - "Delay ms": Artificial delay for retransmission simulation (currently informational)
+// 
+// PRACTICAL USES:
+// - Test HTTPS connection robustness during handshake failures
+// - Simulate packet loss in encrypted sessions
+// - Debug TLS timeout behavior
+// - Stress-test HTTPS server stability
+// 
 #include <stdlib.h>
 #include <Windows.h>
 #include "iup.h"
@@ -97,28 +121,19 @@ static BOOL isTLSPort(PWINDIVERT_TCPHDR tcpHeader) {
 }
 
 static Ihandle* tlsSetupUI() {
-    Ihandle *tlsControlsBox = IupVbox(
-        IupHbox(
-            inboundCheckbox = IupToggle("In", NULL),
-            outboundCheckbox = IupToggle("Out", NULL),
-            sequenceAwareCheckbox = IupToggle("Seq Aware", NULL),
-            NULL
-        ),
-        IupHbox(
-            IupLabel("Handshake:"),
-            handshakeProtectionInput = IupText(NULL),
-            IupLabel("%"),
-            IupLabel("Data Loss:"),
-            dataLossRateInput = IupText(NULL),
-            IupLabel("%"),
-            NULL
-        ),
-        IupHbox(
-            IupLabel("Delay:"),
-            retransmissionDelayInput = IupText(NULL),
-            IupLabel("ms"),
-            NULL
-        ),
+    Ihandle *tlsControlsBox = IupHbox(
+        inboundCheckbox = IupToggle("In", NULL),
+        outboundCheckbox = IupToggle("Out", NULL),
+        sequenceAwareCheckbox = IupToggle("Seq Aware", NULL),
+        IupLabel("Handshake:"),
+        handshakeProtectionInput = IupText(NULL),
+        IupLabel("%"),
+        IupLabel("Data Loss:"),
+        dataLossRateInput = IupText(NULL),
+        IupLabel("%"),
+        IupLabel("Delay:"),
+        retransmissionDelayInput = IupText(NULL),
+        IupLabel("ms"),
         NULL
     );
 

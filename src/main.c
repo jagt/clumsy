@@ -64,6 +64,7 @@ static Ihandle *loggingToggle = NULL, *statsToggle = NULL, *automationToggle = N
 
 void showStatus(const char *line);
 static int uiOnDialogShow(Ihandle *ih, int state);
+static int uiOnDialogClose(Ihandle *ih);
 static int uiStopCb(Ihandle *ih);
 static int uiStartCb(Ihandle *ih);
 static int uiTimerCb(Ihandle *ih);
@@ -212,7 +213,7 @@ void init(int argc, char* argv[]) {
     }
 
     IupSetAttribute(topFrame, "TITLE", "Filtering");
-    IupSetAttribute(topFrame, "EXPAND", "HORIZONTAL");
+    IupSetAttribute(topVbox, "ALIGNMENT", "ALEFT");
     IupSetAttribute(filterText, "EXPAND", "HORIZONTAL");
     IupSetCallback(filterText, "VALUECHANGED_CB", (Icallback)uiFilterTextCb);
     IupSetAttribute(filterButton, "PADDING", "8x");
@@ -228,7 +229,7 @@ void init(int argc, char* argv[]) {
     
     IupSetAttribute(topVbox, "NCMARGIN", "4x4");
     IupSetAttribute(topVbox, "NCGAP", "4x2");
-    IupSetAttribute(controlHbox, "ALIGNMENT", "ACENTER");
+    IupSetAttribute(controlHbox, "ALIGNMENT", "ARIGHT");
 
     // setup state icon
     IupSetAttribute(stateIcon, "IMAGE", "none_icon");
@@ -247,17 +248,20 @@ void init(int argc, char* argv[]) {
     // set filter text value since the callback won't take effect before main loop starts
     IupSetAttribute(filterText, "VALUE", filters[0].filterValue);
 
-    // functionalities frame 
-    bottomFrame = IupFrame(
+    // functionalities frame with scrolling for horizontal overflow
+    Ihandle *scrollBox = IupScrollBox(
         bottomVbox = IupVbox(
             NULL
         )
     );
+    bottomFrame = IupFrame(scrollBox);
     IupSetAttribute(bottomFrame, "TITLE", "Functions");
     IupSetAttribute(bottomFrame, "ALIGNMENT", "ALEFT");
-    IupSetAttribute(bottomVbox, "NCMARGIN", "4x4");
+    IupSetAttribute(scrollBox, "SCROLLBAR", "HORIZONTAL");  // Show horizontal scrollbar only
+    IupSetAttribute(scrollBox, "EXPAND", "YES");            // Expand to fill available space
+    IupSetAttribute(bottomVbox, "NCMARGIN", "4x20");        // Add bottom margin to avoid scrollbar overlap
     IupSetAttribute(bottomVbox, "NCGAP", "4x2");
-    IupSetAttribute(bottomVbox, "ALIGNMENT", "ALEFT");   // Выравнивание по левой стороне
+    IupSetAttribute(bottomVbox, "ALIGNMENT", "ALEFT");      // Align content to the left
 
 
     // create icons
@@ -291,14 +295,15 @@ void init(int argc, char* argv[]) {
 
     IupSetAttribute(dialog, "TITLE", "clumsy " CLUMSY_VERSION);
     IupSetAttribute(dialog, "SIZE", "480x"); // Minimum width, height will adjust
-    IupSetAttribute(dialog, "RESIZE", "YES");
+    IupSetAttribute(dialog, "RESIZE", "NO");
     IupSetAttribute(dialog, "MINBOX", "YES");
     IupSetAttribute(dialog, "MAXBOX", "YES");
     IupSetCallback(dialog, "SHOW_CB", (Icallback)uiOnDialogShow);
+    IupSetCallback(dialog, "CLOSE_CB", (Icallback)uiOnDialogClose);
 
 
     // global layout settings to affect childrens
-    IupSetAttribute(dialogVBox, "ALIGNMENT", "ACENTER");
+    IupSetAttribute(dialogVBox, "ALIGNMENT", "ALEFT");
     IupSetAttribute(dialogVBox, "NCMARGIN", "4x4");
     IupSetAttribute(dialogVBox, "NCGAP", "4x2");
 
@@ -416,6 +421,26 @@ static int uiOnDialogShow(Ihandle *ih, int state) {
     }
 
     return exit ? IUP_CLOSE : IUP_DEFAULT;
+}
+
+static int uiOnDialogClose(Ihandle *ih) {
+    UNREFERENCED_PARAMETER(ih);
+    
+    // Close all additional panels before closing main window
+    if (logDialog) {
+        IupDestroy(logDialog);
+        logDialog = NULL;
+    }
+    if (statsDialog) {
+        IupDestroy(statsDialog);
+        statsDialog = NULL;
+    }
+    if (automationDialog) {
+        IupDestroy(automationDialog);
+        automationDialog = NULL;
+    }
+    
+    return IUP_DEFAULT;
 }
 
 static int uiStartCb(Ihandle *ih) {
@@ -540,25 +565,21 @@ static int uiFilterTextCb(Ihandle *ih)  {
 
 static void uiSetupModule(Module *module, Ihandle *parent) {
     Ihandle *groupBox, *toggle, *controls, *icon, *nameLabel;
-    char formattedName[64];
-    
-    // Create formatted name with fixed width (30 characters)
-    snprintf(formattedName, sizeof(formattedName), "%-30s", module->displayName);
     
     groupBox = IupHbox(
         icon = IupLabel(NULL),
-        nameLabel = IupLabel(formattedName),  // Use formatted name label instead of toggle text
-        toggle = IupToggle("", NULL),        // Empty toggle text since we have the label
+        toggle = IupToggle("", NULL),
+        nameLabel = IupLabel(module->displayName),
         controls = module->setupUIFunc(),
         NULL
     );
-    IupSetAttribute(groupBox, "EXPAND", "HORIZONTAL");
-    IupSetAttribute(groupBox, "ALIGNMENT", "ACENTER");
-    IupSetAttribute(controls, "ALIGNMENT", "ACENTER");
+    IupSetAttribute(groupBox, "ALIGNMENT", "ALEFT");      // Align elements to the LEFT
+    IupSetAttribute(controls, "ALIGNMENT", "ACENTER");    // Center controls vertically
+    
+    // Set fixed width for the name label and icon
+    IupSetAttribute(icon, "SIZE", "8x");
+    IupSetAttribute(nameLabel, "SIZE", "60x");
     IupAppend(parent, groupBox);
-
-    // Set fixed width for the name label (approximately 30 characters)
-    IupSetAttribute(nameLabel, "SIZE", "120x");  // Adjust size as needed for 30 characters
     
     // set controls as attribute to toggle and enable toggle callback
     IupSetCallback(toggle, "ACTION", (Icallback)uiToggleControls);
