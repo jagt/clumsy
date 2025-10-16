@@ -3,6 +3,12 @@
 ## Overview
 Clumsy is a network packet manipulation tool that allows users to simulate various network conditions by intercepting and modifying network traffic in real-time. This version has been significantly enhanced with a modular UI system, improved logging, and enhanced functionality.
 
+## Details
+
+Simulate network latency, delay, packet loss with clumsy on Windows 7/8/10:
+
+![](clumsy-demo.gif)
+
 ## Key Features
 
 ### Modular UI System
