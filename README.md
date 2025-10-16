@@ -94,6 +94,219 @@ The application can be configured through:
 - [Implementation Summary](IMPLEMENTATION_SUMMARY.md)
 - [Final Implementation Summary](FINAL_IMPLEMENTATION_SUMMARY.md)
 
+## Module Reference Guide
+
+### Network Manipulation Modules
+
+#### 1. **Drop** - Random Packet Loss
+Randomly discards packets to simulate unreliable network conditions.
+```
+Controls: In/Out, Chance (%)
+Usage: Drop 5% of packets to simulate lossy network
+Example: In/Out enabled, Chance 5.0%
+```
+
+#### 2. **Lag** - Packet Delay
+Delays packets by a specified time to simulate latency.
+```
+Controls: In/Out, Time (ms)
+Usage: Add 100ms delay to all packets
+Example: In/Out enabled, Time 100ms
+```
+
+#### 3. **Duplicate** - Packet Cloning
+Creates multiple copies of each packet.
+```
+Controls: In/Out, Copies (count)
+Usage: Duplicate packets 3 times to test TCP retransmission
+Example: In/Out enabled, Copies 3
+```
+
+#### 4. **Throttle** - Bandwidth Limiting
+Limits packet throughput to simulate bandwidth constraints.
+```
+Controls: In/Out, Timeframe (ms), Chance (%)
+Usage: Throttle to 100 packets per 1000ms
+Example: In/Out enabled, Timeframe 1000ms, Chance 10%
+```
+
+#### 5. **Out of Order (OOD)** - Reorder Packets
+Reorders packets in the stream to simulate network disorder.
+```
+Controls: In/Out, Duplicates (count)
+Usage: Test TCP sequence number handling
+Example: In/Out enabled, Duplicates 2
+```
+
+#### 6. **Tamper** - Packet Modification
+Modifies packet contents (headers/payload).
+```
+Controls: In/Out, Chance (%), Type (Checksum/Injection/Shuffle)
+Usage: Corrupt packet data to test error handling
+Example: In/Out enabled, Chance 5%, Type Checksum
+```
+
+#### 7. **Reset (RST)** - TCP Connection Termination
+Sends TCP RST packets to abruptly terminate connections.
+```
+Controls: In/Out, Probability (%)
+Usage: Force connection resets
+Example: In/Out enabled, Probability 1%
+```
+
+#### 8. **Bandwidth** - Traffic Rate Control
+Limits overall network bandwidth for all traffic.
+```
+Controls: In/Out, Limit (Mbps)
+Usage: Limit bandwidth to 1Mbps
+Example: In/Out enabled, Limit 1.0 Mbps
+```
+
+#### 9. **Length Filter** - Size-Based Actions ⭐ NEW
+Applies different actions based on packet size. Supports 6 action types with configurable parameters.
+```
+Controls: In/Out, Min-Max size (bytes), Action, Lag (ms), Dup (count)
+Actions: Nothing | Drop | Lag | Duplicate | Reset | Out of Order
+
+Example 1 - Drop Large Packets:
+  Min: 1400, Max: 1500, Action: Drop
+  Effect: All packets 1400-1500 bytes are discarded
+
+Example 2 - Lag Small Packets:
+  Min: 64, Max: 256, Action: Lag, Lag: 100ms
+  Effect: Packets 64-256 bytes delayed by 100ms
+
+Example 3 - Duplicate Medium Packets:
+  Min: 500, Max: 999, Action: Duplicate, Dup: 2
+  Effect: Packets 500-999 bytes are sent twice
+
+Example 4 - Pass Non-Standard Sizes:
+  Min: 1460, Max: 1461, Action: Nothing (IPv6 jumbo frames pass through)
+```
+
+#### 10. **TLS** - HTTPS/SSL Manipulation ⭐ ENHANCED
+Targets encrypted traffic with intelligent packet type detection.
+```
+Controls: In/Out, Seq Aware, Handshake (%), Data Loss (%), Delay (ms)
+
+What it does:
+  - Identifies TLS packets on ports 443, 8443, 993, 995
+  - Distinguishes HANDSHAKE packets (connection setup) vs DATA packets
+  - Applies different loss rates to each type
+
+Example 1 - Robust Handshake:
+  Handshake: 98%, Data Loss: 5%, Delay: 200ms
+  Effect: Protect handshake (drop 2%), lose 5% of user data, add latency
+
+Example 2 - Stress Test Server:
+  Handshake: 50%, Data Loss: 10%, Delay: 100ms
+  Effect: Drop 50% of handshakes (connection failures), lose data
+
+Example 3 - Mobile Simulation:
+  Handshake: 95%, Data Loss: 8%, Delay: 300ms
+  Effect: Simulate mobile network (spotty HTTPS connections)
+```
+
+### Hidden Modules (Advanced)
+
+#### **Logs** - Real-Time Event Logging
+Displays all packet modifications with timestamps and packet details.
+```
+Features:
+  - Live packet action tracking (DROP, LAG, DUPLICATE, etc.)
+  - Configurable formats: TEXT, CSV, JSON
+  - Export capabilities for analysis
+Toggle: Click "Logs" in Panels
+```
+
+#### **Stats** - Network Statistics
+Comprehensive metrics for all ongoing network manipulations.
+```
+Displays:
+  - Total packets processed
+  - Packets modified per module
+  - Current bandwidth usage
+  - Connection statistics
+Toggle: Click "Stats" in Panels
+```
+
+#### **Auto** - Automation & Scripting
+Run automated test scenarios with predefined scripts.
+```
+Features:
+  - Pre-built templates: Stress Test, Mobile Sim, TLS Test, Packet Analysis
+  - Custom scripting language
+  - Scheduled/repeated execution
+
+Script Commands:
+  wait <ms>              - Wait N milliseconds
+  enable <module>        - Turn on module
+  disable <module>       - Turn off module
+  set <module> <param> <value>  - Configure parameter
+  profile <name>         - Apply profile (3G/4G/WiFi)
+  log <message>          - Log message
+  export data            - Export results
+
+Example Script:
+  wait 2000
+  enable drop
+  set drop chance 10.0
+  wait 30000
+  disable drop
+  log "Stress test complete"
+Toggle: Click "Auto" in Panels
+```
+
+## Real-World Usage Scenarios
+
+### Scenario 1: Test Web App on 3G Network
+**Goal:** Verify app stability on slow, lossy connection
+```
+1. Enable Drop: In/Out, Chance 10%
+2. Enable Lag: In/Out, Time 200ms
+3. Enable Throttle: In/Out, Timeframe 1000ms, Chance 20%
+4. Visit website - observe loading, responsiveness
+5. Check logs for packet drops and delays
+```
+
+### Scenario 2: Stress Test HTTPS Server
+**Goal:** Find breaking point of TLS connections
+```
+1. Enable TLS: In/Out, Handshake 80%, Data Loss 5%
+2. Enable Auto with "TLS Connection Test" script
+3. Monitor Stats panel for connection failures
+4. Increase packet loss gradually until server recovers
+5. Export results from Auto panel
+```
+
+### Scenario 3: Debug Large File Transfer
+**Goal:** Test handling of jumbo packets
+```
+1. Enable Length: Min 1400, Max 1500, Action Drop
+2. Attempt file transfer
+3. Monitor if transfer fails/succeeds
+4. Change Action to Lag (100ms) to see latency impact
+5. Check logs for packet size distribution
+```
+
+### Scenario 4: Mobile Network Simulation
+**Goal:** Test app behavior on mobile
+```
+1. Enable Lag: In/Out, Time 100-300ms
+2. Enable Drop: In/Out, Chance 5-15%
+3. Enable Throttle: In/Out, Limit 2-5 Mbps
+4. Or use Auto: "Mobile Simulation" script for realistic patterns
+```
+
+### Scenario 5: Out-of-Order Packet Test
+**Goal:** Verify TCP sequence number handling
+```
+1. Enable OOD: In/Out, Duplicates 3
+2. Stream video/download file
+3. Check if app detects corruption
+4. Compare with Drop module (shows difference in handling)
+```
+
 ## Requirements
 - Windows Vista/2008 or later (x86/x64)
 - Administrator privileges

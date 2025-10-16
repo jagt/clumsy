@@ -86,7 +86,7 @@ static Ihandle* lengthSetupUI() {
     // Setup action list (for matched packets)
     IupSetAttribute(actionList, "DROPDOWN", "YES");
     IupSetAttribute(actionList, "READONLY", "YES");
-    IupSetAttribute(actionList, "VISIBLECOLUMNS", "15");
+    IupSetAttribute(actionList, "VISIBLECOLUMNS", "8");
     IupSetAttribute(actionList, "1", "Nothing (Pass)");
     IupSetAttribute(actionList, "2", "Drop");
     IupSetAttribute(actionList, "3", "Lag");
