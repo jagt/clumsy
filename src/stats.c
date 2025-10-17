@@ -147,6 +147,11 @@ static int resetStatsCallback(Ihandle *ih) {
     stats.minLatency = UINT32_MAX;
     LeaveCriticalSection(&statsMutex);
     
+    // Update UI display
+    if (statsDisplay) {
+        IupSetAttribute(statsDisplay, "VALUE", "Statistics reset - waiting for data...");
+    }
+    
     LOG("Statistics reset");
     return IUP_DEFAULT;
 }

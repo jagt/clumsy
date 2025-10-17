@@ -46,6 +46,7 @@ static Ihandle *exportButton, *clearLogButton;
 static Ihandle *logDisplay; // Text area for displaying logs
 
 static volatile short loggingEnabled = 0;
+static volatile short loggingShutdown = 0;
 static volatile short logLevel = LOG_LEVEL_INFO;
 static volatile short logFormat = LOG_FORMAT_TEXT;
 static volatile short realTimeLogging = 1;
@@ -85,7 +86,7 @@ static const char* getProtocolName(UINT16 protocol) {
 
 // Log packet entry in specified format
 static void logPacketEntry(PacketLogEntry* entry) {
-    if (!loggingEnabled) return;
+    if (!loggingEnabled || loggingShutdown) return;
     
     EnterCriticalSection(&logMutex);
     
@@ -97,42 +98,39 @@ static void logPacketEntry(PacketLogEntry* entry) {
     switch (logFormat) {
         case LOG_FORMAT_TEXT:
             snprintf(logMessage, sizeof(logMessage), 
-                "[%s] ID:%u %s %s %u.%u.%u.%u:%u -> %u.%u.%u.%u:%u (%s) len:%u action:%s module:%s",
-                timestamp, entry->packetId,
-                entry->outbound ? "OUT" : "IN",
+                "[%s] %s %s %u.%u.%u.%u:%u→%u.%u.%u.%u:%u size:%u %s [%s]",
+                timestamp,
+                entry->outbound ? "OUT" : "IN ",
                 getProtocolName(entry->protocol),
                 (entry->srcIP >> 24) & 0xFF, (entry->srcIP >> 16) & 0xFF, (entry->srcIP >> 8) & 0xFF, entry->srcIP & 0xFF,
                 entry->srcPort,
                 (entry->dstIP >> 24) & 0xFF, (entry->dstIP >> 16) & 0xFF, (entry->dstIP >> 8) & 0xFF, entry->dstIP & 0xFF,
                 entry->dstPort,
-                getProtocolName(entry->protocol),
                 entry->packetLen, entry->action, entry->module);
             break;
             
         case LOG_FORMAT_CSV:
             snprintf(logMessage, sizeof(logMessage),
-                "%s,%u,%s,%s,%u.%u.%u.%u,%u,%u.%u.%u.%u,%u,%u,%s,%s,%.2f",
-                timestamp, entry->packetId,
+                "%s,%s,%s,%u.%u.%u.%u:%u,%u.%u.%u.%u:%u,%u,%s,%s",
+                timestamp,
                 entry->outbound ? "OUT" : "IN",
                 getProtocolName(entry->protocol),
                 (entry->srcIP >> 24) & 0xFF, (entry->srcIP >> 16) & 0xFF, (entry->srcIP >> 8) & 0xFF, entry->srcIP & 0xFF,
                 entry->srcPort,
                 (entry->dstIP >> 24) & 0xFF, (entry->dstIP >> 16) & 0xFF, (entry->dstIP >> 8) & 0xFF, entry->dstIP & 0xFF,
-                entry->dstPort, entry->packetLen, entry->action, entry->module, entry->latency);
+                entry->dstPort, entry->packetLen, entry->action, entry->module);
             break;
             
         case LOG_FORMAT_JSON:
             snprintf(logMessage, sizeof(logMessage),
-                "{\"timestamp\":\"%s\",\"id\":%u,\"direction\":\"%s\",\"protocol\":\"%s\","
-                "\"src_ip\":\"%u.%u.%u.%u\",\"src_port\":%u,\"dst_ip\":\"%u.%u.%u.%u\",\"dst_port\":%u,"
-                "\"length\":%u,\"action\":\"%s\",\"module\":\"%s\",\"latency\":%.2f}",
-                timestamp, entry->packetId,
-                entry->outbound ? "outbound" : "inbound",
+                "{\"ts\":\"%s\",\"dir\":\"%s\",\"proto\":\"%s\",\"src\":\"%u.%u.%u.%u:%u\",\"dst\":\"%u.%u.%u.%u:%u\",\"size\":%u,\"act\":\"%s\",\"mod\":\"%s\"}",
+                timestamp,
+                entry->outbound ? "out" : "in",
                 getProtocolName(entry->protocol),
                 (entry->srcIP >> 24) & 0xFF, (entry->srcIP >> 16) & 0xFF, (entry->srcIP >> 8) & 0xFF, entry->srcIP & 0xFF,
                 entry->srcPort,
                 (entry->dstIP >> 24) & 0xFF, (entry->dstIP >> 16) & 0xFF, (entry->dstIP >> 8) & 0xFF, entry->dstIP & 0xFF,
-                entry->dstPort, entry->packetLen, entry->action, entry->module, entry->latency);
+                entry->dstPort, entry->packetLen, entry->action, entry->module);
             break;
             
         default:
@@ -147,40 +145,37 @@ static void logPacketEntry(PacketLogEntry* entry) {
     if (logFile) {
         switch (logFormat) {
             case LOG_FORMAT_TEXT:
-                fprintf(logFile, "[%s] ID:%u %s %s %u.%u.%u.%u:%u -> %u.%u.%u.%u:%u (%s) len:%u action:%s module:%s latency:%.2fms\n",
-                    timestamp, entry->packetId,
+                fprintf(logFile, "[%s] %s %s %u.%u.%u.%u:%u→%u.%u.%u.%u:%u size:%u %s [%s]\n",
+                    timestamp,
                     entry->outbound ? "OUT" : "IN",
                     getProtocolName(entry->protocol),
                     (entry->srcIP >> 24) & 0xFF, (entry->srcIP >> 16) & 0xFF, (entry->srcIP >> 8) & 0xFF, entry->srcIP & 0xFF,
                     entry->srcPort,
                     (entry->dstIP >> 24) & 0xFF, (entry->dstIP >> 16) & 0xFF, (entry->dstIP >> 8) & 0xFF, entry->dstIP & 0xFF,
                     entry->dstPort,
-                    getProtocolName(entry->protocol),
-                    entry->packetLen, entry->action, entry->module, entry->latency);
+                    entry->packetLen, entry->action, entry->module);
                 break;
                 
             case LOG_FORMAT_CSV:
-                fprintf(logFile, "%s,%u,%s,%s,%u.%u.%u.%u,%u,%u.%u.%u.%u,%u,%u,%s,%s,%.2f\n",
-                    timestamp, entry->packetId,
+                fprintf(logFile, "%s,%s,%s,%u.%u.%u.%u:%u,%u.%u.%u.%u:%u,%u,%s,%s\n",
+                    timestamp,
                     entry->outbound ? "OUT" : "IN",
                     getProtocolName(entry->protocol),
                     (entry->srcIP >> 24) & 0xFF, (entry->srcIP >> 16) & 0xFF, (entry->srcIP >> 8) & 0xFF, entry->srcIP & 0xFF,
                     entry->srcPort,
                     (entry->dstIP >> 24) & 0xFF, (entry->dstIP >> 16) & 0xFF, (entry->dstIP >> 8) & 0xFF, entry->dstIP & 0xFF,
-                    entry->dstPort, entry->packetLen, entry->action, entry->module, entry->latency);
+                    entry->dstPort, entry->packetLen, entry->action, entry->module);
                 break;
                 
             case LOG_FORMAT_JSON:
-                fprintf(logFile, "{\"timestamp\":\"%s\",\"id\":%u,\"direction\":\"%s\",\"protocol\":\"%s\","
-                    "\"src_ip\":\"%u.%u.%u.%u\",\"src_port\":%u,\"dst_ip\":\"%u.%u.%u.%u\",\"dst_port\":%u,"
-                    "\"length\":%u,\"action\":\"%s\",\"module\":\"%s\",\"latency\":%.2f}\n",
-                    timestamp, entry->packetId,
-                    entry->outbound ? "outbound" : "inbound",
+                fprintf(logFile, "{\"ts\":\"%s\",\"dir\":\"%s\",\"proto\":\"%s\",\"src\":\"%u.%u.%u.%u:%u\",\"dst\":\"%u.%u.%u.%u:%u\",\"size\":%u,\"act\":\"%s\",\"mod\":\"%s\"}\n",
+                    timestamp,
+                    entry->outbound ? "out" : "in",
                     getProtocolName(entry->protocol),
                     (entry->srcIP >> 24) & 0xFF, (entry->srcIP >> 16) & 0xFF, (entry->srcIP >> 8) & 0xFF, entry->srcIP & 0xFF,
                     entry->srcPort,
                     (entry->dstIP >> 24) & 0xFF, (entry->dstIP >> 16) & 0xFF, (entry->dstIP >> 8) & 0xFF, entry->dstIP & 0xFF,
-                    entry->dstPort, entry->packetLen, entry->action, entry->module, entry->latency);
+                    entry->dstPort, entry->packetLen, entry->action, entry->module);
                 break;
         }
         
@@ -210,7 +205,7 @@ static void logPacketEntry(PacketLogEntry* entry) {
 
 // Log packet from processing pipeline with action information
 void logPacketAction(PacketNode* pac, const char* action, const char* module) {
-    if (!loggingEnabled || logLevel < LOG_LEVEL_INFO) return;
+    if (!loggingEnabled || loggingShutdown || logLevel < LOG_LEVEL_INFO) return;
     
     PacketLogEntry entry = {0};
     entry.timestamp = GetTickCount();
@@ -288,18 +283,26 @@ static int clearLogCallback(Ihandle *ih) {
     UNREFERENCED_PARAMETER(ih);
     
     EnterCriticalSection(&logMutex);
-    if (logFile) {
-        fclose(logFile);
-        logFile = fopen(logFilePath, "w");
-        if (logFile && logFormat == LOG_FORMAT_CSV) {
-            fprintf(logFile, "timestamp,id,direction,protocol,src_ip,src_port,dst_ip,dst_port,length,action,module,latency\n");
-        }
-        totalLogSize = 0;
-        packetCounter = 0;
-    }
+    totalLogSize = 0;
+    packetCounter = 0;
     LeaveCriticalSection(&logMutex);
     
-    LOG("Log file cleared");
+    // File operations OUTSIDE critical section
+    if (logFile) {
+        fclose(logFile);
+        logFile = NULL;
+    }
+    logFile = fopen(logFilePath, "w");
+    if (logFile && logFormat == LOG_FORMAT_CSV) {
+        fprintf(logFile, "timestamp,direction,protocol,src,dst,size,action,module\n");
+    }
+    
+    // Clear UI display
+    if (logDisplay) {
+        IupSetAttribute(logDisplay, "VALUE", "");
+    }
+    
+    LOG("Log cleared");
     return IUP_DEFAULT;
 }
 
@@ -443,9 +446,9 @@ static Ihandle* loggingSetupUI() {
 }
 
 static void loggingStartup() {
+    loggingShutdown = 0;
     InitializeCriticalSection(&logMutex);
     
-    // Open log file
     logFile = fopen(logFilePath, "a");
     if (logFile) {
         if (logFormat == LOG_FORMAT_CSV && ftell(logFile) == 0) {
@@ -460,6 +463,9 @@ static void loggingStartup() {
 static void loggingCloseDown(PacketNode *head, PacketNode *tail) {
     UNREFERENCED_PARAMETER(head);
     UNREFERENCED_PARAMETER(tail);
+    
+    loggingShutdown = 1;
+    Sleep(10);
     
     if (logFile) {
         fclose(logFile);
