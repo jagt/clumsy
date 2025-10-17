@@ -90,16 +90,6 @@ The application can be configured through:
 4. Monitor logs and statistics in real-time
 5. Click "Stop" to end the session
 
-## Documentation
-- [TLS/SSL Functionality](TLS_SSL_FUNCTIONALITY.md)
-- [Logging Improvements](LOGGING_IMPROVEMENTS.md)
-- [Length Module Improvements](LENGTH_MODULE_IMPROVEMENTS.md)
-- [UI Layout Optimization](UI_LAYOUT_OPTIMIZATION.md)
-- [UI Improvements Summary](UI_IMPROVEMENTS_SUMMARY.md)
-- [UI Flow Layout Improvements](UI_FLOW_LAYOUT_IMPROVEMENTS.md)
-- [Implementation Summary](IMPLEMENTATION_SUMMARY.md)
-- [Final Implementation Summary](FINAL_IMPLEMENTATION_SUMMARY.md)
-
 ## Module Reference Guide
 
 ### Network Manipulation Modules

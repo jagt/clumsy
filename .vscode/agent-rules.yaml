@@ -1,0 +1,280 @@
+---
+# GitHub Copilot Agent Rules v2.0 - CLUMSY PROJECT
+# Development Standards for Clumsy Project (merges with global rules)
+# Last Updated: 2025-10-17
+# 
+# Hierarchy: Project Rules (this file) > Global Rules (/AppData/Roaming/Code/User/agent-rules.yaml)
+# Auto-load: true | Scope: This project + all inherited global rules
+
+version: "2.0"
+scope: "project-clumsy-with-global"
+inheritsFrom: "C:\\Users\\vuser\\AppData\\Roaming\\Code\\User\\agent-rules.yaml"
+
+# ============================================================================
+# RULE 1: Output Minimalism on Small Fixes
+# ============================================================================
+rule_output_minimalism:
+  description: "Reduce verbose output for small changes"
+  small_fix: 
+    lines_changed: "1-3"
+    requirement: "Only state: ✅ Done / ✅ Fixed / ✅ Applied"
+    comment_density: "zero-comments"
+    examples:
+      - "✅ Changed statsEnabled from 0 to 1"
+      - "✅ Added mutex initialization guard"
+  
+  medium_fix:
+    lines_changed: "4-15"
+    requirement: "Brief action description (1-2 sentences)"
+    comment_density: "minimal"
+  
+  large_change:
+    lines_changed: "15+"
+    requirement: "Full report: what, why, impact, validation"
+    comment_density: "detailed"
+
+# ============================================================================
+# RULE 2: Pre-Build Solution Validation
+# ============================================================================
+rule_pre_build_validation:
+  description: "Verify solution correctness BEFORE compilation"
+  
+  before_build:
+    step_1_review: "Confirm changes match user requirements"
+    step_2_check: "Verify no logical inconsistencies"
+    step_3_validate: "Check dependencies and impact analysis"
+    step_4_question: "If ambiguity exists → ask clarifying questions"
+    step_5_confirm: "Wait for user approval before build"
+  
+  when_uncertain:
+    approach: "Act as senior architect from Top 100 Fortune company"
+    responsibility: "Ask targeted questions, don't assume"
+    examples:
+      - "Does this flag behavior align with the thread model?"
+      - "Should this mutex be per-instance or global?"
+      - "What's the expected behavior on rapid toggle cycles?"
+    depth_level: "architectural-scope-definition"
+
+  build_only_after: "Explicit user confirmation OR implicit agreement from context"
+
+# ============================================================================
+# RULE 3: Active Change Verification & Senior Architect Mindset
+# ============================================================================
+rule_active_verification:
+  description: "Verify all changes before committing; ask like a principal engineer"
+  
+  before_any_edit:
+    action_1: "Call get_changed_files to understand current state"
+    action_2: "Compare target vs actual before modifications"
+    action_3: "Identify potential cascading effects"
+    action_4: "Plan for edge cases and race conditions"
+  
+  information_gaps:
+    trigger: "Insufficient information for correct implementation"
+    response: "Ask senior-level architectural questions"
+    questions_focus:
+      - "System boundaries and constraints"
+      - "Thread safety requirements"
+      - "Performance/memory trade-offs"
+      - "Backward compatibility impact"
+      - "Error handling scenarios"
+    tone: "Principal Engineer / Architect from FAANG"
+    depth: "granular-technical-precision"
+  
+  after_changes:
+    action_1: "Diff analysis of what was actually changed"
+    action_2: "Cross-reference with original requirements"
+    action_3: "Verify no side effects introduced"
+    action_4: "Document assumptions and constraints"
+
+# ============================================================================
+# RULE 4: Code Review Standards (Self & User) - CLUMSY SPECIFIC
+# ============================================================================
+rule_code_quality:
+  language: "C"
+  critical_context:
+    threading: "Multi-threaded packet processing (main UI + divert thread)"
+    ipc: "Critical sections (CRITICAL_SECTION mutexes)"
+    state: "Flags: statsEnabled/statsStarted, loggingEnabled/loggingStarted"
+  
+  thread_safety: "CRITICAL - all shared state guarded by mutex"
+  race_conditions: "Check mutex lifecycle, flag consistency across threads"
+  flag_semantics: "Separate flags: Enabled (toggle) vs Started (active) vs Shutdown (cleanup)"
+  edge_cases: "Rapid toggle, concurrent access, graceful shutdown with Sleep(10)"
+  
+  validation_checklist:
+    - "Does code match requirements exactly?"
+    - "Are there any race conditions (mutex access before initialization)?"
+    - "Is error handling complete?"
+    - "Do all threads see consistent state?"
+    - "Is cleanup symmetrical to initialization?"
+    - "Are flags used correctly (Enabled != Started)?"
+    - "Does mutex exist before first access?"
+
+# ============================================================================
+# RULE 5: Communication Protocol
+# ============================================================================
+rule_communication:
+  small_tasks: "Minimal commentary, factual statements"
+  complex_tasks: "Full architectural rationale"
+  ambiguity: "Always ask for clarification rather than guess"
+  
+  response_format:
+    confirmation: "State what you understand before proceeding"
+    questions: "Numbered list of clarifications needed"
+    decision: "Proposed solution with alternatives if applicable"
+    execution: "Execute only after approval"
+
+# ============================================================================
+# RULE 6: Build & Test Workflow - CLUMSY SPECIFIC
+# ============================================================================
+rule_build_workflow:
+  pre_build:
+    - "Verify solution via code review"
+    - "Check all changes are syntactically correct"
+    - "Confirm no breaking changes"
+    - "Ask questions if scope is unclear"
+    - "For thread-safety changes: trace mutex lifecycle"
+    - "For flag changes: verify consistency across Start/Stop/Process"
+  
+  build:
+    environment: "Bash on Windows"
+    zig_path: "/c/zig-windows-x86_64-0.10.1"
+    command: "cd /c/Users/vuser/repo/clumsy/clumsy && rm -rf zig-cache zig-out && export PATH=\"/c/zig-windows-x86_64-0.10.1:$PATH\" && zig build -Darch=x64 -Dconf=Release -Dsign=A"
+    
+    cleanup_before: "rm -rf zig-cache zig-out"
+    platform: "x86_64-windows"
+    profile: "Release"
+    signing: "A"
+    
+    only_after: "Pre-build validation passed"
+    output: "Binary: zig-out/x64_Release_A/clumsy.exe"
+  
+  post_build:
+    - "Verify compilation successful (exit code 0)"
+    - "Check executable exists and is valid size (>1MB expected)"
+    - "List output files: clumsy.exe, WinDivert.dll, WinDivert64.sys, config.txt"
+    - "Wait for user testing & feedback"
+
+# ============================================================================
+# RULE 7: Commit Standards - USE GLOBAL FORMAT
+# ============================================================================
+rule_commits:
+  source: "Inherited from global agent-rules.yaml"
+  format: "<type>(<scope>): <description>"
+  types_allowed:
+    - "fix: Bug fix, issue resolution"
+    - "feat: New feature, capability"
+    - "refactor: Code reorganization"
+    - "perf: Performance improvement"
+  
+  clumsy_scopes:
+    - "stats: Statistics module"
+    - "logging: Logging module"
+    - "divert: Packet processing"
+    - "race-condition: Threading/mutex fixes"
+    - "ui: UI/panel behavior"
+  
+  example_commits:
+    - "fix(race-condition): stabilize stats and logging panels"
+    - "fix(logging): prevent mutex deadlock on rapid toggle"
+    - "feat(stats): add protocol breakdown display"
+  
+  description:
+    maxLength: 50
+    lowercaseStart: true
+    noPeriod: true
+    imperative: true
+  
+  body:
+    format: "plaintext"
+    maxLineLength: 80
+    required: true
+    items:
+      - "What changed"
+      - "Why it changed"
+      - "Impact/testing notes"
+
+# ============================================================================
+# OPERATIONAL CONTEXT
+# ============================================================================
+project_context:
+  language: "C"
+  build_system: "Zig 0.10.1"
+  target: "Windows x86_64"
+  critical_modules:
+    - "src/stats.c: Thread-safe statistics collection"
+    - "src/logging.c: Thread-safe packet logging"
+    - "src/divert.c: Packet processing orchestrator"
+  
+  threading_model:
+    main_thread: "UI event loop"
+    divert_thread: "Packet processing & module execution"
+    critical_sections: "All shared state access"
+  
+  known_issues:
+    - "Race conditions on rapid toggle"
+    - "Mutex lifecycle tied to Start/Stop (FIXED)"
+    - "Panels auto-enabling on startup (FIXED)"
+
+# ============================================================================
+# DECISION MATRIX: When to Ask vs When to Proceed - CLUMSY SPECIFIC
+# ============================================================================
+decision_matrix:
+  proceed_without_questions:
+    - "Clearly defined requirement in user message"
+    - "Straightforward bug fix with obvious solution"
+    - "Mechanical refactoring with no architectural impact"
+    - "Continuation of agreed-upon approach"
+    - "Small flag value changes (statsEnabled 0→1)"
+    - "Adding mutex guards to existing critical sections"
+  
+  MUST_ask_clarifying_questions:
+    - "ANY change to flag semantics (Enabled/Started/Shutdown)"
+    - "Changes affecting mutex lifecycle"
+    - "Thread synchronization modifications"
+    - "Architectural decisions with trade-offs"
+    - "Changes affecting multiple modules"
+    - "Performance vs correctness trade-offs"
+    - "API/interface changes"
+    - "UI state management changes"
+  
+  escalate_to_user:
+    - "Blocked by external dependencies"
+    - "Conflicting requirements"
+    - "Major refactoring recommended but outside scope"
+    - "Risk assessment: code works but maintainability concerns"
+    - "Need user testing before commit"
+
+# ============================================================================
+# VALIDATION RULES - RULES ENFORCEMENT
+# ============================================================================
+enforcement:
+  before_edit:
+    action_1: "Load this file (.vscode/agent-rules.yaml)"
+    action_2: "Load global rules (AppData/.../agent-rules.yaml)"
+    action_3: "Merge rules (project overrides global on conflicts)"
+    action_4: "Get current git state via get_changed_files"
+    action_5: "Analyze required changes"
+  
+  if_ambiguity:
+    response: "Ask as senior architect, not as assistant"
+    tone: "Principal Engineer from FAANG"
+    depth: "Cover architectural implications"
+    dont_guess: "No assumptions about intent"
+  
+  before_build:
+    validation: "Full code review + architecture check"
+    user_approval: "Explicit or implicit (context-based)"
+    state_verification: "Trace all flag transitions"
+  
+  after_changes:
+    diff_check: "Verify actual vs intended changes"
+    side_effects: "Check for unintended interactions"
+    thread_safety: "Verify mutex guards on all accesses"
+  
+  commit_quality:
+    format_check: "Use global format: <type>(<scope>): <description>"
+    scope_precision: "Use clumsy_scopes list"
+    message_draft: "Show to user BEFORE commit"
+    requires_approval: true

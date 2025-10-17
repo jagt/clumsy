@@ -45,20 +45,22 @@ static Ihandle *realTimeCheckbox, *autoExportCheckbox;
 static Ihandle *exportButton, *clearLogButton;
 static Ihandle *logDisplay; // Text area for displaying logs
 
-static volatile short loggingEnabled = 0;
+static volatile short loggingEnabled = 1;
 static volatile short loggingShutdown = 0;
 static volatile short logLevel = LOG_LEVEL_INFO;
 static volatile short logFormat = LOG_FORMAT_TEXT;
-static volatile short realTimeLogging = 1;
+static volatile short realTimeLogging = 0;
 static volatile short autoExport = 0;
-static volatile short maxLogSizeMB = 100;
+static volatile short maxLogSizeMB = 1;
 
 static char logFilePath[512] = "clumsy_network.log";
 static FILE* logFile = NULL;
 static CRITICAL_SECTION logMutex;
 static UINT32 packetCounter = 0;
 static UINT64 totalLogSize = 0;
-static Ihandle *logDisplay = NULL; // Reference to log display area
+static Ihandle *logDisplay = NULL;
+static int loggingInitialized = 0;
+static int loggingStarted = 0;
 
 // Forward declaration
 static void addLogToDisplay(const char* message);
@@ -86,7 +88,7 @@ static const char* getProtocolName(UINT16 protocol) {
 
 // Log packet entry in specified format
 static void logPacketEntry(PacketLogEntry* entry) {
-    if (!loggingEnabled || loggingShutdown) return;
+    if (!loggingStarted || loggingShutdown) return;
     
     EnterCriticalSection(&logMutex);
     
@@ -205,7 +207,7 @@ static void logPacketEntry(PacketLogEntry* entry) {
 
 // Log packet from processing pipeline with action information
 void logPacketAction(PacketNode* pac, const char* action, const char* module) {
-    if (!loggingEnabled || loggingShutdown || logLevel < LOG_LEVEL_INFO) return;
+    if (!loggingStarted || loggingShutdown) return;
     
     PacketLogEntry entry = {0};
     entry.timestamp = GetTickCount();
@@ -282,6 +284,8 @@ static int exportButtonCallback(Ihandle *ih) {
 static int clearLogCallback(Ihandle *ih) {
     UNREFERENCED_PARAMETER(ih);
     
+    if (!loggingInitialized) return IUP_DEFAULT;
+    
     EnterCriticalSection(&logMutex);
     totalLogSize = 0;
     packetCounter = 0;
@@ -338,6 +342,11 @@ static int logFormatCallback(Ihandle *ih, char *text, int item, int state) {
 }
 
 static Ihandle* loggingSetupUI() {
+    if (!loggingInitialized) {
+        InitializeCriticalSection(&logMutex);
+        loggingInitialized = 1;
+    }
+    
     Ihandle *loggingControlsBox = IupVbox(
         IupHbox(
             enabledCheckbox = IupToggle("Enable Logging", NULL),
@@ -409,10 +418,10 @@ static Ihandle* loggingSetupUI() {
     // Setup checkboxes
     IupSetCallback(enabledCheckbox, "ACTION", (Icallback)uiSyncToggle);
     IupSetAttribute(enabledCheckbox, SYNCED_VALUE, (char*)&loggingEnabled);
+    IupSetAttribute(enabledCheckbox, "VALUE", "ON");
 
     IupSetCallback(realTimeCheckbox, "ACTION", (Icallback)uiSyncToggle);
     IupSetAttribute(realTimeCheckbox, SYNCED_VALUE, (char*)&realTimeLogging);
-    IupSetAttribute(realTimeCheckbox, "VALUE", "ON");
 
     IupSetCallback(autoExportCheckbox, "ACTION", (Icallback)uiSyncToggle);
     IupSetAttribute(autoExportCheckbox, SYNCED_VALUE, (char*)&autoExport);
@@ -447,23 +456,22 @@ static Ihandle* loggingSetupUI() {
 
 static void loggingStartup() {
     loggingShutdown = 0;
-    InitializeCriticalSection(&logMutex);
+    loggingStarted = 1;
     
     logFile = fopen(logFilePath, "a");
     if (logFile) {
         if (logFormat == LOG_FORMAT_CSV && ftell(logFile) == 0) {
-            fprintf(logFile, "timestamp,id,direction,protocol,src_ip,src_port,dst_ip,dst_port,length,action,module,latency\n");
+            fprintf(logFile, "timestamp,direction,protocol,src,dst,size,action,module\n");
         }
         totalLogSize = ftell(logFile);
     }
-    
-    LOG("Enhanced logging enabled: level=%d, format=%d, file=%s", logLevel, logFormat, logFilePath);
 }
 
 static void loggingCloseDown(PacketNode *head, PacketNode *tail) {
     UNREFERENCED_PARAMETER(head);
     UNREFERENCED_PARAMETER(tail);
     
+    loggingStarted = 0;
     loggingShutdown = 1;
     Sleep(10);
     
@@ -471,22 +479,18 @@ static void loggingCloseDown(PacketNode *head, PacketNode *tail) {
         fclose(logFile);
         logFile = NULL;
     }
-    
-    DeleteCriticalSection(&logMutex);
-    LOG("Enhanced logging disabled");
 }
 
 static short loggingProcess(PacketNode *head, PacketNode* tail) {
-    if (!loggingEnabled || !realTimeLogging) return FALSE;
+    if (!loggingStarted || loggingShutdown || !realTimeLogging) return FALSE;
     
-    // Log all packets passing through with PASS action
     PacketNode *pac = head->next;
     while (pac != tail) {
         logPacketAction(pac, "PASS", "main");
         pac = pac->next;
     }
     
-    return FALSE; // Don't modify packet flow
+    return FALSE;
 }
 
 Module loggingModule = {
@@ -503,7 +507,7 @@ Module loggingModule = {
 
 // Function to add log message to UI display
 static void addLogToDisplay(const char* message) {
-    if (!logDisplay || !loggingEnabled) return;
+    if (!logDisplay || !loggingStarted || loggingShutdown) return;
     
     EnterCriticalSection(&logMutex);
     

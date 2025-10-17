@@ -42,13 +42,18 @@ typedef struct {
 
 static Ihandle *enabledCheckbox, *statsDisplay, *resetButton;
 
-static volatile short statsEnabled = 0;
-static volatile short displayMode = 1; // Always show detailed view
+static volatile short statsEnabled = 1;
+static volatile short statsShutdown = 0;
+static volatile short displayMode = 1;
 static NetworkStatistics stats = {0};
 static CRITICAL_SECTION statsMutex;
+static int statsInitialized = 0;
+static int statsStarted = 0;
 
 // Helper function to update statistics
 void updateStatistics(PacketNode* pac, BOOL wasDropped, BOOL wasModified) {
+    if (!statsStarted || statsShutdown) return;
+    
     EnterCriticalSection(&statsMutex);
     
     DWORD currentTime = GetTickCount();
@@ -140,6 +145,8 @@ static void formatStatistics(char* buffer, size_t bufferSize) {
 static int resetStatsCallback(Ihandle *ih) {
     UNREFERENCED_PARAMETER(ih);
     
+    if (!statsInitialized) return IUP_DEFAULT;
+    
     EnterCriticalSection(&statsMutex);
     memset(&stats, 0, sizeof(NetworkStatistics));
     stats.startTime = GetTickCount();
@@ -147,18 +154,22 @@ static int resetStatsCallback(Ihandle *ih) {
     stats.minLatency = UINT32_MAX;
     LeaveCriticalSection(&statsMutex);
     
-    // Update UI display
     if (statsDisplay) {
-        IupSetAttribute(statsDisplay, "VALUE", "Statistics reset - waiting for data...");
+        IupSetAttribute(statsDisplay, "VALUE", "Statistics reset");
     }
     
-    LOG("Statistics reset");
+    LOG("stats reset");
     return IUP_DEFAULT;
 }
 
 
 
 static Ihandle* statsSetupUI() {
+    if (!statsInitialized) {
+        InitializeCriticalSection(&statsMutex);
+        statsInitialized = 1;
+    }
+    
     Ihandle *statsControlsBox = IupVbox(
         IupHbox(
             enabledCheckbox = IupToggle("Enable Statistics", NULL),
@@ -176,6 +187,7 @@ static Ihandle* statsSetupUI() {
     // Setup enabled checkbox
     IupSetCallback(enabledCheckbox, "ACTION", (Icallback)uiSyncToggle);
     IupSetAttribute(enabledCheckbox, SYNCED_VALUE, (char*)&statsEnabled);
+    IupSetAttribute(enabledCheckbox, "VALUE", "ON");
 
     // Setup display text area
     IupSetAttribute(statsDisplay, "MULTILINE", "YES");
@@ -193,19 +205,21 @@ static Ihandle* statsSetupUI() {
 }
 
 static void statsStartup() {
-    InitializeCriticalSection(&statsMutex);
+    statsShutdown = 0;
+    statsStarted = 1;
     memset(&stats, 0, sizeof(NetworkStatistics));
     stats.startTime = GetTickCount();
     stats.lastUpdateTime = stats.startTime;
     stats.minLatency = UINT32_MAX;
-    LOG("statistics monitoring enabled");
 }
 
 static void statsCloseDown(PacketNode *head, PacketNode *tail) {
     UNREFERENCED_PARAMETER(head);
     UNREFERENCED_PARAMETER(tail);
-    DeleteCriticalSection(&statsMutex);
-    LOG("statistics monitoring disabled");
+    
+    statsStarted = 0;
+    statsShutdown = 1;
+    Sleep(10);
 }
 
 static short statsProcess(PacketNode *head, PacketNode* tail) {
