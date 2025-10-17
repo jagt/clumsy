@@ -14,14 +14,15 @@ static volatile short dropEnabled = 0,
 
 static Ihandle* dropSetupUI() {
     Ihandle *dropControlsBox = IupHbox(
-        inboundCheckbox = IupToggle("Inbound", NULL),
-        outboundCheckbox = IupToggle("Outbound", NULL),
-        IupLabel("Chance(%):"),
+        inboundCheckbox = IupToggle("In", NULL),
+        outboundCheckbox = IupToggle("Out", NULL),
+        IupLabel("Chance:"),
         chanceInput = IupText(NULL),
+        IupLabel("%"),
         NULL
     );
 
-    IupSetAttribute(chanceInput, "VISIBLECOLUMNS", "4");
+    IupSetAttribute(chanceInput, "VISIBLECOLUMNS", "3");
     IupSetAttribute(chanceInput, "VALUE", "10.0");
     IupSetCallback(chanceInput, "VALUECHANGED_CB", uiSyncChance);
     IupSetAttribute(chanceInput, SYNCED_VALUE, (char*)&chance);
@@ -62,6 +63,10 @@ static short dropProcess(PacketNode *head, PacketNode* tail) {
             && calcChance(chance)) {
             LOG("dropped with chance %.1f%%, direction %s",
                 chance/100.0, pac->addr.Outbound ? "OUTBOUND" : "INBOUND");
+            // Log the packet action
+            logPacketAction(pac, "DROP", "drop");
+            // Update statistics for dropped packet
+            updateStatistics(pac, TRUE, FALSE); // wasDropped = TRUE, wasModified = FALSE
             freeNode(popNode(pac));
             ++dropped;
         } else {

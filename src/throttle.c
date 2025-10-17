@@ -30,18 +30,21 @@ static INLINE_FUNCTION short isBufEmpty() {
 }
 
 static Ihandle *throttleSetupUI() {
+    // Create a more compact layout by grouping related controls
     Ihandle *throttleControlsBox = IupHbox(
         dropThrottledCheckbox = IupToggle("Drop Throttled", NULL),
-        IupLabel("Timeframe(ms):"),
+        IupLabel("Timeframe:"),
         frameInput = IupText(NULL),
-        inboundCheckbox = IupToggle("Inbound", NULL),
-        outboundCheckbox = IupToggle("Outbound", NULL),
-        IupLabel("Chance(%):"),
+        IupLabel("ms"),
+        inboundCheckbox = IupToggle("In", NULL),
+        outboundCheckbox = IupToggle("Out", NULL),
+        IupLabel("Chance:"),
         chanceInput = IupText(NULL),
+        IupLabel("%"),
         NULL
-        );
+    );
 
-    IupSetAttribute(chanceInput, "VISIBLECOLUMNS", "4");
+    IupSetAttribute(chanceInput, "VISIBLECOLUMNS", "3");
     IupSetAttribute(chanceInput, "VALUE", "10.0");
     IupSetCallback(chanceInput, "VALUECHANGED_CB", uiSyncChance);
     IupSetAttribute(chanceInput, SYNCED_VALUE, (char*)&chance);
@@ -90,7 +93,10 @@ static void clearBufPackets(PacketNode *tail) {
     PacketNode *oldLast = tail->prev;
     LOG("Throttled end, send all %d packets. Buffer at max: %s", bufSize, bufSize == KEEP_AT_MOST ? "YES" : "NO");
     while (!isBufEmpty()) {
-        insertAfter(popNode(bufTail->prev), oldLast);
+        PacketNode *pac = popNode(bufTail->prev);
+        insertAfter(pac, oldLast);
+        // Log the packet action when it's sent
+        logPacketAction(pac, "THROTTLE", "throttle");
         --bufSize;
     }
     throttleStartTick = 0;
@@ -99,7 +105,10 @@ static void clearBufPackets(PacketNode *tail) {
 static void dropBufPackets() {
     LOG("Throttled end, drop all %d packets. Buffer at max: %s", bufSize, bufSize == KEEP_AT_MOST ? "YES" : "NO");
     while (!isBufEmpty()) {
-        freeNode(popNode(bufTail->prev));
+        PacketNode *pac = popNode(bufTail->prev);
+        // Log the packet action when it's dropped
+        logPacketAction(pac, "THROTTLE_DROP", "throttle");
+        freeNode(pac);
         --bufSize;
     }
     throttleStartTick = 0;
@@ -132,7 +141,10 @@ THROTTLE_START:
             DWORD currentTick = timeGetTime();
             while (bufSize < KEEP_AT_MOST && pac != head) {
                 if (checkDirection(pac->addr.Outbound, throttleInbound, throttleOutbound)) {
-                    insertAfter(popNode(pac), bufHead);
+                    PacketNode *moved = popNode(pac);
+                    insertAfter(moved, bufHead);
+                    // Log the packet action when it's throttled
+                    logPacketAction(moved, "THROTTLE", "throttle");
                     ++bufSize;
                     pac = tail->prev;
                 } else {

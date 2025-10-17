@@ -15,14 +15,15 @@ static volatile short tamperEnabled = 0,
 static Ihandle* tamperSetupUI() {
     Ihandle *dupControlsBox = IupHbox(
         checksumCheckbox = IupToggle("Redo Checksum", NULL),
-        inboundCheckbox = IupToggle("Inbound", NULL),
-        outboundCheckbox = IupToggle("Outbound", NULL),
-        IupLabel("Chance(%):"),
+        inboundCheckbox = IupToggle("In", NULL),
+        outboundCheckbox = IupToggle("Out", NULL),
+        IupLabel("Chance:"),
         chanceInput = IupText(NULL),
+        IupLabel("%"),
         NULL
-        );
+    );
 
-    IupSetAttribute(chanceInput, "VISIBLECOLUMNS", "4");
+    IupSetAttribute(chanceInput, "VISIBLECOLUMNS", "3");
     IupSetAttribute(chanceInput, "VALUE", "10.0");
     IupSetCallback(chanceInput, "VALUECHANGED_CB", uiSyncChance);
     IupSetAttribute(chanceInput, SYNCED_VALUE, (char*)&chance);
@@ -111,6 +112,10 @@ static short tamperProcess(PacketNode *head, PacketNode *tail) {
                 if (doChecksum) {
                     WinDivertHelperCalcChecksums(pac->packet, pac->packetLen, NULL, 0);
                 }
+                // Log the packet action
+                logPacketAction(pac, "MODIFY", "tamper");
+                // Update statistics for modified packet
+                updateStatistics(pac, FALSE, TRUE); // wasDropped = FALSE, wasModified = TRUE
                 tampered = TRUE;
             }
 

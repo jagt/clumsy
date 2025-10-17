@@ -3,8 +3,33 @@
 // from the example CppSelfElevate
 // http://code.msdn.microsoft.com/windowsdesktop/CppUACSelfElevation-981c0160
 #include <Windows.h>
-#include <VersionHelpers.h>
 #include "common.h"
+
+// Compatibility definitions for older MinGW (только для 32-бит)
+#ifndef _WIN64
+#ifndef TokenElevation
+#define TokenElevation ((TOKEN_INFORMATION_CLASS)20)
+#endif
+
+#ifndef TOKEN_ELEVATION
+typedef struct {
+    DWORD TokenIsElevated;
+} TOKEN_ELEVATION;
+#endif
+#endif
+
+#ifndef ARRAYSIZE
+#define ARRAYSIZE(a) (sizeof(a)/sizeof(a[0]))
+#endif
+
+// Helper function to check if we're on Vista or later
+static BOOL IsWindowsVistaOrGreater() {
+    OSVERSIONINFO osvi;
+    ZeroMemory(&osvi, sizeof(OSVERSIONINFO));
+    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+    GetVersionEx(&osvi);
+    return (osvi.dwMajorVersion >= 6);
+}
 
 // 
 //   FUNCTION: IsRunAsAdmin()

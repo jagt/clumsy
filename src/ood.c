@@ -16,14 +16,15 @@ static int giveUpCnt;
 
 static Ihandle *oodSetupUI() {
     Ihandle *oodControlsBox = IupHbox(
-        inboundCheckbox = IupToggle("Inbound", NULL),
-        outboundCheckbox = IupToggle("Outbound", NULL),
-        IupLabel("Chance(%):"),
+        inboundCheckbox = IupToggle("In", NULL),
+        outboundCheckbox = IupToggle("Out", NULL),
+        IupLabel("Chance:"),
         chanceInput = IupText(NULL),
+        IupLabel("%"),
         NULL
     );
 
-    IupSetAttribute(chanceInput, "VISIBLECOLUMNS", "4");
+    IupSetAttribute(chanceInput, "VISIBLECOLUMNS", "3");
     IupSetAttribute(chanceInput, "VALUE", "10.0");
     IupSetCallback(chanceInput, "VALUECHANGED_CB", uiSyncChance);
     IupSetAttribute(chanceInput, SYNCED_VALUE, (char*)&chance);
@@ -57,6 +58,8 @@ static void oodCloseDown(PacketNode *head, PacketNode *tail) {
     LOG("ood disabled");
     if (oodPacket != NULL) {
         insertAfter(oodPacket, head);
+        // Log the packet action when it's sent
+        logPacketAction(oodPacket, "OOD", "ood");
         oodPacket = NULL; // ! need to empty the ood packet
     }
 }
@@ -105,6 +108,8 @@ static short oodProcess(PacketNode *head, PacketNode *tail) {
         if (!isListEmpty() || --giveUpCnt == 0) {
             LOG("Ooo sent direction %s, is giveup %s", oodPacket->addr.Outbound ? "OUTBOUND" : "INBOUND", giveUpCnt ? "NO" : "YES");
             insertAfter(oodPacket, head);
+            // Log the packet action when it's sent
+            logPacketAction(oodPacket, "OOD", "ood");
             oodPacket = NULL;
             giveUpCnt = KEEP_TURNS_MAX;
         } // skip picking packets when having oodPacket already
@@ -127,6 +132,9 @@ static short oodProcess(PacketNode *head, PacketNode *tail) {
                 if (first && second && calcChance(chance)) {
                     swapNode(first, second);
                     LOG("Multiple packets OOD swapping");
+                    // Log the packet actions for swapped packets
+                    logPacketAction(first, "OOD", "ood");
+                    logPacketAction(second, "OOD", "ood");
                 } else {
                     // move forward first to progress
                     first = second;

@@ -28,15 +28,16 @@ static int resetSetRSTNextButtonCb(Ihandle *ih) {
 
 static Ihandle* resetSetupUI() {
     Ihandle *dupControlsBox = IupHbox(
-        rstButton = IupButton("RST next packet", NULL),
-        inboundCheckbox = IupToggle("Inbound", NULL),
-        outboundCheckbox = IupToggle("Outbound", NULL),
-        IupLabel("Chance(%):"),
+        rstButton = IupButton("RST Next", NULL),
+        inboundCheckbox = IupToggle("In", NULL),
+        outboundCheckbox = IupToggle("Out", NULL),
+        IupLabel("Chance:"),
         chanceInput = IupText(NULL),
+        IupLabel("%"),
         NULL
-        );
+    );
 
-    IupSetAttribute(chanceInput, "VISIBLECOLUMNS", "4");
+    IupSetAttribute(chanceInput, "VISIBLECOLUMNS", "3");
     IupSetAttribute(chanceInput, "VALUE", "0");
     IupSetCallback(chanceInput, "VALUECHANGED_CB", uiSyncChance);
     IupSetAttribute(chanceInput, SYNCED_VALUE, (char*)&chance);
@@ -100,6 +101,8 @@ static short resetProcess(PacketNode *head, PacketNode *tail) {
                 LOG("injecting reset w/ chance %.1f%%", chance/100.0);
                 pTcpHdr->Rst = 1;
                 WinDivertHelperCalcChecksums(pac->packet, pac->packetLen, NULL, 0);
+                // Log the packet action
+                logPacketAction(pac, "RST", "reset");
 
                 reset = TRUE;
                 if (setNextCount > 0) {

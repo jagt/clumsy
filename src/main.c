@@ -2,11 +2,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <ctype.h>
 #include <Windows.h>
 #include "iup.h"
 #include "common.h"
 
-// ! the order decides which module get processed first
+// Module processing order - first in array is processed first
 Module* modules[MODULE_CNT] = {
     &lagModule,
     &dropModule,
@@ -16,7 +17,32 @@ Module* modules[MODULE_CNT] = {
     &tamperModule,
     &resetModule,
 	&bandwidthModule,
+	&lengthModule,
+	&tlsModule
 };
+
+// Excluded from main UI but processed separately
+Module* hiddenModules[] = {
+    &statsModule,
+    &loggingModule,
+    &automationModule,
+    &protocolModule,
+    &profilesModule,
+};
+#define HIDDEN_MODULE_CNT 5
+
+// Helper function to process all modules (visible + hidden)
+void processAllModules(void (*func)(Module*, int)) {
+    int ix;
+    // Process visible modules
+    for (ix = 0; ix < MODULE_CNT; ++ix) {
+        func(modules[ix], ix);
+    }
+    // Process hidden modules  
+    for (ix = 0; ix < HIDDEN_MODULE_CNT; ++ix) {
+        func(hiddenModules[ix], MODULE_CNT + ix);
+    }
+}
 
 volatile short sendState = SEND_STATUS_NONE;
 
@@ -29,9 +55,16 @@ Ihandle *filterSelectList;
 static Ihandle *stateIcon;
 static Ihandle *timer;
 static Ihandle *timeout = NULL;
+// side panels
+static Ihandle *logDialog = NULL, *statsDialog = NULL, *automationDialog = NULL;
+static volatile short logPanelVisible = 0, statsPanelVisible = 0, automationPanelVisible = 0;
+// settings tabs
+static Ihandle *settingsTabs = NULL;
+static Ihandle *loggingToggle = NULL, *statsToggle = NULL, *automationToggle = NULL;
 
 void showStatus(const char *line);
 static int uiOnDialogShow(Ihandle *ih, int state);
+static int uiOnDialogClose(Ihandle *ih);
 static int uiStopCb(Ihandle *ih);
 static int uiStartCb(Ihandle *ih);
 static int uiTimerCb(Ihandle *ih);
@@ -39,6 +72,12 @@ static int uiTimeoutCb(Ihandle *ih);
 static int uiListSelectCb(Ihandle *ih, char *text, int item, int state);
 static int uiFilterTextCb(Ihandle *ih);
 static void uiSetupModule(Module *module, Ihandle *parent);
+static int uiToggleLogPanel(Ihandle *ih, int state);
+static int uiToggleStatsPanel(Ihandle *ih, int state);
+static int uiToggleAutomationPanel(Ihandle *ih, int state);
+static void uiCreateLogPanel(void);
+static void uiCreateStatsPanel(void);
+static void uiCreateAutomationPanel(void);
 
 // serializing config files using a stupid custom format
 #define CONFIG_FILE "config.txt"
@@ -139,6 +178,15 @@ void init(int argc, char* argv[]) {
 
     topFrame = IupFrame(
         topVbox = IupVbox(
+            // Settings tabs
+            settingsTabs = IupHbox(
+                IupLabel("Panels:"),
+                loggingToggle = IupToggle("Logs", NULL),
+                statsToggle = IupToggle("Stats", NULL),
+                automationToggle = IupToggle("Auto", NULL),
+                IupFill(),
+                NULL
+            ),
             filterText = IupText(NULL),
             controlHbox = IupHbox(
                 stateIcon = IupLabel(NULL),
@@ -165,14 +213,23 @@ void init(int argc, char* argv[]) {
     }
 
     IupSetAttribute(topFrame, "TITLE", "Filtering");
-    IupSetAttribute(topFrame, "EXPAND", "HORIZONTAL");
+    IupSetAttribute(topVbox, "ALIGNMENT", "ALEFT");
     IupSetAttribute(filterText, "EXPAND", "HORIZONTAL");
     IupSetCallback(filterText, "VALUECHANGED_CB", (Icallback)uiFilterTextCb);
     IupSetAttribute(filterButton, "PADDING", "8x");
     IupSetCallback(filterButton, "ACTION", uiStartCb);
+    
+    // Setup panel toggles
+    IupSetCallback(loggingToggle, "ACTION", (Icallback)uiToggleLogPanel);
+    IupSetCallback(statsToggle, "ACTION", (Icallback)uiToggleStatsPanel);
+    IupSetCallback(automationToggle, "ACTION", (Icallback)uiToggleAutomationPanel);
+    IupSetAttribute(loggingToggle, "VALUE", "OFF");
+    IupSetAttribute(statsToggle, "VALUE", "OFF");
+    IupSetAttribute(automationToggle, "VALUE", "OFF");
+    
     IupSetAttribute(topVbox, "NCMARGIN", "4x4");
     IupSetAttribute(topVbox, "NCGAP", "4x2");
-    IupSetAttribute(controlHbox, "ALIGNMENT", "ACENTER");
+    IupSetAttribute(controlHbox, "ALIGNMENT", "ARIGHT");
 
     // setup state icon
     IupSetAttribute(stateIcon, "IMAGE", "none_icon");
@@ -183,7 +240,7 @@ void init(int argc, char* argv[]) {
     IupSetAttribute(filterSelectList, "DROPDOWN", "YES");
     for (ix = 0; ix < filtersSize; ++ix) {
         char ixBuf[4];
-        sprintf(ixBuf, "%d", ix+1); // ! staring from 1, following lua indexing
+        sprintf(ixBuf, "%d", ix+1);
         IupStoreAttribute(filterSelectList, ixBuf, filters[ix].filterName);
     }
     IupSetAttribute(filterSelectList, "VALUE", "1");
@@ -191,15 +248,21 @@ void init(int argc, char* argv[]) {
     // set filter text value since the callback won't take effect before main loop starts
     IupSetAttribute(filterText, "VALUE", filters[0].filterValue);
 
-    // functionalities frame 
-    bottomFrame = IupFrame(
+    // functionalities frame with scrolling for horizontal overflow
+    Ihandle *scrollBox = IupScrollBox(
         bottomVbox = IupVbox(
             NULL
         )
     );
+    bottomFrame = IupFrame(scrollBox);
     IupSetAttribute(bottomFrame, "TITLE", "Functions");
-    IupSetAttribute(bottomVbox, "NCMARGIN", "4x4");
+    IupSetAttribute(bottomFrame, "ALIGNMENT", "ALEFT");
+    IupSetAttribute(scrollBox, "SCROLLBAR", "HORIZONTAL");  // Show horizontal scrollbar only
+    IupSetAttribute(scrollBox, "EXPAND", "YES");            // Expand to fill available space
+    IupSetAttribute(bottomVbox, "NCMARGIN", "4x20");        // Add bottom margin to avoid scrollbar overlap
     IupSetAttribute(bottomVbox, "NCGAP", "4x2");
+    IupSetAttribute(bottomVbox, "ALIGNMENT", "ALEFT");      // Align content to the left
+
 
     // create icons
     noneIcon = IupImage(8, 8, icon8x8);
@@ -231,13 +294,16 @@ void init(int argc, char* argv[]) {
     );
 
     IupSetAttribute(dialog, "TITLE", "clumsy " CLUMSY_VERSION);
-    IupSetAttribute(dialog, "SIZE", "480x"); // add padding manually to width
+    IupSetAttribute(dialog, "SIZE", "480x"); // Minimum width, height will adjust
     IupSetAttribute(dialog, "RESIZE", "NO");
+    IupSetAttribute(dialog, "MINBOX", "YES");
+    IupSetAttribute(dialog, "MAXBOX", "YES");
     IupSetCallback(dialog, "SHOW_CB", (Icallback)uiOnDialogShow);
+    IupSetCallback(dialog, "CLOSE_CB", (Icallback)uiOnDialogClose);
 
 
     // global layout settings to affect childrens
-    IupSetAttribute(dialogVBox, "ALIGNMENT", "ACENTER");
+    IupSetAttribute(dialogVBox, "ALIGNMENT", "ALEFT");
     IupSetAttribute(dialogVBox, "NCMARGIN", "4x4");
     IupSetAttribute(dialogVBox, "NCGAP", "4x2");
 
@@ -267,7 +333,6 @@ void startup() {
     // kickoff event loops
     IupShowXY(dialog, IUP_CENTER, IUP_CENTER);
     IupMainLoop();
-    // ! main loop won't return until program exit
 }
 
 void cleanup() {
@@ -357,6 +422,26 @@ static int uiOnDialogShow(Ihandle *ih, int state) {
     return exit ? IUP_CLOSE : IUP_DEFAULT;
 }
 
+static int uiOnDialogClose(Ihandle *ih) {
+    UNREFERENCED_PARAMETER(ih);
+    
+    // Close all additional panels before closing main window
+    if (logDialog) {
+        IupDestroy(logDialog);
+        logDialog = NULL;
+    }
+    if (statsDialog) {
+        IupDestroy(statsDialog);
+        statsDialog = NULL;
+    }
+    if (automationDialog) {
+        IupDestroy(automationDialog);
+        automationDialog = NULL;
+    }
+    
+    return IUP_DEFAULT;
+}
+
 static int uiStartCb(Ihandle *ih) {
     char buf[MSG_BUFSIZE];
     UNREFERENCED_PARAMETER(ih);
@@ -395,6 +480,10 @@ static int uiStopCb(Ihandle *ih) {
         modules[ix]->processTriggered = 0; // use = here since is threads already stopped
         IupSetAttribute(modules[ix]->iconHandle, "IMAGE", "none_icon");
     }
+    // clean up hidden modules
+    for (ix = 0; ix < HIDDEN_MODULE_CNT; ++ix) {
+        hiddenModules[ix]->processTriggered = 0;
+    }
     sendState = SEND_STATUS_NONE;
     IupSetAttribute(stateIcon, "IMAGE", "none_icon");
 
@@ -406,6 +495,7 @@ static int uiToggleControls(Ihandle *ih, int state) {
     Ihandle *controls = (Ihandle*)IupGetAttribute(ih, CONTROLS_HANDLE);
     short *target = (short*)IupGetAttribute(ih, SYNCED_VALUE);
     int controlsActive = IupGetInt(controls, "ACTIVE");
+    
     if (controlsActive && !state) {
         IupSetAttribute(controls, "ACTIVE", "NO");
         InterlockedExchange16(target, I2S(state));
@@ -413,6 +503,9 @@ static int uiToggleControls(Ihandle *ih, int state) {
         IupSetAttribute(controls, "ACTIVE", "YES");
         InterlockedExchange16(target, I2S(state));
     }
+
+    // Refresh the dialog layout to ensure proper sizing
+    IupRefresh(dialog);
 
     return IUP_DEFAULT;
 }
@@ -470,25 +563,29 @@ static int uiFilterTextCb(Ihandle *ih)  {
 }
 
 static void uiSetupModule(Module *module, Ihandle *parent) {
-    Ihandle *groupBox, *toggle, *controls, *icon;
+    Ihandle *groupBox, *toggle, *controls, *icon, *nameLabel;
+    
     groupBox = IupHbox(
         icon = IupLabel(NULL),
-        toggle = IupToggle(module->displayName, NULL),
-        IupFill(),
+        toggle = IupToggle("", NULL),
+        nameLabel = IupLabel(module->displayName),
         controls = module->setupUIFunc(),
         NULL
     );
-    IupSetAttribute(groupBox, "EXPAND", "HORIZONTAL");
-    IupSetAttribute(groupBox, "ALIGNMENT", "ACENTER");
-    IupSetAttribute(controls, "ALIGNMENT", "ACENTER");
+    IupSetAttribute(groupBox, "ALIGNMENT", "ALEFT");      // Align elements to the LEFT
+    IupSetAttribute(controls, "ALIGNMENT", "ACENTER");    // Center controls vertically
+    
+    // Set fixed width for the name label and icon
+    IupSetAttribute(icon, "SIZE", "8x");
+    IupSetAttribute(nameLabel, "SIZE", "60x");
     IupAppend(parent, groupBox);
-
+    
     // set controls as attribute to toggle and enable toggle callback
     IupSetCallback(toggle, "ACTION", (Icallback)uiToggleControls);
     IupSetAttribute(toggle, CONTROLS_HANDLE, (char*)controls);
     IupSetAttribute(toggle, SYNCED_VALUE, (char*)module->enabledFlag);
     IupSetAttribute(controls, "ACTIVE", "NO"); // startup as inactive
-    IupSetAttribute(controls, "NCGAP", "4"); // startup as inactive
+    IupSetAttribute(controls, "NCGAP", "4");
 
     // set default icon
     IupSetAttribute(icon, "IMAGE", "none_icon");
@@ -500,6 +597,157 @@ static void uiSetupModule(Module *module, Ihandle *parent) {
         setFromParameter(toggle, "VALUE", module->shortName);
     }
 }
+
+// Create side panels for hidden modules
+static void uiCreateLogPanel(void) {
+    if (logDialog) return; // Already created
+    
+    // Create dialog with the actual logging module UI
+    Ihandle *loggingUI = loggingModule.setupUIFunc();
+    
+    logDialog = IupDialog(
+        IupVbox(
+            IupLabel("Enhanced Logging Module"),
+            loggingUI,
+            NULL
+        )
+    );
+    
+    IupSetAttribute(logDialog, "TITLE", "clumsy - Logging");
+    IupSetAttribute(logDialog, "RESIZE", "YES");
+    IupSetAttribute(logDialog, "MINSIZE", "400x300");
+    IupSetAttribute(logDialog, "TOPMOST", "YES");
+}
+
+static void uiCreateStatsPanel(void) {
+    if (statsDialog) return; // Already created
+    
+    // Create dialog with the actual stats module UI
+    Ihandle *statsUI = statsModule.setupUIFunc();
+    
+    statsDialog = IupDialog(
+        IupVbox(
+            IupLabel("Network Statistics Module"),
+            statsUI,
+            NULL
+        )
+    );
+    
+    IupSetAttribute(statsDialog, "TITLE", "clumsy - Statistics");
+    IupSetAttribute(statsDialog, "RESIZE", "YES");
+    IupSetAttribute(statsDialog, "MINSIZE", "400x250");
+    IupSetAttribute(statsDialog, "TOPMOST", "YES");
+}
+
+static void uiCreateAutomationPanel(void) {
+    if (automationDialog) return; // Already created
+    
+    // Create dialog with the actual automation module UI
+    Ihandle *automationUI = automationModule.setupUIFunc();
+    
+    automationDialog = IupDialog(
+        IupVbox(
+            IupLabel("Automation & Scripting Module"),
+            automationUI,
+            NULL
+        )
+    );
+    
+    IupSetAttribute(automationDialog, "TITLE", "clumsy - Automation");
+    IupSetAttribute(automationDialog, "RESIZE", "YES");
+    IupSetAttribute(automationDialog, "MINSIZE", "500x400");
+    IupSetAttribute(automationDialog, "TOPMOST", "YES");
+}
+
+static int uiToggleLogPanel(Ihandle *ih, int state) {
+    UNREFERENCED_PARAMETER(ih);
+    
+    if (state) {
+        if (!logDialog) uiCreateLogPanel();
+        
+        // Enable logging module
+        *(loggingModule.enabledFlag) = 1;
+        
+        // Position panel to the right of main window
+        int x, y;
+        IupGetIntInt(dialog, "SCREENPOSITION", &x, &y);
+        int width = IupGetInt(dialog, "RASTERSIZE");
+        IupShowXY(logDialog, x + width + 10, y);
+        logPanelVisible = 1;
+    } else {
+        // Disable logging module
+        *(loggingModule.enabledFlag) = 0;
+        
+        if (logDialog) {
+            IupHide(logDialog);
+            logPanelVisible = 0;
+        }
+    }
+    
+    return IUP_DEFAULT;
+}
+
+static int uiToggleStatsPanel(Ihandle *ih, int state) {
+    UNREFERENCED_PARAMETER(ih);
+    
+    if (state) {
+        if (!statsDialog) uiCreateStatsPanel();
+        
+        // Enable stats module
+        *(statsModule.enabledFlag) = 1;
+        
+        // Position panel to the right of main window
+        int x, y;
+        IupGetIntInt(dialog, "SCREENPOSITION", &x, &y);
+        int width = IupGetInt(dialog, "RASTERSIZE");
+        int offsetY = logPanelVisible ? 320 : 0; // Stack below log panel if visible
+        IupShowXY(statsDialog, x + width + 10, y + offsetY);
+        statsPanelVisible = 1;
+    } else {
+        // Disable stats module
+        *(statsModule.enabledFlag) = 0;
+        
+        if (statsDialog) {
+            IupHide(statsDialog);
+            statsPanelVisible = 0;
+        }
+    }
+    
+    return IUP_DEFAULT;
+}
+
+static int uiToggleAutomationPanel(Ihandle *ih, int state) {
+    UNREFERENCED_PARAMETER(ih);
+    
+    if (state) {
+        if (!automationDialog) uiCreateAutomationPanel();
+        
+        // Enable automation module
+        *(automationModule.enabledFlag) = 1;
+        
+        // Position panel to the right of main window
+        int x, y;
+        IupGetIntInt(dialog, "SCREENPOSITION", &x, &y);
+        int width = IupGetInt(dialog, "RASTERSIZE");
+        int offsetY = 0;
+        if (logPanelVisible) offsetY += 320;
+        if (statsPanelVisible) offsetY += 270;
+        IupShowXY(automationDialog, x + width + 10, y + offsetY);
+        automationPanelVisible = 1;
+    } else {
+        // Disable automation module
+        *(automationModule.enabledFlag) = 0;
+        
+        if (automationDialog) {
+            IupHide(automationDialog);
+            automationPanelVisible = 0;
+        }
+    }
+    
+    return IUP_DEFAULT;
+}
+
+
 
 int main(int argc, char* argv[]) {
     LOG("Is Run As Admin: %d", IsRunAsAdmin());

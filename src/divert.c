@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <memory.h>
+#include <Windows.h>
 #include <winsock2.h>
 #include <Ws2tcpip.h>
 #include "windivert.h"
@@ -22,6 +23,8 @@ static DWORD divertClockLoop(LPVOID arg);
 // not to put these in common.h since modules shouldn't see these
 extern PacketNode * const head;
 extern PacketNode * const tail;
+extern Module* hiddenModules[];
+#define HIDDEN_MODULE_CNT 3
 
 #ifdef _DEBUG
 PWINDIVERT_IPHDR dbg_ip_header;
@@ -103,6 +106,10 @@ int divertStart(const char *filter, char buf[]) {
     // reset module
     for (ix = 0; ix < MODULE_CNT; ++ix) {
         modules[ix]->lastEnabled = 0;
+    }
+    // reset hidden modules
+    for (ix = 0; ix < HIDDEN_MODULE_CNT; ++ix) {
+        hiddenModules[ix]->lastEnabled = 0;
     }
 
     // kick off the loop
@@ -226,6 +233,24 @@ static void divertConsumeStep() {
             }
         }
     }
+    // Process hidden modules
+    for (ix = 0; ix < HIDDEN_MODULE_CNT; ++ix) {
+        Module *module = hiddenModules[ix];
+        if (*(module->enabledFlag)) {
+            if (!module->lastEnabled) {
+                module->startUp();
+                module->lastEnabled = 1;
+            }
+            if (module->process(head, tail)) {
+                InterlockedIncrement16(&(module->processTriggered));
+            }
+        } else {
+            if (module->lastEnabled) {
+                module->closeDown(head, tail);
+                module->lastEnabled = 0;
+            }
+        }
+    }
     cnt = sendAllListPackets();
 #ifdef _DEBUG
     dt =  GetTickCount() - startTick;
@@ -294,6 +319,13 @@ static DWORD divertClockLoop(LPVOID arg) {
                 // clean up by closing all modules
                 for (ix = 0; ix < MODULE_CNT; ++ix) {
                     Module *module = modules[ix];
+                    if (*(module->enabledFlag)) {
+                        module->closeDown(head, tail);
+                    } 
+                }
+                // close hidden modules
+                for (ix = 0; ix < HIDDEN_MODULE_CNT; ++ix) {
+                    Module *module = hiddenModules[ix];
                     if (*(module->enabledFlag)) {
                         module->closeDown(head, tail);
                     } 

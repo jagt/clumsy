@@ -54,10 +54,11 @@ static CRateStats *rateStats = NULL;
 
 static Ihandle* bandwidthSetupUI() {
     Ihandle *bandwidthControlsBox = IupHbox(
-        inboundCheckbox = IupToggle("Inbound", NULL),
-        outboundCheckbox = IupToggle("Outbound", NULL),
-        IupLabel("Limit(KB/s):"),
+        inboundCheckbox = IupToggle("In", NULL),
+        outboundCheckbox = IupToggle("Out", NULL),
+        IupLabel("Limit:"),
         bandwidthInput = IupText(NULL),
+        IupLabel("KB/s"),
         NULL
     );
 
