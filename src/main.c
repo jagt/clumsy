@@ -7,7 +7,7 @@
 #include "iup.h"
 #include "common.h"
 
-// ! the order decides which module get processed first
+// Module processing order - first in array is processed first
 Module* modules[MODULE_CNT] = {
     &lagModule,
     &dropModule,
@@ -240,7 +240,7 @@ void init(int argc, char* argv[]) {
     IupSetAttribute(filterSelectList, "DROPDOWN", "YES");
     for (ix = 0; ix < filtersSize; ++ix) {
         char ixBuf[4];
-        sprintf(ixBuf, "%d", ix+1); // ! staring from 1, following lua indexing
+        sprintf(ixBuf, "%d", ix+1);
         IupStoreAttribute(filterSelectList, ixBuf, filters[ix].filterName);
     }
     IupSetAttribute(filterSelectList, "VALUE", "1");
@@ -333,7 +333,6 @@ void startup() {
     // kickoff event loops
     IupShowXY(dialog, IUP_CENTER, IUP_CENTER);
     IupMainLoop();
-    // ! main loop won't return until program exit
 }
 
 void cleanup() {

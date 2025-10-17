@@ -1,4 +1,4 @@
-// packet length filter module
+// Packet length filter module - filter and manipulate packets based on size
 #include <stdlib.h>
 #include <Windows.h>
 #include "iup.h"
@@ -7,7 +7,6 @@
 #define KEEP_AT_MOST 2000
 #define LAG_TIME_DEFAULT 50
 
-// Action definitions
 typedef enum {
     LENGTH_ACTION_NOTHING = 0,
     LENGTH_ACTION_DROP = 1,
@@ -19,27 +18,26 @@ typedef enum {
 
 static Ihandle *inboundCheckbox, *outboundCheckbox, *enabledCheckbox;
 static Ihandle *minLengthInput, *maxLengthInput;
-static Ihandle *actionList; // Dropdown for action selection (matched packets)
-static Ihandle *actionListUnmatched; // Dropdown for action selection (non-matched packets)
-static Ihandle *lagTimeInput; // Input for lag time when using lag action
-static Ihandle *lagTimeInputUnmatched; // Input for lag time for non-matched packets
-static Ihandle *duplicateCountInput; // Input for duplicate count when using duplicate action
-static Ihandle *duplicateCountInputUnmatched; // Input for duplicate count for non-matched packets
+static Ihandle *actionList;
+static Ihandle *actionListUnmatched;
+static Ihandle *lagTimeInput;
+static Ihandle *lagTimeInputUnmatched;
+static Ihandle *duplicateCountInput;
+static Ihandle *duplicateCountInputUnmatched;
 
-// Buffer for lagged packets
 static PacketNode lengthLagHeadNode = {0}, lengthLagTailNode = {0};
 static PacketNode *lagBufHead = &lengthLagHeadNode, *lagBufTail = &lengthLagTailNode;
 static int lagBufSize = 0;
 
 static volatile short lengthEnabled = 0,
     lengthInbound = 1, lengthOutbound = 1,
-    minLength = 64, maxLength = 1500, // [0-65535] bytes
-    selectedAction = LENGTH_ACTION_DROP, // Default action for matched packets
-    selectedActionUnmatched = LENGTH_ACTION_NOTHING, // Default action for non-matched packets
-    lagTime = LAG_TIME_DEFAULT, // Default lag time in ms for matched packets
-    lagTimeUnmatched = LAG_TIME_DEFAULT, // Default lag time for non-matched packets
-    duplicateCount = 2, // Default duplicate count for matched packets
-    duplicateCountUnmatched = 2; // Default duplicate count for non-matched packets
+    minLength = 64, maxLength = 1500,
+    selectedAction = LENGTH_ACTION_DROP,
+    selectedActionUnmatched = LENGTH_ACTION_NOTHING,
+    lagTime = LAG_TIME_DEFAULT,
+    lagTimeUnmatched = LAG_TIME_DEFAULT,
+    duplicateCount = 2,
+    duplicateCountUnmatched = 2;
 
 static INLINE_FUNCTION short isLagBufEmpty() {
     short ret = lagBufHead->next == lagBufTail;
