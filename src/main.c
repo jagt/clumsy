@@ -5,6 +5,7 @@
 #include <Windows.h>
 #include "iup.h"
 #include "common.h"
+#include "iupkey.h"
 
 // ! the order decides which module get processed first
 Module* modules[MODULE_CNT] = {
@@ -29,6 +30,9 @@ Ihandle *filterSelectList;
 static Ihandle *stateIcon;
 static Ihandle *timer;
 static Ihandle *timeout = NULL;
+static Ihandle *keybindButton;
+static int g_toggleKey = K_F5;
+
 
 void showStatus(const char *line);
 static int uiOnDialogShow(Ihandle *ih, int state);
@@ -39,6 +43,12 @@ static int uiTimeoutCb(Ihandle *ih);
 static int uiListSelectCb(Ihandle *ih, char *text, int item, int state);
 static int uiFilterTextCb(Ihandle *ih);
 static void uiSetupModule(Module *module, Ihandle *parent);
+static int uiOnKeyPress(Ihandle *ih, int c);
+static int uiKeybindCb(Ihandle *ih);
+static int uiCaptureKeyCb(Ihandle *ih, int c);
+static void updateKeybindButtonTitle(void);
+
+
 
 // serializing config files using a stupid custom format
 #define CONFIG_FILE "config.txt"
@@ -246,6 +256,14 @@ void init(int argc, char* argv[]) {
     IupSetAttribute(timer, "TIME", STR(ICON_UPDATE_MS));
     IupSetCallback(timer, "ACTION_CB", uiTimerCb);
 
+    IupSetAttribute(filterButton, "PADDING", "8x");
+    IupSetCallback(filterButton, "ACTION", uiStartCb);
+
+    IupSetAttribute(keybindButton, "PADDING", "8x");
+    IupSetCallback(keybindButton, "ACTION", uiKeybindCb);
+    updateKeybindButtonTitle();  // shows current binding (e.g., "Keybind: F5")
+    IupSetCallback(dialog, "K_ANY", (Icallback)uiOnKeyPress);
+
     // setup timeout of program
     arg_value = IupGetGlobal("timeout");
     if(arg_value != NULL)
@@ -313,6 +331,76 @@ static BOOL checkIsRunning() {
     }
 
     return FALSE;
+}
+
+static int uiOnKeyPress(Ihandle *ih, int c) {
+    (void)ih;
+
+    // Toggle Start/Stop on the configured key
+    if (c == g_toggleKey) {
+        const char* title = IupGetAttribute(filterButton, "TITLE");
+        if (title && strcmp(title, "Start") == 0) uiStartCb(filterButton);
+        else                                      uiStopCb(filterButton);
+        return IUP_IGNORE;
+    }
+
+    // Still keep quick exits if you like
+    if (c == K_cQ || c == K_ESC) {
+        return IUP_CLOSE;
+    }
+
+    return IUP_CONTINUE;
+}
+
+static int uiCaptureKeyCb(Ihandle *ih, int c) {
+    (void)ih;
+
+    // Save the new key
+    g_toggleKey = c;
+    updateKeybindButtonTitle();
+
+    // Give the user a tiny confirmation
+    const char* name = IupKeyCodeToName ? IupKeyCodeToName(c) : NULL;
+    if (!name) name = "Unknown";
+    char msg[128];
+    snprintf(msg, sizeof msg, "Toggle key set to: %s", name);
+    showStatus(msg);
+
+    return IUP_CLOSE; // close the capture dialog
+}
+
+static int uiKeybindCb(Ihandle *ih) {
+    (void)ih;
+
+    // A tiny modal "Press any key..." dialog
+    Ihandle* label = IupLabel("Press the key (or key combo) to toggle Start/Stop\n\n"
+                              "Examples: F5, Ctrl+R, Shift+F6, Alt+T");
+    Ihandle* vbox  = IupVbox(label, NULL);
+    Ihandle* dlg   = IupDialog(vbox);
+
+    IupSetAttribute(dlg, "TITLE", "Set Keybind");
+    IupSetAttribute(dlg, "SIZE", "300x");
+    IupSetAttribute(dlg, "DIALOGFRAME", "YES");
+    IupSetAttribute(dlg, "RESIZE", "NO");
+    IupSetAttribute(dlg, "MODAL", "YES");
+
+    // capture the next key the user presses in this dialog
+    IupSetCallback(dlg, "K_ANY", (Icallback)uiCaptureKeyCb);
+
+    // show centered over main window
+    IupShowXY(dlg, IUP_CENTERPARENT, IUP_CENTERPARENT);
+
+    // when a key arrives uiCaptureKeyCb returns IUP_CLOSE which closes this dlg
+    IupDestroy(dlg);
+    return IUP_DEFAULT;
+}
+
+static void updateKeybindButtonTitle(void) {
+    const char* name = IupKeyCodeToName ? IupKeyCodeToName(g_toggleKey) : NULL;
+    if (!name) name = "Unknown";
+    char title[64];
+    snprintf(title, sizeof title, "Keybind: %s", name);
+    IupSetAttribute(keybindButton, "TITLE", title);
 }
 
 
