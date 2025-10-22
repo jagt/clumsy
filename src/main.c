@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <Windows.h>
+#include <conio.h>
 #include "iup.h"
 #include "common.h"
 
@@ -29,8 +30,11 @@ Ihandle *filterSelectList;
 static Ihandle *stateIcon;
 static Ihandle *timer;
 static Ihandle *timeout = NULL;
+// ADD THIS: Track filtering state to prevent double F5 presses
+static volatile short isFilteringActive = 0;
 
 void showStatus(const char *line);
+static int KEYPRESS_CB(Ihandle *ih, int c, int press);
 static int uiOnDialogShow(Ihandle *ih, int state);
 static int uiStopCb(Ihandle *ih);
 static int uiStartCb(Ihandle *ih);
@@ -117,6 +121,45 @@ EAT_SPACE:  while (isspace(*current)) { ++current; }
         filters[filtersSize].filterValue = "outbound and ip.DstAddr >= 127.0.0.1 and ip.DstAddr <= 127.255.255.255";
         filtersSize = 1;
     }
+}
+
+LRESULT CALLBACK LowLevelKeyboardProc( int nCode, WPARAM wParam, LPARAM lParam )
+{
+   char pressedKey;
+   // Declare a pointer to the KBDLLHOOKSTRUCTdsad
+   KBDLLHOOKSTRUCT *pKeyBoard = (KBDLLHOOKSTRUCT *)lParam;
+   switch( wParam )
+   {
+       case WM_KEYUP: // When the key has been pressed and released
+       {
+          //get the key code
+          pressedKey = (char)pKeyBoard->vkCode;
+       }
+       break;
+       default:
+           return CallNextHookEx( NULL, nCode, wParam, lParam );
+       break;
+   }
+
+    // FIXED: Added state checking to prevent double F5 presses
+    if(pressedKey == 116)  // F5 key
+    {
+        // Only start if not already running
+        if (!isFilteringActive) {
+            uiStartCb(NULL);
+        }
+    } 
+    else if(pressedKey == 117)  // F6 key
+    {
+        // Only stop if currently running
+        if (isFilteringActive) {
+            uiStopCb(NULL);
+        }
+    }
+    LOG("Character: %d", pressedKey);
+
+   //according to winapi all functions which implement a hook must return by calling next hook
+   return CallNextHookEx( NULL, nCode, wParam, lParam);
 }
 
 void init(int argc, char* argv[]) {
@@ -208,73 +251,64 @@ void init(int argc, char* argv[]) {
     IupSetAttribute(noneIcon, "0", "BGCOLOR");
     IupSetAttribute(noneIcon, "1", "224 224 224");
     IupSetAttribute(doingIcon, "0", "BGCOLOR");
-    IupSetAttribute(doingIcon, "1", "109 170 44");
+    IupSetAttribute(doingIcon, "1", "0 224 0");
     IupSetAttribute(errorIcon, "0", "BGCOLOR");
-    IupSetAttribute(errorIcon, "1", "208 70 72");
+    IupSetAttribute(errorIcon, "1", "224 0 0");
     IupSetHandle("none_icon", noneIcon);
     IupSetHandle("doing_icon", doingIcon);
     IupSetHandle("error_icon", errorIcon);
 
-    // setup module uis
+    // create dialogs and controls
     for (ix = 0; ix < MODULE_CNT; ++ix) {
-        uiSetupModule(*(modules+ix), bottomVbox);
+        uiSetupModule(modules[ix], bottomVbox);
     }
 
-    // dialog
-    dialog = IupDialog(
-        dialogVBox = IupVbox(
-            topFrame,
-            bottomFrame,
-            statusLabel,
-            NULL
-        )
+    dialogVBox = IupVbox(
+        topFrame,
+        bottomFrame,
+        statusLabel,
+        NULL
     );
+    IupSetAttribute(dialogVBox, "NMARGIN", "4x4");
+    IupSetAttribute(dialogVBox, "NGAP", "2");
 
+    dialog = IupDialog(dialogVBox);
     IupSetAttribute(dialog, "TITLE", "clumsy " CLUMSY_VERSION);
-    IupSetAttribute(dialog, "SIZE", "480x"); // add padding manually to width
-    IupSetAttribute(dialog, "RESIZE", "NO");
+    IupSetAttribute(dialog, "SHRINK", "YES");
     IupSetCallback(dialog, "SHOW_CB", (Icallback)uiOnDialogShow);
+    IupSetCallback(dialog,"K_ANY",(Icallback)KEYPRESS_CB);
 
-
-    // global layout settings to affect childrens
-    IupSetAttribute(dialogVBox, "ALIGNMENT", "ACENTER");
-    IupSetAttribute(dialogVBox, "NCMARGIN", "4x4");
-    IupSetAttribute(dialogVBox, "NCGAP", "4x2");
-
-    // setup timer
     timer = IupTimer();
-    IupSetAttribute(timer, "TIME", STR(ICON_UPDATE_MS));
-    IupSetCallback(timer, "ACTION_CB", uiTimerCb);
+    IupSetAttribute(timer, "TIME", "200");
+    IupSetCallback(timer, "ACTION_CB", (Icallback)uiTimerCb);
 
-    // setup timeout of program
-    arg_value = IupGetGlobal("timeout");
-    if(arg_value != NULL)
-    {
-        char valueBuf[16];
-        sprintf(valueBuf, "%s000", arg_value);  // convert from seconds to milliseconds
-
+    // timeout timer (for parameterized mode)
+    arg_value = getValueFromParameter("timeout");
+    if (arg_value) {
+        short timeout_ms = (short)atoi(arg_value);
+        LOG("set timeout to %d ms", timeout_ms);
         timeout = IupTimer();
-        IupStoreAttribute(timeout, "TIME", valueBuf);
-        IupSetCallback(timeout, "ACTION_CB", uiTimeoutCb);
+        char buf[8];
+        sprintf(buf, "%d", timeout_ms);
+        IupSetAttribute(timeout, "TIME", buf);
+        IupSetCallback(timeout, "ACTION_CB", (Icallback)uiTimeoutCb);
         IupSetAttribute(timeout, "RUN", "YES");
     }
 }
 
 void startup() {
-    // initialize seed
-    srand((unsigned int)time(NULL));
-
-    // kickoff event loops
+    HHOOK hook = SetWindowsHookEx( WH_KEYBOARD_LL, LowLevelKeyboardProc, GetModuleHandle(NULL), 0 );
     IupShowXY(dialog, IUP_CENTER, IUP_CENTER);
     IupMainLoop();
-    // ! main loop won't return until program exit
+    UnhookWindowsHookEx(hook);
 }
 
 void cleanup() {
-
+    UINT ix;
     IupDestroy(timer);
-    if (timeout) {
-        IupDestroy(timeout);
+    IupDestroy(dialog);
+    for (ix = 0; ix < MODULE_CNT; ++ix) {
+        modules[ix]->cleanupFunc();
     }
 
     IupClose();
@@ -284,6 +318,10 @@ void cleanup() {
 // ui logics
 void showStatus(const char *line) {
     IupStoreAttribute(statusLabel, "TITLE", line); 
+}
+
+static int KEYPRESS_CB(Ihandle *ih, int c, int press){
+    LOG("Character: %d",c);
 }
 
 // in fact only 32bit binary would run on 64 bit os
@@ -357,15 +395,26 @@ static int uiOnDialogShow(Ihandle *ih, int state) {
     return exit ? IUP_CLOSE : IUP_DEFAULT;
 }
 
+// FIXED: Added state checking to prevent multiple starts
 static int uiStartCb(Ihandle *ih) {
     char buf[MSG_BUFSIZE];
-    UNREFERENCED_PARAMETER(ih);
+    if(ih)
+    {
+        UNREFERENCED_PARAMETER(ih);
+    }
+    
+    // Prevent multiple starts
+    if (isFilteringActive) {
+        return IUP_DEFAULT;
+    }
+    
     if (divertStart(IupGetAttribute(filterText, "VALUE"), buf) == 0) {
         showStatus(buf);
         return IUP_DEFAULT;
     }
 
     // successfully started
+    isFilteringActive = 1;  // Set the flag
     showStatus("Started filtering. Enable functionalities to take effect.");
     IupSetAttribute(filterText, "ACTIVE", "NO");
     IupSetAttribute(filterButton, "TITLE", "Stop");
@@ -375,9 +424,18 @@ static int uiStartCb(Ihandle *ih) {
     return IUP_DEFAULT;
 }
 
+// FIXED: Added state checking to prevent multiple stops
 static int uiStopCb(Ihandle *ih) {
     int ix;
-    UNREFERENCED_PARAMETER(ih);
+    if(ih)
+    {
+        UNREFERENCED_PARAMETER(ih);
+    }
+    
+    // Prevent multiple stops
+    if (!isFilteringActive) {
+        return IUP_DEFAULT;
+    }
     
     // try stopping
     IupSetAttribute(filterButton, "ACTIVE", "NO");
@@ -398,6 +456,7 @@ static int uiStopCb(Ihandle *ih) {
     sendState = SEND_STATUS_NONE;
     IupSetAttribute(stateIcon, "IMAGE", "none_icon");
 
+    isFilteringActive = 0;  // Clear the flag
     showStatus("Stopped. To begin again, edit criteria and click Start.");
     return IUP_DEFAULT;
 }
