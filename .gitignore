@@ -1,5 +1,9 @@
 bin/
 build/
+projects/*
+!projects/*.sln
+!projects/*.vcxproj
+!projects/*.vcxproj.filters
 tmp/
 zig-cache/
 zig-out/
@@ -8,3 +12,4 @@ etc/clumsy.aps
 obj_vs
 obj_ninja
 obj_gmake
+tools/genie.exe
