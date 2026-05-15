@@ -44,7 +44,7 @@ solution('clumsy')
     project('clumsy')
         language("C")
         files({'src/**.c', 'src/**.h'})
-        links({'WinDivert', 'iup', 'comctl32', 'Winmm', 'ws2_32'}) 
+        links({'WinDivert', 'iup', 'comctl32', 'Winmm', 'ws2_32', 'Iphlpapi'})
         if string.match(_ACTION, '^vs') then -- only vs can include rc file in solution
             files({'./etc/clumsy.rc'})
         elseif _ACTION == MINGW_ACTION then
@@ -63,7 +63,7 @@ solution('clumsy')
             kind("WindowedApp")
 
         configuration(MINGW_ACTION)
-            links({'kernel32', 'gdi32', 'comdlg32', 'uuid', 'ole32'}) -- additional libs
+            links({'kernel32', 'gdi32', 'comdlg32', 'uuid', 'ole32', 'iphlpapi'}) -- additional libs
             buildoptions({
                 '-Wno-missing-braces',
                 '-Wno-missing-field-initializers',
@@ -74,7 +74,6 @@ solution('clumsy')
         configuration("vs*")
             defines({"_CRT_SECURE_NO_WARNINGS", "_CRT_NONSTDC_NO_DEPRECATE"})
             flags({'NoManifest'})
-            kind("WindowedApp") -- We don't need the console window in VS as we use OutputDebugString().
             buildoptions({'/wd"4214"'})
             -- MBCS is the default in GENie when 'Unicode' flag is not set
             includedirs({LIB_DIVERT_VC11 .. '/include'})

@@ -6,8 +6,8 @@ This document describes how to build clumsy from source on Windows.
 
 - **Windows 10 or later** (x64 recommended)
 - **Visual Studio 2022** (Community, Professional, or Enterprise) with:
-  - "Desktop development with C++" workload
-  - Windows 10 SDK (or later)
+  - **"Desktop development with C++" workload** (required; install via Visual Studio Installer if missing)
+  - Windows 10 SDK (or later, included with the C++ workload)
 - **Git** (to clone the repository)
 
 ## Quick Start (VS2022)

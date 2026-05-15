@@ -10,11 +10,17 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\src\app_filter.h">
+      <Filter>src</Filter>
+    </ClInclude>
     <ClInclude Include="..\src\common.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\src\app_filter.c">
+      <Filter>src</Filter>
+    </ClCompile>
     <ClCompile Include="..\src\bandwidth.c">
       <Filter>src</Filter>
     </ClCompile>

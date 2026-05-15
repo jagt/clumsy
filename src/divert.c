@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include <memory.h>
+#include <string.h>
 #include <winsock2.h>
 #include <Ws2tcpip.h>
 #include "windivert.h"
@@ -15,9 +15,17 @@
 static HANDLE divertHandle;
 static volatile short stopLooping;
 static HANDLE loopThread, clockThread, mutex;
+static char baseFilter[FILTER_BUFSIZE];
+static char activeFilter[FILTER_BUFSIZE];
+static volatile LONG appliedNetworkFilterVersion = 0;
+static volatile LONG reopenNetworkFilter = FALSE;
 
 static DWORD divertReadLoop(LPVOID arg);
 static DWORD divertClockLoop(LPVOID arg);
+static BOOL divertBuildEffectiveFilter(char *buf, UINT bufLen);
+static BOOL divertOpenNetworkHandle(const char *filter, char buf[]);
+static BOOL divertReopenNetworkHandle(void);
+static void divertMaybeRequestNetworkReopen(void);
 
 // not to put these in common.h since modules shouldn't see these
 extern PacketNode * const head;
@@ -77,9 +85,48 @@ void dumpPacket(char *buf, int len, PWINDIVERT_ADDRESS paddr) {
 #define dumpPacket(x, y, z)
 #endif
 
-int divertStart(const char *filter, char buf[]) {
-    int ix;
+static void copyFilterText(char* dst, UINT dstLen, const char* src)
+{
+    UINT ix;
 
+    if (dstLen == 0)
+    {
+        return;
+    }
+    if (src == NULL)
+    {
+        dst[0] = '\0';
+        return;
+    }
+    for (ix = 0; ix + 1 < dstLen && src[ix] != '\0'; ++ix)
+    {
+        dst[ix] = src[ix];
+    }
+    dst[ix] = '\0';
+}
+
+static BOOL divertBuildEffectiveFilter(char* buf, UINT bufLen)
+{
+    BOOL hasTargetFilters = FALSE;
+
+    if (AppFilterIsEnabled())
+    {
+        if (!AppFilterBuildNetworkFilter(baseFilter, buf, bufLen, &hasTargetFilters))
+        {
+            return FALSE;
+        }
+        if (!hasTargetFilters)
+        {
+            LOG("Application filter has no target flows; packet capture is paused.");
+        }
+        return TRUE;
+    }
+
+    copyFilterText(buf, bufLen, baseFilter);
+    return TRUE;
+}
+
+static BOOL divertOpenNetworkHandle(const char *filter, char buf[]) {
     divertHandle = WinDivertOpen(filter, WINDIVERT_LAYER_NETWORK, DIVERT_PRIORITY, 0);
     if (divertHandle == INVALID_HANDLE_VALUE) {
         DWORD lastError = GetLastError();
@@ -91,11 +138,109 @@ int divertStart(const char *filter, char buf[]) {
         }
         return FALSE;
     }
-    LOG("Divert opened handle.");
 
+    LOG("Divert opened handle with filter length %u: %.800s%s",
+        (UINT)strlen(filter), filter, strlen(filter) > 800 ? "..." : "");
     WinDivertSetParam(divertHandle, WINDIVERT_PARAM_QUEUE_LENGTH, QUEUE_LEN);
     WinDivertSetParam(divertHandle, WINDIVERT_PARAM_QUEUE_TIME, QUEUE_TIME);
     LOG("WinDivert internal queue Len: %d, queue time: %d", QUEUE_LEN, QUEUE_TIME);
+    return TRUE;
+}
+
+static BOOL divertReopenNetworkHandle(void)
+{
+    char nextFilter[FILTER_BUFSIZE];
+    char errBuf[MSG_BUFSIZE];
+    HANDLE oldHandle;
+    DWORD waitResult;
+
+    waitResult = WaitForSingleObject(mutex, INFINITE);
+    if (waitResult != WAIT_OBJECT_0 && waitResult != WAIT_ABANDONED)
+    {
+        LOG("Failed to acquire mutex for network filter reopen (%lu)", GetLastError());
+        InterlockedIncrement16(&stopLooping);
+        return FALSE;
+    }
+
+    if (!divertBuildEffectiveFilter(nextFilter, sizeof(nextFilter)))
+    {
+        LOG("Failed to build application network filter.");
+        InterlockedIncrement16(&stopLooping);
+        ReleaseMutex(mutex);
+        return FALSE;
+    }
+
+    oldHandle = divertHandle;
+    if (!divertOpenNetworkHandle(nextFilter, errBuf))
+    {
+        LOG("%s", errBuf);
+        divertHandle = oldHandle;
+        InterlockedIncrement16(&stopLooping);
+        ReleaseMutex(mutex);
+        return FALSE;
+    }
+
+    if (oldHandle != INVALID_HANDLE_VALUE)
+    {
+        WinDivertClose(oldHandle);
+    }
+    copyFilterText(activeFilter, sizeof(activeFilter), nextFilter);
+    InterlockedExchange(&appliedNetworkFilterVersion,
+                        AppFilterGetNetworkFilterVersion());
+    InterlockedExchange(&reopenNetworkFilter, FALSE);
+
+    if (!ReleaseMutex(mutex))
+    {
+        LOG("Fatal: Failed to release mutex after network filter reopen (%lu)",
+            GetLastError());
+        ABORT();
+    }
+    return TRUE;
+}
+
+static void divertMaybeRequestNetworkReopen(void)
+{
+    LONG version;
+
+    if (stopLooping || !AppFilterIsEnabled())
+    {
+        return;
+    }
+
+    version = AppFilterGetNetworkFilterVersion();
+    if (version == appliedNetworkFilterVersion)
+    {
+        return;
+    }
+
+    if (InterlockedCompareExchange(&reopenNetworkFilter, TRUE, FALSE) == FALSE)
+    {
+        LOG("Application target flow set changed; reopening packet filter.");
+        WinDivertShutdown(divertHandle, WINDIVERT_SHUTDOWN_RECV);
+    }
+}
+
+int divertStart(const char* filter, const AppFilterConfig* appConfig, char buf[])
+{
+    int ix;
+    copyFilterText(baseFilter, sizeof(baseFilter), filter);
+    activeFilter[0] = '\0';
+    InterlockedExchange(&appliedNetworkFilterVersion, 0);
+    InterlockedExchange(&reopenNetworkFilter, FALSE);
+
+    if (!AppFilterStart(appConfig, buf, MSG_BUFSIZE))
+    {
+        return FALSE;
+    }
+
+    if (!divertBuildEffectiveFilter(activeFilter, sizeof(activeFilter)) ||
+        !divertOpenNetworkHandle(activeFilter, buf))
+    {
+        AppFilterStop();
+        return FALSE;
+    }
+    InterlockedExchange(&appliedNetworkFilterVersion,
+                        AppFilterGetNetworkFilterVersion());
 
     // init package link list
     initPacketNodeList();
@@ -111,17 +256,31 @@ int divertStart(const char *filter, char buf[]) {
     mutex = CreateMutex(NULL, FALSE, NULL);
     if (mutex == NULL) {
         sprintf(buf, "Failed to create mutex (%lu)", GetLastError());
+        WinDivertClose(divertHandle);
+        AppFilterStop();
         return FALSE;
     }
 
     loopThread = CreateThread(NULL, 1, (LPTHREAD_START_ROUTINE)divertReadLoop, NULL, 0, NULL);
     if (loopThread == NULL) {
         sprintf(buf, "Failed to create recv loop thread (%lu)", GetLastError());
+        CloseHandle(mutex);
+        mutex = NULL;
+        WinDivertClose(divertHandle);
+        AppFilterStop();
         return FALSE;
     }
     clockThread = CreateThread(NULL, 1, (LPTHREAD_START_ROUTINE)divertClockLoop, NULL, 0, NULL);
     if (clockThread == NULL) {
         sprintf(buf, "Failed to create clock loop thread (%lu)", GetLastError());
+        InterlockedIncrement16(&stopLooping);
+        WinDivertClose(divertHandle);
+        WaitForSingleObject(loopThread, INFINITE);
+        CloseHandle(loopThread);
+        loopThread = NULL;
+        CloseHandle(mutex);
+        mutex = NULL;
+        AppFilterStop();
         return FALSE;
     }
 
@@ -243,6 +402,8 @@ static DWORD divertClockLoop(LPVOID arg) {
     UNREFERENCED_PARAMETER(arg);
 
     for(;;) {
+        divertMaybeRequestNetworkReopen();
+
         // use acquire as wait for yielding thread
         startTick = GetTickCount();
         waitResult = WaitForSingleObject(mutex, CLOCK_WAITMS);
@@ -329,11 +490,36 @@ static DWORD divertReadLoop(LPVOID arg) {
     UNREFERENCED_PARAMETER(arg);
 
     for(;;) {
-        // each step must fully consume the list
-        assert(isListEmpty()); // FIXME has failed this assert before. don't know why
+        // The clock thread may have released packets from module buffers
+        // into the list after the last iteration finished.  Drain them
+        // before blocking on WinDivertRecv so the list stays bounded.
+        // We must hold the mutex here because the clock thread also
+        // modifies the list inside divertConsumeStep().
+        if (!isListEmpty()) {
+            DWORD drainResult = WaitForSingleObject(mutex, INFINITE);
+            if (drainResult == WAIT_OBJECT_0) {
+                if (!stopLooping) {
+                    divertConsumeStep();
+                }
+                if (!ReleaseMutex(mutex)) {
+                    LOG("Fatal: Failed to release mutex after draining (%lu)", GetLastError());
+                }
+            }
+        }
         if (!WinDivertRecv(divertHandle, packetBuf, MAX_PACKETSIZE, &readLen, &addrBuf)) {
             DWORD lastError = GetLastError();
-            if (lastError == ERROR_INVALID_HANDLE || lastError == ERROR_OPERATION_ABORTED) {
+            if (!stopLooping && reopenNetworkFilter &&
+                    (lastError == ERROR_OPERATION_ABORTED ||
+                     lastError == ERROR_INVALID_HANDLE ||
+                     lastError == ERROR_NO_DATA)) {
+                if (divertReopenNetworkHandle()) {
+                    continue;
+                }
+                return 0;
+            }
+            if (lastError == ERROR_INVALID_HANDLE ||
+                    lastError == ERROR_OPERATION_ABORTED ||
+                    (stopLooping && lastError == ERROR_NO_DATA)) {
                 // treat closing handle as quit
                 LOG("Handle died or operation aborted. Exit loop.");
                 return 0;
@@ -347,6 +533,24 @@ static DWORD divertReadLoop(LPVOID arg) {
         }
 
         //dumpPacket(packetBuf, readLen, &addrBuf);  
+
+        if (stopLooping) {
+            LOG("Lost last recved packet but user stopped. Stop read loop.");
+            return 0;
+        }
+
+        if (AppFilterIsEnabled() &&
+                !AppFilterShouldAffectPacket(packetBuf, readLen, &addrBuf)) {
+            UINT sendLen = 0;
+            if (!WinDivertSend(divertHandle, packetBuf, readLen, &sendLen, &addrBuf) ||
+                    sendLen < readLen) {
+                if (!stopLooping) {
+                    LOG("Failed to pass through non-target packet (%lu)", GetLastError());
+                    InterlockedExchange16(&sendState, SEND_STATUS_FAIL);
+                }
+            }
+            continue;
+        }
 
         waitResult = WaitForSingleObject(mutex, INFINITE);
         switch(waitResult) {
@@ -392,6 +596,28 @@ void divertStop() {
     LOG("Stopping...");
     InterlockedIncrement16(&stopLooping);
     WaitForMultipleObjects(2, threads, TRUE, INFINITE);
+
+    if (loopThread != NULL)
+    {
+        CloseHandle(loopThread);
+        loopThread = NULL;
+    }
+    if (clockThread != NULL)
+    {
+        CloseHandle(clockThread);
+        clockThread = NULL;
+    }
+    if (mutex != NULL)
+    {
+        CloseHandle(mutex);
+        mutex = NULL;
+    }
+
+    AppFilterStop();
+    InterlockedExchange(&appliedNetworkFilterVersion, 0);
+    InterlockedExchange(&reopenNetworkFilter, FALSE);
+    baseFilter[0] = '\0';
+    activeFilter[0] = '\0';
 
     LOG("Successfully waited threads and stopped.");
 }

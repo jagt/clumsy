@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <ctype.h>
 #include <Windows.h>
 #include "iup.h"
 #include "common.h"
@@ -24,11 +25,17 @@ volatile short sendState = SEND_STATUS_NONE;
 static Ihandle *dialog, *topFrame, *bottomFrame; 
 static Ihandle *statusLabel;
 static Ihandle *filterText, *filterButton;
+static Ihandle *appFilterToggle;
+static Ihandle *appFilterText;
+static Ihandle *appFilterBrowseButton;
+static Ihandle *appFilterModeList;
+static Ihandle *appFilterControls;
 Ihandle *filterSelectList;
 // timer to update icons
 static Ihandle *stateIcon;
 static Ihandle *timer;
 static Ihandle *timeout = NULL;
+static BOOL dialogWasForeground = FALSE;
 
 void showStatus(const char *line);
 static int uiOnDialogShow(Ihandle *ih, int state);
@@ -38,6 +45,14 @@ static int uiTimerCb(Ihandle *ih);
 static int uiTimeoutCb(Ihandle *ih);
 static int uiListSelectCb(Ihandle *ih, char *text, int item, int state);
 static int uiFilterTextCb(Ihandle *ih);
+static int uiDialogFocusCb(Ihandle *ih);
+static BOOL uiIsBlankText(const char *text);
+static BOOL uiDialogIsForeground(void);
+static void uiRefreshDialog(void);
+static void uiSetAppFilterInputsLocked(BOOL locked);
+static int uiAppFilterToggleCb(Ihandle *ih, int state);
+static int uiAppFilterBrowseCb(Ihandle *ih);
+static void uiBuildAppFilterConfig(AppFilterConfig *config);
 static void uiSetupModule(Module *module, Ihandle *parent);
 
 // serializing config files using a stupid custom format
@@ -113,8 +128,8 @@ EAT_SPACE:  while (isspace(*current)) { ++current; }
     {
         LOG("Failed to load from config. Fill in a simple one.");
         // config is missing or ill-formed. fill in some simple ones
-        filters[filtersSize].filterName = "loopback packets";
-        filters[filtersSize].filterValue = "outbound and ip.DstAddr >= 127.0.0.1 and ip.DstAddr <= 127.255.255.255";
+        filters[filtersSize].filterName = "ipv4 + ipv6 all";
+        filters[filtersSize].filterValue = "ip or ipv6";
         filtersSize = 1;
     }
 }
@@ -122,8 +137,11 @@ EAT_SPACE:  while (isspace(*current)) { ++current; }
 void init(int argc, char* argv[]) {
     UINT ix;
     Ihandle *topVbox, *bottomVbox, *dialogVBox, *controlHbox;
+    Ihandle *appTargetHbox, *appModeHbox;
     Ihandle *noneIcon, *doingIcon, *errorIcon;
     char* arg_value = NULL;
+    char *appArg = NULL;
+    char *appModeArg = NULL;
 
     // fill in config
     loadConfig();
@@ -148,6 +166,21 @@ void init(int argc, char* argv[]) {
                 filterSelectList = IupList(NULL),
                 NULL
             ),
+            appFilterToggle = IupToggle("Limit to application", NULL),
+            appFilterControls = IupVbox(
+                appTargetHbox = IupHbox(
+                    IupLabel("Application:"),
+                    appFilterText = IupText(NULL),
+                    appFilterBrowseButton = IupButton("Browse...", NULL),
+                    NULL
+                ),
+                appModeHbox = IupHbox(
+                    IupLabel("Match:"),
+                    appFilterModeList = IupList(NULL),
+                    NULL
+                ),
+                NULL
+            ),
             NULL
         )
     );
@@ -166,13 +199,51 @@ void init(int argc, char* argv[]) {
 
     IupSetAttribute(topFrame, "TITLE", "Filtering");
     IupSetAttribute(topFrame, "EXPAND", "HORIZONTAL");
+    IupSetAttribute(topVbox, "EXPAND", "HORIZONTAL");
     IupSetAttribute(filterText, "EXPAND", "HORIZONTAL");
     IupSetCallback(filterText, "VALUECHANGED_CB", (Icallback)uiFilterTextCb);
     IupSetAttribute(filterButton, "PADDING", "8x");
     IupSetCallback(filterButton, "ACTION", uiStartCb);
     IupSetAttribute(topVbox, "NCMARGIN", "4x4");
     IupSetAttribute(topVbox, "NCGAP", "4x2");
+    IupSetAttribute(controlHbox, "EXPAND", "HORIZONTAL");
     IupSetAttribute(controlHbox, "ALIGNMENT", "ACENTER");
+    IupSetCallback(appFilterToggle, "ACTION", (Icallback)uiAppFilterToggleCb);
+    IupSetAttribute(appFilterControls, "ACTIVE", "NO");
+    IupSetAttribute(appFilterControls, "EXPAND", "HORIZONTAL");
+    IupSetAttribute(appFilterControls, "NCGAP", "4x2");
+    IupSetAttribute(appTargetHbox, "EXPAND", "HORIZONTAL");
+    IupSetAttribute(appTargetHbox, "ALIGNMENT", "ACENTER");
+    IupSetAttribute(appTargetHbox, "NCGAP", "4");
+    IupSetAttribute(appModeHbox, "EXPAND", "HORIZONTAL");
+    IupSetAttribute(appModeHbox, "ALIGNMENT", "ACENTER");
+    IupSetAttribute(appModeHbox, "NCGAP", "4");
+    IupSetAttribute(appFilterText, "EXPAND", "HORIZONTAL");
+    IupSetAttribute(appFilterText, "VISIBLECOLUMNS", "36");
+    IupSetAttribute(appFilterBrowseButton, "PADDING", "8x");
+    IupSetCallback(appFilterBrowseButton, "ACTION", uiAppFilterBrowseCb);
+    IupSetAttribute(appFilterModeList, "DROPDOWN", "YES");
+    IupSetAttribute(appFilterModeList, "VISIBLECOLUMNS", "14");
+    IupStoreAttribute(appFilterModeList, "1", "Process name");
+    IupStoreAttribute(appFilterModeList, "2", "Full path");
+    IupSetAttribute(appFilterModeList, "VALUE", "1");
+
+    if (parameterized) {
+        appArg = IupGetGlobal("app");
+        appModeArg = IupGetGlobal("app-mode");
+        if (appArg != NULL) {
+            IupSetAttribute(appFilterToggle, "VALUE", "ON");
+            IupSetAttribute(appFilterText, "VALUE", appArg);
+            uiAppFilterToggleCb(appFilterToggle, 1);
+        }
+        if (appModeArg != NULL && (appModeArg[0] == 'n' || appModeArg[0] == 'N')) {
+            IupSetAttribute(appFilterModeList, "VALUE", "1");
+        } else if (appModeArg != NULL &&
+                (appModeArg[0] == 'p' || appModeArg[0] == 'P' ||
+                 appModeArg[0] == 'f' || appModeArg[0] == 'F')) {
+            IupSetAttribute(appFilterModeList, "VALUE", "2");
+        }
+    }
 
     // setup state icon
     IupSetAttribute(stateIcon, "IMAGE", "none_icon");
@@ -234,6 +305,7 @@ void init(int argc, char* argv[]) {
     IupSetAttribute(dialog, "SIZE", "480x"); // add padding manually to width
     IupSetAttribute(dialog, "RESIZE", "NO");
     IupSetCallback(dialog, "SHOW_CB", (Icallback)uiOnDialogShow);
+    IupSetCallback(dialog, "GETFOCUS_CB", (Icallback)uiDialogFocusCb);
 
 
     // global layout settings to affect childrens
@@ -284,6 +356,48 @@ void cleanup() {
 // ui logics
 void showStatus(const char *line) {
     IupStoreAttribute(statusLabel, "TITLE", line); 
+}
+
+static BOOL uiDialogIsForeground(void)
+{
+    HWND hWnd;
+    HWND foreground;
+
+    if (dialog == NULL)
+    {
+        return FALSE;
+    }
+
+    hWnd = (HWND)IupGetAttribute(dialog, "HWND");
+    foreground = GetForegroundWindow();
+    return hWnd != NULL && foreground != NULL &&
+        (foreground == hWnd || IsChild(hWnd, foreground));
+}
+
+static void uiRefreshDialog(void)
+{
+    HWND hWnd;
+
+    if (dialog == NULL)
+    {
+        return;
+    }
+
+    IupRefresh(dialog);
+    hWnd = (HWND)IupGetAttribute(dialog, "HWND");
+    if (hWnd != NULL)
+    {
+        RedrawWindow(hWnd, NULL, NULL,
+                     RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+    }
+}
+
+static int uiDialogFocusCb(Ihandle* ih)
+{
+    UNREFERENCED_PARAMETER(ih);
+    uiRefreshDialog();
+    dialogWasForeground = TRUE;
+    return IUP_DEFAULT;
 }
 
 // in fact only 32bit binary would run on 64 bit os
@@ -359,18 +473,33 @@ static int uiOnDialogShow(Ihandle *ih, int state) {
 
 static int uiStartCb(Ihandle *ih) {
     char buf[MSG_BUFSIZE];
+    AppFilterConfig appConfig;
     UNREFERENCED_PARAMETER(ih);
-    if (divertStart(IupGetAttribute(filterText, "VALUE"), buf) == 0) {
+
+    uiBuildAppFilterConfig(&appConfig);
+    if (appConfig.enabled && appConfig.targets[0] == '\0') {
+        showStatus("Enter an application name or path before starting the application filter.");
+        return IUP_DEFAULT;
+    }
+
+    if (divertStart(IupGetAttribute(filterText, "VALUE"), &appConfig, buf) == 0) {
         showStatus(buf);
         return IUP_DEFAULT;
     }
 
     // successfully started
-    showStatus("Started filtering. Enable functionalities to take effect.");
-    IupSetAttribute(filterText, "ACTIVE", "NO");
+    if (appConfig.enabled) {
+        showStatus("Started filtering for the selected application. Enable functionalities to take effect.");
+    } else {
+        showStatus("Started filtering. Enable functionalities to take effect.");
+    }
+    IupSetAttribute(filterText, "READONLY", "YES");
+    IupSetAttribute(appFilterToggle, "ACTIVE", "NO");
+    uiSetAppFilterInputsLocked(TRUE);
     IupSetAttribute(filterButton, "TITLE", "Stop");
     IupSetCallback(filterButton, "ACTION", uiStopCb);
     IupSetAttribute(timer, "RUN", "YES");
+    uiRefreshDialog();
 
     return IUP_DEFAULT;
 }
@@ -384,7 +513,10 @@ static int uiStopCb(Ihandle *ih) {
     IupFlush(); // flush to show disabled state
     divertStop();
 
-    IupSetAttribute(filterText, "ACTIVE", "YES");
+    IupSetAttribute(filterText, "READONLY", "NO");
+    IupSetAttribute(appFilterToggle, "ACTIVE", "YES");
+    uiSetAppFilterInputsLocked(FALSE);
+    uiAppFilterToggleCb(appFilterToggle, IupGetInt(appFilterToggle, "VALUE"));
     IupSetAttribute(filterButton, "TITLE", "Start");
     IupSetAttribute(filterButton, "ACTIVE", "YES");
     IupSetCallback(filterButton, "ACTION", uiStartCb);
@@ -399,7 +531,90 @@ static int uiStopCb(Ihandle *ih) {
     IupSetAttribute(stateIcon, "IMAGE", "none_icon");
 
     showStatus("Stopped. To begin again, edit criteria and click Start.");
+    uiRefreshDialog();
     return IUP_DEFAULT;
+}
+
+static BOOL uiIsBlankText(const char* text)
+{
+    const unsigned char* p = (const unsigned char*)text;
+    if (p == NULL)
+    {
+        return TRUE;
+    }
+    while (*p != '\0')
+    {
+        if (!isspace(*p))
+        {
+            return FALSE;
+        }
+        ++p;
+    }
+    return TRUE;
+}
+
+static void uiSetAppFilterInputsLocked(BOOL locked)
+{
+    IupSetAttribute(appFilterText, "READONLY", locked ? "YES" : "NO");
+    IupSetAttribute(appFilterBrowseButton, "ACTIVE", locked ? "NO" : "YES");
+    IupSetAttribute(appFilterModeList, "ACTIVE", locked ? "NO" : "YES");
+}
+
+static int uiAppFilterToggleCb(Ihandle* ih, int state)
+{
+    UNREFERENCED_PARAMETER(ih);
+    IupSetAttribute(appFilterControls, "ACTIVE", state ? "YES" : "NO");
+    uiRefreshDialog();
+    return IUP_DEFAULT;
+}
+
+static int uiAppFilterBrowseCb(Ihandle* ih)
+{
+    Ihandle* fileDlg;
+    const char* path;
+    int status;
+
+    UNREFERENCED_PARAMETER(ih);
+
+    fileDlg = IupFileDlg();
+    IupSetAttribute(fileDlg, "DIALOGTYPE", "OPEN");
+    IupSetAttribute(fileDlg, "TITLE", "Select application executable");
+    IupSetAttribute(fileDlg, "EXTFILTER", "Executable files|*.exe|All files|*.*|");
+    IupSetAttributeHandle(fileDlg, "PARENTDIALOG", dialog);
+    IupPopup(fileDlg, IUP_CENTERPARENT, IUP_CENTERPARENT);
+
+    status = IupGetInt(fileDlg, "STATUS");
+    if (status != -1)
+    {
+        path = IupGetAttribute(fileDlg, "VALUE");
+        if (!uiIsBlankText(path))
+        {
+            IupStoreAttribute(appFilterText, "VALUE", path);
+            IupSetAttribute(appFilterModeList, "VALUE", "2");
+        }
+    }
+
+    IupDestroy(fileDlg);
+    return IUP_DEFAULT;
+}
+
+static void uiBuildAppFilterConfig(AppFilterConfig* config)
+{
+    const char* targetsText;
+
+    AppFilterDefaultConfig(config);
+    config->enabled = IupGetInt(appFilterToggle, "VALUE") ? TRUE : FALSE;
+    config->mode = IupGetInt(appFilterModeList, "VALUE") == 2
+                       ? APP_FILTER_MODE_FULL_PATH
+                       : APP_FILTER_MODE_PROCESS_NAME;
+    config->includeChildProcesses = TRUE;
+
+    targetsText = IupGetAttribute(appFilterText, "VALUE");
+    if (!uiIsBlankText(targetsText))
+    {
+        strncpy(config->targets, targetsText, APP_FILTER_TARGETS_BUFSIZE - 1);
+        config->targets[APP_FILTER_TARGETS_BUFSIZE - 1] = '\0';
+    }
 }
 
 static int uiToggleControls(Ihandle *ih, int state) {
@@ -419,7 +634,16 @@ static int uiToggleControls(Ihandle *ih, int state) {
 
 static int uiTimerCb(Ihandle *ih) {
     int ix;
+    BOOL dialogIsForeground;
     UNREFERENCED_PARAMETER(ih);
+
+    dialogIsForeground = uiDialogIsForeground();
+    if (dialogIsForeground && !dialogWasForeground)
+    {
+        uiRefreshDialog();
+    }
+    dialogWasForeground = dialogIsForeground;
+
     for (ix = 0; ix < MODULE_CNT; ++ix) {
         if (modules[ix]->processTriggered) {
             IupSetAttribute(modules[ix]->iconHandle, "IMAGE", "doing_icon");
@@ -443,6 +667,18 @@ static int uiTimerCb(Ihandle *ih) {
         IupSetAttribute(stateIcon, "IMAGE", "error_icon");
         InterlockedAnd16(&sendState, SEND_STATUS_NONE);
         break;
+    }
+
+    if (AppFilterIsEnabled())
+    {
+        AppFilterStats stats;
+        char statusBuf[MSG_BUFSIZE];
+        AppFilterGetStats(&stats);
+        sprintf(statusBuf,
+                "Application filter: target PIDs %ld, target flows %ld, UDP endpoints %ld, affected %ld, passed %ld, unknown %ld.",
+                stats.targetPidCount, stats.targetFlowCount, stats.targetEndpointCount,
+                stats.affectedPackets, stats.passedUnmatchedPackets, stats.unknownPackets);
+        showStatus(statusBuf);
     }
 
     return IUP_DEFAULT;

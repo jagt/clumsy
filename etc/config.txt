@@ -3,6 +3,9 @@
 # filter-name:filter-text
 # see <https://github.com/basil00/Divert/wiki/WinDivert-Documentation#7-filter-language> for details
 
+# Default: capture normal IPv4 and IPv6 traffic in both directions.
+ipv4 + ipv6 all: ip or ipv6
+
 # loopback packets can only be filtered using 'outbound'.
 localhost ipv4 all: outbound and loopback
 localhost ipv4 tcp: tcp and outbound and loopback

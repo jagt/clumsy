@@ -20,6 +20,33 @@ Simulate network latency, delay, packet loss with clumsy on Windows 7/8/10:
 
 ![](clumsy-demo.gif)
 
+### Application filter
+
+This fork can limit impairments to a specific application. The normal packet
+filter still controls which packets WinDivert captures. When "Limit to
+application" is enabled, clumsy only applies lag/drop/throttle/etc. to packets
+attributed to the selected executable name or full path. Other matching packets
+are passed through unchanged.
+
+Example:
+
+- Packet filter: `outbound and (tcp or udp)`
+- Application: `Game.exe`
+
+Notes:
+
+- Multiple applications can be separated with commas or semicolons.
+- Process-name matching is case-insensitive.
+- Browse can fill in a full executable path and switches matching to full path.
+- Child-process matching is always enabled, which helps portable launchers such
+  as `SpeedtestPortable.exe` target the real network process they launch.
+- When the application filter is enabled, clumsy narrows packet capture to
+  known target flows so non-target applications are not routed through the
+  impairment loop just because the packet preset is broad.
+- The app does not need to be running before clumsy starts.
+- Unknown/unattributed packets pass through unchanged.
+- Loopback attribution has the same caveats as clumsy's existing loopback support.
+
 
 ## License
 

@@ -50,6 +50,8 @@ static volatile short bandwidthEnabled = 0,
 
 static volatile LONG bandwidthLimit = BANDWIDTH_DEFAULT; 
 static CRateStats *rateStats = NULL;
+static DWORD lastDropLogTick = 0;
+static int pendingDropLogCount = 0;
 
 
 static Ihandle* bandwidthSetupUI() {
@@ -88,6 +90,8 @@ static Ihandle* bandwidthSetupUI() {
 static void bandwidthStartUp() {
 	if (rateStats) crate_stats_delete(rateStats);
 	rateStats = crate_stats_new(1000, 1000);
+    lastDropLogTick = 0;
+    pendingDropLogCount = 0;
     LOG("bandwidth enabled");
 }
 
@@ -121,8 +125,6 @@ static short bandwidthProcess(PacketNode *head, PacketNode* tail) {
 			int rate = crate_stats_calculate(rateStats, now_ts);
 			int size = pac->packetLen;
 			if (rate + size > limit) {
-				LOG("dropped with bandwidth %dKB/s, direction %s",
-					(int)bandwidthLimit, pac->addr.Outbound ? "OUTBOUND" : "INBOUND");
 				discard = 1;
 			}
 			else {
@@ -135,6 +137,18 @@ static short bandwidthProcess(PacketNode *head, PacketNode* tail) {
         } else {
             head = head->next;
         }
+    }
+
+    if (dropped > 0)
+    {
+	    pendingDropLogCount += dropped;
+	    if (lastDropLogTick == 0 || now_ts - lastDropLogTick >= 1000)
+	    {
+		    LOG("dropped %d packets with bandwidth %dKB/s",
+		        pendingDropLogCount, (int)bandwidthLimit);
+		    pendingDropLogCount = 0;
+		    lastDropLogTick = now_ts;
+	    }
     }
 
     return dropped > 0;
