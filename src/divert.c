@@ -242,6 +242,8 @@ static DWORD divertClockLoop(LPVOID arg) {
 
     UNREFERENCED_PARAMETER(arg);
 
+    seedRand(); // rand() seed is thread-local under msvcrt (issue #94)
+
     for(;;) {
         // use acquire as wait for yielding thread
         startTick = GetTickCount();
@@ -327,6 +329,8 @@ static DWORD divertReadLoop(LPVOID arg) {
     DWORD waitResult;
 
     UNREFERENCED_PARAMETER(arg);
+
+    seedRand(); // rand() seed is thread-local under msvcrt (issue #94)
 
     for(;;) {
         // each step must fully consume the list

@@ -261,8 +261,10 @@ void init(int argc, char* argv[]) {
 }
 
 void startup() {
-    // initialize seed
-    srand((unsigned int)time(NULL));
+    // NOTE: rand() is seeded per worker thread via seedRand() in divert.c's
+    // read/clock loops. Seeding here is useless because rand()'s seed is
+    // thread-local under msvcrt and rand() never runs on this (main) thread.
+    // See issue #94.
 
     // kickoff event loops
     IupShowXY(dialog, IUP_CENTER, IUP_CENTER);

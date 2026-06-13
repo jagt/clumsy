@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <time.h>
 #include <Windows.h>
 #include "iup.h"
 #include "common.h"
@@ -6,6 +7,13 @@
 short calcChance(short chance) {
     // notice that here we made a copy of chance, so even though it's volatile it is still ok
     return (chance == 10000) || ((rand() % 10000) < chance);
+}
+
+void seedRand(void) {
+    // rand()/srand() use a thread-local seed under msvcrt, so each worker thread
+    // that calls rand() (via calcChance) must seed its own. XOR in the thread id
+    // to de-correlate threads seeded within the same second. See issue #94.
+    srand((unsigned int)(time(NULL) ^ ((unsigned int)GetCurrentThreadId() << 16)));
 }
 
 static short resolutionSet = 0;

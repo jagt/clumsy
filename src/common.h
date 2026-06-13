@@ -168,6 +168,9 @@ void divertStop();
 #define STR(x) STR_HELPER(x)
 
 short calcChance(short chance);
+// seed the thread-local RNG; must be called once at the start of each worker
+// thread that uses calcChance/rand (see issue #94)
+void seedRand(void);
 
 // inline helper for inbound outbound check
 static INLINE_FUNCTION
