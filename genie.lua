@@ -1,11 +1,18 @@
 -- genie, https://github.com/bkaradzic/GENie
--- known working version
+-- known working version (for VS2019 and earlier):
 -- https://github.com/bkaradzic/bx/blob/51f25ba638b9cb35eb2ac078f842a4bed0746d56/tools/bin/windows/genie.exe
+--
+-- For VS2022 support, use a recent GENie built from master:
+--   https://github.com/bkaradzic/GENie
+-- Pre-built genie.exe can also be found in the bx repo tools/bin/windows/.
+--
+-- Supported actions: vs2022, vs2019, vs2017, vs2015, gmake
+-- Usage: genie.exe vs2022
 
 MINGW_ACTION = 'gmake'
 
 if _ACTION == 'clean' then
-    os.rmdir('./build')
+    os.rmdir('./projects')
     os.rmdir('./bin')
     os.rmdir('./obj_vs')
     os.rmdir('./obj_' .. MINGW_ACTION)
@@ -30,14 +37,14 @@ local ROOT = os.getcwd()
 print(ROOT)
 
 solution('clumsy')
-    location("./build")
+    location("./projects")
     configurations({'Debug', 'Release'})
     platforms({'x32', 'x64'})
 
     project('clumsy')
         language("C")
         files({'src/**.c', 'src/**.h'})
-        links({'WinDivert', 'iup', 'comctl32', 'Winmm', 'ws2_32'}) 
+        links({'WinDivert', 'iup', 'comctl32', 'Winmm', 'ws2_32', 'Iphlpapi'})
         if string.match(_ACTION, '^vs') then -- only vs can include rc file in solution
             files({'./etc/clumsy.rc'})
         elseif _ACTION == MINGW_ACTION then
@@ -56,7 +63,7 @@ solution('clumsy')
             kind("WindowedApp")
 
         configuration(MINGW_ACTION)
-            links({'kernel32', 'gdi32', 'comdlg32', 'uuid', 'ole32'}) -- additional libs
+            links({'kernel32', 'gdi32', 'comdlg32', 'uuid', 'ole32', 'iphlpapi'}) -- additional libs
             buildoptions({
                 '-Wno-missing-braces',
                 '-Wno-missing-field-initializers',
@@ -65,12 +72,10 @@ solution('clumsy')
             objdir('obj_'..MINGW_ACTION)
 
         configuration("vs*")
-            defines({"_CRT_SECURE_NO_WARNINGS"})
+            defines({"_CRT_SECURE_NO_WARNINGS", "_CRT_NONSTDC_NO_DEPRECATE"})
             flags({'NoManifest'})
-            kind("WindowedApp") -- We don't need the console window in VS as we use OutputDebugString().
             buildoptions({'/wd"4214"'})
-			linkoptions({'/ENTRY:"mainCRTStartup" /SAFESEH:NO'})
-			-- characterset("MBCS")
+            -- MBCS is the default in GENie when 'Unicode' flag is not set
             includedirs({LIB_DIVERT_VC11 .. '/include'})
             objdir('obj_vs')
 
@@ -78,6 +83,7 @@ solution('clumsy')
             -- defines would be passed to resource compiler for whatever reason
             -- and ONLY can be put here not under 'configuration('x32')' or it won't work
             defines({'X32'})
+            linkoptions({'/ENTRY:"mainCRTStartup"', '/SAFESEH:NO'})
             includedirs({LIB_IUP_WIN32_VC11 .. '/include'})
             libdirs({
                 LIB_DIVERT_VC11 .. '/x86',
@@ -86,6 +92,7 @@ solution('clumsy')
 
         configuration({'x64', 'vs*'})
             defines({'X64'})
+            linkoptions({'/ENTRY:"mainCRTStartup"'})
             includedirs({LIB_IUP_WIN64_VC11 .. '/include'})
             libdirs({
                 LIB_DIVERT_VC11 .. '/x64',
@@ -141,10 +148,12 @@ solution('clumsy')
                 targetdir(subdir)
                 debugdir(subdir)
                 if platform == 'vs*' then
+                    -- robocopy returns 1 on success, which MSBuild treats as error.
+                    -- All commands run in one batch; final exit /B 0 forces success.
                     postbuildcommands({
-                        "robocopy " .. divert_lib .." " .. subdir .. '  *.dll *.sys >> robolog.txt',
-                        "robocopy " .. iup_lib .. " "  .. subdir .. ' iup.dll >> robolog.txt',
-                        "robocopy " .. ROOT .. "/etc/ "   .. subdir .. ' config.txt >> robolog.txt',
+                        "robocopy " .. divert_lib .." " .. subdir .. '  *.dll *.sys > NUL',
+                        "robocopy " .. iup_lib .. " "  .. subdir .. ' iup.dll > NUL',
+                        "robocopy " .. ROOT .. "/etc/ "   .. subdir .. ' config.txt > NUL',
                         "exit /B 0"
                     })
                 elseif platform == MINGW_ACTION then 

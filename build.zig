@@ -96,6 +96,7 @@ pub fn build(b: *std.build.Builder) void {
 
     exe.step.dependOn(&cmd.step);
     exe.addObjectFile(res_obj_path);
+    exe.addCSourceFile("src/app_filter.c", &.{""});
     exe.addCSourceFile("src/bandwidth.c", &.{""});
     exe.addCSourceFile("src/divert.c", &.{""});
     exe.addCSourceFile("src/drop.c", &.{""});
@@ -108,7 +109,6 @@ pub fn build(b: *std.build.Builder) void {
     exe.addCSourceFile("src/reset.c", &.{""});
     exe.addCSourceFile("src/tamper.c", &.{""});
     exe.addCSourceFile("src/throttle.c", &.{""});
-    exe.addCSourceFile("src/utils.c", &.{""});
     exe.addCSourceFile("src/utils.c", &.{""});
 
     if (arch == .x86)
@@ -130,6 +130,7 @@ pub fn build(b: *std.build.Builder) void {
     exe.linkSystemLibrary("comctl32");
     exe.linkSystemLibrary("Winmm");
     exe.linkSystemLibrary("ws2_32");
+    exe.linkSystemLibrary("iphlpapi");
     exe.linkSystemLibrary("kernel32");
     exe.linkSystemLibrary("gdi32");
     exe.linkSystemLibrary("comdlg32");

@@ -117,8 +117,8 @@ BOOL tryElevate(HWND hWnd, BOOL silent) {
 
     // when not silent then trying to reinvoke to elevate
     if (!silent) {
-        wchar_t szPath[MAX_PATH];
-        if (GetModuleFileName(NULL, (LPSTR)szPath, ARRAYSIZE(szPath)))
+        char szPath[MAX_PATH];
+        if (GetModuleFileName(NULL, szPath, ARRAYSIZE(szPath)))
         {
             // Launch itself as administrator.
             SHELLEXECUTEINFO sei = { sizeof(sei) };

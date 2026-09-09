@@ -1,12 +1,14 @@
 #pragma once
 #include <stdio.h>
+#include <stdarg.h>
 #include <assert.h>
 #include "iup.h"
 #include "windivert.h"
+#include "app_filter.h"
 
-#define CLUMSY_VERSION "0.3"
+#define CLUMSY_VERSION "0.4"
 #define MSG_BUFSIZE 512
-#define FILTER_BUFSIZE 1024
+#define FILTER_BUFSIZE 32768
 #define NAME_SIZE 16
 #define MODULE_CNT 8
 #define ICON_UPDATE_MS 200
@@ -70,10 +72,13 @@ static void VsLog(const char* pFmt, ...)
     va_list args;
 
     va_start(args, pFmt);
-    vsprintf_s(buf, 1024, pFmt, args);
+    vsnprintf_s(buf, sizeof(buf), _TRUNCATE, pFmt, args);
     va_end(args);
 
+    buf[sizeof(buf) - 1] = '\0';
     OutputDebugString(buf);
+    fputs(buf, stderr);
+    fflush(stderr);
 }
 
 #define LOG(fmt, ...) (VsLog(__FUNCTION__ ": " fmt "\n", ##__VA_ARGS__))
@@ -159,7 +164,7 @@ extern volatile short sendState;
 void showStatus(const char* line);
 
 // WinDivert
-int divertStart(const char * filter, char buf[]);
+int divertStart(const char * filter, const AppFilterConfig *appConfig, char buf[]);
 void divertStop();
 
 // utils
